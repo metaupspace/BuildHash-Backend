@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.builddash.backend.infra.persistence.ProductMapperTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-08-17T12:37:58.936Z" hostname="RyuKen-V15" time="0.001">
+  <properties/>
+  <testcase name="toEntity_thenToDomain_roundTripsEveryField()" classname="com.builddash.backend.infra.persistence.ProductMapperTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

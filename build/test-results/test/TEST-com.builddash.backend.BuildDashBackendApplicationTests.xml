@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.builddash.backend.BuildDashBackendApplicationTests" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-08-17T12:37:41.544Z" hostname="RyuKen-V15" time="9.31">
+  <properties/>
+  <testcase name="healthEndpointIsUp()" classname="com.builddash.backend.BuildDashBackendApplicationTests" time="0.415"/>
+  <testcase name="contextLoads()" classname="com.builddash.backend.BuildDashBackendApplicationTests" time="0.004"/>
+  <system-out><![CDATA[Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+18:07:41.657 [Test worker] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.builddash.backend.BuildDashBackendApplicationTests]: BuildDashBackendApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+18:07:41.728 [Test worker] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.builddash.backend.BuildDashBackendApplication for test class com.builddash.backend.BuildDashBackendApplicationTests
+18:07:41.833 [Test worker] INFO org.reflections.Reflections -- Reflections took 41 ms to scan 1 urls, producing 42 keys and 349 values
+18:07:41.871 [Test worker] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+18:07:41.872 [Test worker] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+18:07:42.167 [Test worker] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Environment variables, system properties and defaults. Resolved dockerHost=unix:///home/wolzard/.docker/desktop/docker.sock
+18:07:42.168 [Test worker] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+18:07:42.182 [Test worker] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.6.2
+  API Version: 1.55
+  Operating System: Docker Desktop
+  Total Memory: 7692 MB
+18:07:42.270 [Test worker] INFO tc.testcontainers/ryuk:0.7.0 -- Creating container for image: testcontainers/ryuk:0.7.0
+18:07:42.294 [Test worker] INFO org.testcontainers.utility.RegistryAuthLocator -- Credential helper/store (docker-credential-desktop) does not have credentials for https://index.docker.io/v1/
+18:07:42.381 [Test worker] INFO tc.testcontainers/ryuk:0.7.0 -- Container testcontainers/ryuk:0.7.0 is starting: 08fb3b2ad42eb5d580d628f553736ee32b5eaa324ad53f0f74b54c7124a78cb6
+18:07:42.633 [Test worker] INFO tc.testcontainers/ryuk:0.7.0 -- Container testcontainers/ryuk:0.7.0 started in PT0.362095031S
+18:07:42.636 [Test worker] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+18:07:42.636 [Test worker] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+18:07:42.637 [Test worker] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+18:07:42.637 [Test worker] INFO tc.postgres:16-alpine -- Creating container for image: postgres:16-alpine
+18:07:42.698 [Test worker] INFO tc.postgres:16-alpine -- Container postgres:16-alpine is starting: b64bb6261c6c37cdc718a09d92ec50b6296f00097b819c5d4ce0ba0fea03494e
+18:07:43.751 [Test worker] INFO tc.postgres:16-alpine -- Container postgres:16-alpine started in PT1.113247015S
+18:07:43.752 [Test worker] INFO tc.postgres:16-alpine -- Container is started (JDBC URL: jdbc:postgresql://localhost:44689/test?loggerLevel=OFF)
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-08-17T18:07:44.032+05:30  WARN 367587 --- [builddash-backend] [    Test worker] ory$DuplicateJsonObjectContextCustomizer : 
+
+Found multiple occurrences of org.json.JSONObject on the class path:
+
+	jar:file:/home/wolzard/.gradle/caches/modules-2/files-2.1/com.vaadin.external.google/android-json/0.0.20131108.vaadin1/fa26d351fe62a6a17f5cda1287c1c6110dec413f/android-json-0.0.20131108.vaadin1.jar!/org/json/JSONObject.class
+	jar:file:/home/wolzard/.gradle/caches/modules-2/files-2.1/org.json/json/20231013/e22e0c040fe16f04ffdb85d851d77b07fc05ea52/json-20231013.jar!/org/json/JSONObject.class
+
+You may wish to exclude one of them to ensure predictable runtime behavior
+
+2026-08-17T18:07:44.042+05:30  INFO 367587 --- [builddash-backend] [    Test worker] c.b.b.BuildDashBackendApplicationTests   : Starting BuildDashBackendApplicationTests using Java 21.0.7 with PID 367587 (started by wolzard in /home/wolzard/Projects/BuildDash-Backend)
+2026-08-17T18:07:44.043+05:30  INFO 367587 --- [builddash-backend] [    Test worker] c.b.b.BuildDashBackendApplicationTests   : The following 1 profile is active: "test"
+2026-08-17T18:07:45.083+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-08-17T18:07:45.084+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-08-17T18:07:45.181+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 93 ms. Found 6 JPA repository interfaces.
+2026-08-17T18:07:45.193+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-08-17T18:07:45.194+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-08-17T18:07:45.206+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.builddash.backend.infra.persistence.CategoryJpaRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-08-17T18:07:45.206+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.builddash.backend.infra.persistence.DeviceJpaRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-08-17T18:07:45.207+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.builddash.backend.infra.persistence.HsnGstRateJpaRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-08-17T18:07:45.207+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.builddash.backend.infra.persistence.LoginEventJpaRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-08-17T18:07:45.207+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.builddash.backend.infra.persistence.ProductJpaRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-08-17T18:07:45.207+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.builddash.backend.infra.persistence.UserJpaRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-08-17T18:07:45.207+05:30  INFO 367587 --- [builddash-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 7 ms. Found 0 Redis repository interfaces.
+2026-08-17T18:07:45.809+05:30  INFO 367587 --- [builddash-backend] [    Test worker] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-08-17T18:07:45.969+05:30  INFO 367587 --- [builddash-backend] [    Test worker] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@68dbe225
+2026-08-17T18:07:45.970+05:30  INFO 367587 --- [builddash-backend] [    Test worker] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-08-17T18:07:46.139+05:30  INFO 367587 --- [builddash-backend] [    Test worker] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://localhost:44689/test (PostgreSQL 16.14)
+2026-08-17T18:07:46.189+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table "public"."flyway_schema_history" does not exist yet
+2026-08-17T18:07:46.195+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.f.core.internal.command.DbValidate     : Successfully validated 3 migrations (execution time 00:00.023s)
+2026-08-17T18:07:46.222+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table "public"."flyway_schema_history" ...
+2026-08-17T18:07:46.279+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.f.core.internal.command.DbMigrate      : Current version of schema "public": << Empty Schema >>
+2026-08-17T18:07:46.296+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "1 - init schema"
+2026-08-17T18:07:46.370+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "2 - seed hsn gst rates"
+2026-08-17T18:07:46.390+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "3 - catalog schema"
+2026-08-17T18:07:46.420+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.f.core.internal.command.DbMigrate      : Successfully applied 3 migrations to schema "public", now at version v3 (execution time 00:00.073s)
+2026-08-17T18:07:46.544+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-08-17T18:07:46.580+05:30  INFO 367587 --- [builddash-backend] [    Test worker] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.3.Final
+2026-08-17T18:07:46.601+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-08-17T18:07:46.773+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-08-17T18:07:47.344+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-08-17T18:07:47.376+05:30  INFO 367587 --- [builddash-backend] [    Test worker] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-08-17T18:07:47.916+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-08-17T18:07:48.992+05:30  WARN 367587 --- [builddash-backend] [    Test worker] .s.s.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: 4ddb9fb7-c6a9-4e4a-be4c-2d67b3bcd974
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-08-17T18:07:49.008+05:30  INFO 367587 --- [builddash-backend] [    Test worker] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-08-17T18:07:49.328+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-08-17T18:07:50.197+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-08-17T18:07:50.197+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-08-17T18:07:50.198+05:30  INFO 367587 --- [builddash-backend] [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 1 ms
+2026-08-17T18:07:50.275+05:30  INFO 367587 --- [builddash-backend] [    Test worker] c.b.b.BuildDashBackendApplicationTests   : Started BuildDashBackendApplicationTests in 6.495 seconds (process running for 9.144)
+]]></system-out>
+  <system-err><![CDATA[WARNING: A Java agent has been loaded dynamically (/home/wolzard/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy-agent/1.14.19/154da3a65b4f4a909d3e5bdec55d1b2b4cbb6ce1/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+]]></system-err>
+</testsuite>
