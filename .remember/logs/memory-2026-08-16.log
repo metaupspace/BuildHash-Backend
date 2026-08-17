@@ -1,0 +1,5 @@
+21:33:25 [hook] session-start: PROJECT_DIR=/home/wolzard/Projects/BuildDash-Backend PIPELINE_DIR=/home/wolzard/.claude/plugins/cache/claude-plugins-official/remember/0.20.0 REMEMBER_DIR=/home/wolzard/Projects/BuildDash-Backend/.remember
+21:33:25 [hook] run-consolidation: PROJECT_DIR=/home/wolzard/Projects/BuildDash-Backend PIPELINE_DIR=/home/wolzard/.claude/plugins/cache/claude-plugins-official/remember/0.20.0 PYTHON=python3 REMEMBER_DIR=/home/wolzard/Projects/BuildDash-Backend/.remember
+21:33:25 [consolidation] start
+21:34:08 [consolidation] tokens: 9+21430cache→5968out ($0.044379)
+21:34:08 [consolidation] done: 1 files consolidated

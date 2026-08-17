@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_claude-mem_mcp-search__get_observations",
+      "Bash(java -version)",
+      "Bash(gradle -version)",
+      "Bash(apt list *)",
+      "Bash(sdk version *)",
+      "Read(//opt/**)",
+      "Bash(curl -sI https://services.gradle.org/distributions/gradle-8.10-bin.zip --max-time 5)",
+      "Bash(set -e)",
+      "Bash(mkdir -p __TRACKED_VAR__/gradle-tmp)",
+      "Bash(curl -sL -o gradle.zip https://services.gradle.org/distributions/gradle-8.10-bin.zip)",
+      "Bash(unzip -q gradle.zip)",
+      "Bash(mkdir -p /home/wolzard/Projects/BuildDash-Backend/src/main/java/com/builddash/backend)",
+      "Bash(mkdir -p /home/wolzard/Projects/BuildDash-Backend/src/main/resources)",
+      "Bash(mkdir -p /home/wolzard/Projects/BuildDash-Backend/src/test/java/com/builddash/backend)",
+      "Bash(curl *)",
+      "Bash(unzip -q gradle9.zip)",
+      "Bash(./gradlew compileJava --console=plain)",
+      "Bash(docker compose *)",
+      "Bash(systemctl --user start docker-desktop)",
+      "Bash(systemctl --user is-active docker-desktop)",
+      "Bash(docker info *)",
+      "Bash(break)",
+      "Read(//home/wolzard/.local/share/JetBrains/Toolbox/apps/android-studio-2/**)",
+      "Read(//home/wolzard/.local/share/JetBrains/Toolbox/apps/**)",
+      "Bash(update-alternatives --list java)",
+      "Read(//usr/lib/jvm/**)",
+      "Bash(xargs -I{} sh -c 'echo ==={}===; cat {}')",
+      "Bash(./gradlew compileJava -q)",
+      "Bash(lsof -nP -iTCP:8080 -sTCP:LISTEN)",
+      "Bash(sed -i 's/builddash-backend/builddash-backend/' settings.gradle)",
+      "Bash(sed -i \"s/com.builddash/com.builddash/g; s/BuildDash/BuildDash/g; s/builddash/builddash/g\" build.gradle)",
+      "Bash(bash --version)",
+      "Bash(git init *)",
+      "Bash(git remote *)"
+    ]
+  }
+}

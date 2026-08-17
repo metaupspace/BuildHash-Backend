@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="BackgroundAgentGlobalSettings">
+    <option name="selectedModelId" value="auto" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="6d5bbafb-7df8-46a9-84f4-bc70eb2974a9" name="Changes" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CopilotPersistence">
+    <persistenceIdMap>
+      <entry key="_/home/wolzard/Projects/BuildDash-Backend" value="3Hu7JmlJ2ZRtOFZdxu98YZniVLQ" />
+    </persistenceIdMap>
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="227" />
+    <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;w0lzard&quot;
+  }
+}</component>
+  <component name="GitToolBoxStore">
+    <option name="recentBranches">
+      <RecentBranches>
+        <option name="branchesForRepo">
+          <list>
+            <RecentBranchesForRepo>
+              <option name="branches">
+                <list>
+                  <RecentBranch>
+                    <option name="branchName" value="main" />
+                    <option name="lastUsedInstant" value="1786718169" />
+                  </RecentBranch>
+                  <RecentBranch>
+                    <option name="branchName" value="master" />
+                    <option name="lastUsedInstant" value="1786718168" />
+                  </RecentBranch>
+                </list>
+              </option>
+              <option name="repositoryRootUrl" value="file://$PROJECT_DIR$" />
+            </RecentBranchesForRepo>
+          </list>
+        </option>
+      </RecentBranches>
+    </option>
+  </component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/metaupspace/BuildHash-Backend.git",
+    "accountId": "5a1cc58d-7fe4-4c7e-8462-b505348fff43"
+  }
+}]]></component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.2651978267307173" />
+      <entry key="MS500" value="2.1047527690427055" />
+      <entry key="S2" value="2.698898656554256" />
+      <entry key="S5" value="2.871347707846505" />
+      <entry key="S10" value="2.9342100435984344" />
+      <entry key="S30" value="2.9777907512291657" />
+      <entry key="S60" value="3.0017167446783364" />
+      <entry key="M2" value="3.1910620195798187" />
+      <entry key="M5" value="4.016888682559671" />
+      <entry key="M10" value="4.919535933714629" />
+      <entry key="M15" value="5.609170023511944" />
+      <entry key="M30" value="8.133296834326618" />
+      <entry key="H1" value="15.47209505267112" />
+      <entry key="H2" value="28.70508138534893" />
+      <entry key="H4" value="44.11799191037754" />
+      <entry key="D1" value="68.77759348281126" />
+      <entry key="W1" value="74.90545318347564" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="4.605976475976221E-285" />
+      <entry key="S2" value="8.238163915290446E-72" />
+      <entry key="S5" value="3.6841064599902934E-29" />
+      <entry key="S10" value="6.069684060962558E-15" />
+      <entry key="S30" value="1.824128219239718E-5" />
+      <entry key="S60" value="0.004270981408575452" />
+      <entry key="M2" value="0.06535274599108638" />
+      <entry key="M5" value="0.33581921043287394" />
+      <entry key="M10" value="0.5794991447718881" />
+      <entry key="M15" value="0.6951073677291315" />
+      <entry key="M30" value="0.85086701373928" />
+      <entry key="H1" value="1.3474352086514432" />
+      <entry key="H2" value="3.141382956885558" />
+      <entry key="H4" value="5.880999145535214" />
+      <entry key="D1" value="10.610374233191791" />
+      <entry key="W1" value="11.789874669198966" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="1.225208696677031" />
+      <entry key="MS500" value="2.0848149289304483" />
+      <entry key="S2" value="2.691922758032857" />
+      <entry key="S5" value="2.868329019322611" />
+      <entry key="S10" value="2.9326591913537285" />
+      <entry key="S30" value="2.977281864782003" />
+      <entry key="S60" value="3.0056516189099365" />
+      <entry key="M2" value="3.2557320833901553" />
+      <entry key="M5" value="4.351521246137824" />
+      <entry key="M10" value="5.498028447091895" />
+      <entry key="M15" value="6.303473981439465" />
+      <entry key="M30" value="8.983640399724843" />
+      <entry key="H1" value="16.81878230528306" />
+      <entry key="H2" value="31.845123101163956" />
+      <entry key="H4" value="49.99757448330695" />
+      <entry key="D1" value="79.3875162942863" />
+      <entry key="W1" value="86.69525568134922" />
+    </decayedShown>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 5,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3HtWwf6jNjZLm8o7Bpe8aTcKPPK" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Gradle.Build BuildDash-Backend.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RequestMappingsPanelOrder0": "0",
+    "RequestMappingsPanelOrder1": "1",
+    "RequestMappingsPanelWidth0": "75",
+    "RequestMappingsPanelWidth1": "75",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "Spring Boot.BuildDashBackendApplication.executor": "Run",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "copilot.chat.legacySessionMetadata.migrated": "true",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.jshint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.jshint": "",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.0"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="BuildDashBackendApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <envs>
+        <env name="JWT_SECRET" value="vakCdW7IHDcn/E4eiyvuq6vtN/gMWD0+1gZEzalhTKhGs031sbW93Tye05PpP853" />
+        <env name="DB_USER" value="builddash" />
+        <env name="DB_PASSWORD" value="builddash" />
+        <env name="RABBITMQ_USERNAME" value="guest" />
+        <env name="RABBITMQ_PASSWORD" value="guest" />
+      </envs>
+      <module name="builddash-backend.main" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.builddash.backend.BuildDashBackendApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-34e2839f716b-intellij.indexing.shared.core-IU-262.9437.185" />
+        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-IU-262.9437.185" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="StructureViewState">
+    <option name="selectedTab" value="Logical" />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="6d5bbafb-7df8-46a9-84f4-bc70eb2974a9" name="Changes" comment="" />
+      <created>1786688088403</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1786688088403</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="feat: introduce domain models and enums for authentication, user, and product management" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: introduce domain models and enums for authentication, user, and product management" />
+  </component>
+</project>
