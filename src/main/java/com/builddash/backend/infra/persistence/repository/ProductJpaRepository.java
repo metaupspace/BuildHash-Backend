@@ -1,6 +1,7 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.repository;
 
 import com.builddash.backend.domain.enums.ProductStatus;
+import com.builddash.backend.infra.persistence.entity.ProductEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -10,7 +11,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-interface ProductJpaRepository extends JpaRepository<ProductEntity, UUID> {
+public interface ProductJpaRepository extends JpaRepository<ProductEntity, UUID> {
 
     /**
      * Keyset (seek) pagination on (created_at, id): strictly greater than the cursor pair in
