@@ -1,7 +1,9 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.adapter;
 
 import com.builddash.backend.domain.model.Device;
 import com.builddash.backend.domain.port.DeviceRepository;
+import com.builddash.backend.infra.persistence.mapper.DeviceMapper;
+import com.builddash.backend.infra.persistence.repository.DeviceJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;

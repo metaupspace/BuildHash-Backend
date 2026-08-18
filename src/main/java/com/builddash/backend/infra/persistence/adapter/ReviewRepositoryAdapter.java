@@ -1,8 +1,10 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.adapter;
 
 import com.builddash.backend.domain.enums.ModerationStatus;
 import com.builddash.backend.domain.model.Review;
 import com.builddash.backend.domain.port.ReviewRepository;
+import com.builddash.backend.infra.persistence.mapper.ReviewMapper;
+import com.builddash.backend.infra.persistence.repository.ReviewJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;

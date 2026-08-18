@@ -1,8 +1,10 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.adapter;
 
 import com.builddash.backend.domain.enums.OutboxStatus;
 import com.builddash.backend.domain.model.CatalogOutboxEvent;
 import com.builddash.backend.domain.port.CatalogOutboxEventRepository;
+import com.builddash.backend.infra.persistence.mapper.CatalogOutboxEventMapper;
+import com.builddash.backend.infra.persistence.repository.CatalogOutboxEventJpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,5 +36,11 @@ class CatalogOutboxEventRepositoryAdapter implements CatalogOutboxEventRepositor
     @Transactional
     public void markPublished(UUID id) {
         jpaRepository.markPublished(id);
+    }
+
+    @Override
+    @Transactional
+    public void markProcessed(UUID id) {
+        jpaRepository.markProcessed(id);
     }
 }

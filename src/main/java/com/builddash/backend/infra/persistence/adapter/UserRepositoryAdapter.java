@@ -1,7 +1,9 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.adapter;
 
 import com.builddash.backend.domain.model.User;
 import com.builddash.backend.domain.port.UserRepository;
+import com.builddash.backend.infra.persistence.mapper.UserMapper;
+import com.builddash.backend.infra.persistence.repository.UserJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;

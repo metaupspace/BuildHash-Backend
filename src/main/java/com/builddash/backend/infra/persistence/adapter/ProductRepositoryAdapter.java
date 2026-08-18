@@ -1,9 +1,11 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.adapter;
 
 import com.builddash.backend.domain.enums.ProductStatus;
 import com.builddash.backend.domain.model.Product;
 import com.builddash.backend.domain.model.ProductPageCursor;
 import com.builddash.backend.domain.port.ProductRepository;
+import com.builddash.backend.infra.persistence.mapper.ProductMapper;
+import com.builddash.backend.infra.persistence.repository.ProductJpaRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 

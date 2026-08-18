@@ -1,7 +1,9 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.adapter;
 
 import com.builddash.backend.domain.model.LoginEvent;
 import com.builddash.backend.domain.port.LoginEventRepository;
+import com.builddash.backend.infra.persistence.mapper.LoginEventMapper;
+import com.builddash.backend.infra.persistence.repository.LoginEventJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
