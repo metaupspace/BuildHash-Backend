@@ -1,13 +1,14 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.mapper;
 
 import com.builddash.backend.domain.model.CatalogOutboxEvent;
+import com.builddash.backend.infra.persistence.entity.CatalogOutboxEventEntity;
 
-final class CatalogOutboxEventMapper {
+public final class CatalogOutboxEventMapper {
 
     private CatalogOutboxEventMapper() {
     }
 
-    static CatalogOutboxEvent toDomain(CatalogOutboxEventEntity entity) {
+    public static CatalogOutboxEvent toDomain(CatalogOutboxEventEntity entity) {
         CatalogOutboxEvent event = new CatalogOutboxEvent();
         event.setId(entity.getId());
         event.setProductId(entity.getProductId());
@@ -18,7 +19,7 @@ final class CatalogOutboxEventMapper {
         return event;
     }
 
-    static CatalogOutboxEventEntity toEntity(CatalogOutboxEvent event) {
+    public static CatalogOutboxEventEntity toEntity(CatalogOutboxEvent event) {
         CatalogOutboxEventEntity entity = new CatalogOutboxEventEntity();
         entity.setId(event.getId());
         entity.setProductId(event.getProductId());

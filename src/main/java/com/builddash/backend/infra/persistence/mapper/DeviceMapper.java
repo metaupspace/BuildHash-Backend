@@ -1,13 +1,14 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.mapper;
 
 import com.builddash.backend.domain.model.Device;
+import com.builddash.backend.infra.persistence.entity.DeviceEntity;
 
-final class DeviceMapper {
+public final class DeviceMapper {
 
     private DeviceMapper() {
     }
 
-    static Device toDomain(DeviceEntity entity) {
+    public static Device toDomain(DeviceEntity entity) {
         Device device = new Device();
         device.setId(entity.getId());
         device.setUserId(entity.getUserId());
@@ -19,7 +20,7 @@ final class DeviceMapper {
         return device;
     }
 
-    static DeviceEntity toEntity(Device device) {
+    public static DeviceEntity toEntity(Device device) {
         DeviceEntity entity = new DeviceEntity();
         entity.setId(device.getId());
         entity.setUserId(device.getUserId());

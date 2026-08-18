@@ -1,13 +1,14 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.mapper;
 
 import com.builddash.backend.domain.model.User;
+import com.builddash.backend.infra.persistence.entity.UserEntity;
 
-final class UserMapper {
+public final class UserMapper {
 
     private UserMapper() {
     }
 
-    static User toDomain(UserEntity entity) {
+    public static User toDomain(UserEntity entity) {
         User user = new User();
         user.setId(entity.getId());
         user.setPhone(entity.getPhone());
@@ -22,7 +23,7 @@ final class UserMapper {
         return user;
     }
 
-    static UserEntity toEntity(User user) {
+    public static UserEntity toEntity(User user) {
         UserEntity entity = new UserEntity();
         entity.setId(user.getId());
         entity.setPhone(user.getPhone());

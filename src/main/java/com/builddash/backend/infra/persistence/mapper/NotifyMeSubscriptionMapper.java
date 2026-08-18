@@ -1,13 +1,14 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.mapper;
 
 import com.builddash.backend.domain.model.NotifyMeSubscription;
+import com.builddash.backend.infra.persistence.entity.NotifyMeSubscriptionEntity;
 
-final class NotifyMeSubscriptionMapper {
+public final class NotifyMeSubscriptionMapper {
 
     private NotifyMeSubscriptionMapper() {
     }
 
-    static NotifyMeSubscription toDomain(NotifyMeSubscriptionEntity entity) {
+    public static NotifyMeSubscription toDomain(NotifyMeSubscriptionEntity entity) {
         NotifyMeSubscription subscription = new NotifyMeSubscription();
         subscription.setId(entity.getId());
         subscription.setProductId(entity.getProductId());
@@ -16,7 +17,7 @@ final class NotifyMeSubscriptionMapper {
         return subscription;
     }
 
-    static NotifyMeSubscriptionEntity toEntity(NotifyMeSubscription subscription) {
+    public static NotifyMeSubscriptionEntity toEntity(NotifyMeSubscription subscription) {
         NotifyMeSubscriptionEntity entity = new NotifyMeSubscriptionEntity();
         entity.setId(subscription.getId());
         entity.setProductId(subscription.getProductId());
