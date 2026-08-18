@@ -3,6 +3,8 @@ package com.builddash.backend.infra.persistence;
 import com.builddash.backend.domain.enums.AttributeType;
 import com.builddash.backend.domain.model.Category;
 import com.builddash.backend.domain.model.CategoryAttribute;
+import com.builddash.backend.infra.persistence.entity.CategoryEntity;
+import com.builddash.backend.infra.persistence.mapper.CategoryMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

@@ -2,6 +2,8 @@ package com.builddash.backend.infra.persistence;
 
 import com.builddash.backend.domain.enums.ModerationStatus;
 import com.builddash.backend.domain.model.Review;
+import com.builddash.backend.infra.persistence.entity.ReviewEntity;
+import com.builddash.backend.infra.persistence.mapper.ReviewMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

@@ -3,6 +3,8 @@ package com.builddash.backend.infra.persistence;
 import com.builddash.backend.domain.enums.AnswerSource;
 import com.builddash.backend.domain.enums.ModerationStatus;
 import com.builddash.backend.domain.model.Answer;
+import com.builddash.backend.infra.persistence.entity.AnswerEntity;
+import com.builddash.backend.infra.persistence.mapper.AnswerMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

@@ -4,6 +4,8 @@ import com.builddash.backend.domain.enums.ProductStatus;
 import com.builddash.backend.domain.model.Product;
 import com.builddash.backend.domain.model.ProductImage;
 import com.builddash.backend.domain.model.StockEntry;
+import com.builddash.backend.infra.persistence.entity.ProductEntity;
+import com.builddash.backend.infra.persistence.mapper.ProductMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
