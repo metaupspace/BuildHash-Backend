@@ -1,10 +1,7 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.entity;
 
-import com.builddash.backend.domain.enums.ModerationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -17,11 +14,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "reviews")
+@Table(name = "notify_me_subscriptions")
 @Getter
 @Setter
 @NoArgsConstructor
-public class ReviewEntity {
+public class NotifyMeSubscriptionEntity {
 
     @Id
     @UuidGenerator
@@ -32,16 +29,6 @@ public class ReviewEntity {
 
     @Column(name = "user_id")
     private UUID userId;
-
-    private int rating;
-
-    private String comment;
-
-    @Enumerated(EnumType.STRING)
-    private ModerationStatus status = ModerationStatus.APPROVED;
-
-    @Column(name = "verified_purchase")
-    private boolean verifiedPurchase;
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

@@ -1,7 +1,10 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.entity;
 
+import com.builddash.backend.domain.enums.OutboxStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -14,11 +17,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "questions")
+@Table(name = "catalog_outbox_events")
 @Getter
 @Setter
 @NoArgsConstructor
-public class QuestionEntity {
+public class CatalogOutboxEventEntity {
 
     @Id
     @UuidGenerator
@@ -27,10 +30,14 @@ public class QuestionEntity {
     @Column(name = "product_id")
     private UUID productId;
 
-    @Column(name = "user_id")
-    private UUID userId;
+    @Column(name = "event_type")
+    private String eventType;
 
-    private String body;
+    @Column(columnDefinition = "TEXT")
+    private String payload;
+
+    @Enumerated(EnumType.STRING)
+    private OutboxStatus status = OutboxStatus.PENDING;
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
