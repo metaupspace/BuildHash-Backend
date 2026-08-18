@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.builddash.backend.domain.model.ProductPageCursorTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-08-17T12:37:58.914Z" hostname="RyuKen-V15" time="0.006">
-  <properties/>
-  <testcase name="decode_validBase64WithoutSeparator_throwsIllegalArgument()" classname="com.builddash.backend.domain.model.ProductPageCursorTest" time="0.001"/>
-  <testcase name="decode_notBase64_throwsIllegalArgument()" classname="com.builddash.backend.domain.model.ProductPageCursorTest" time="0.001"/>
-  <testcase name="encode_thenDecode_roundTrips()" classname="com.builddash.backend.domain.model.ProductPageCursorTest" time="0.003"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
