@@ -1,0 +1,30 @@
+package com.builddash.backend.infra.persistence;
+
+import com.builddash.backend.domain.model.LoginEvent;
+import com.builddash.backend.domain.port.LoginEventRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+class LoginEventRepositoryAdapter implements LoginEventRepository {
+
+    private final LoginEventJpaRepository jpaRepository;
+
+    LoginEventRepositoryAdapter(LoginEventJpaRepository jpaRepository) {
+        this.jpaRepository = jpaRepository;
+    }
+
+    @Override
+    public LoginEvent save(LoginEvent event) {
+        return LoginEventMapper.toDomain(jpaRepository.save(LoginEventMapper.toEntity(event)));
+    }
+
+    @Override
+    public List<LoginEvent> findByUserIdOrderByCreatedAtDesc(UUID userId) {
+        return jpaRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(LoginEventMapper::toDomain)
+                .toList();
+    }
+}

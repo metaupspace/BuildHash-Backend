@@ -1,0 +1,47 @@
+package com.builddash.backend.infra.persistence;
+
+import com.builddash.backend.domain.model.Device;
+import com.builddash.backend.domain.port.DeviceRepository;
+import org.springframework.stereotype.Repository;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+class DeviceRepositoryAdapter implements DeviceRepository {
+
+    private final DeviceJpaRepository jpaRepository;
+
+    DeviceRepositoryAdapter(DeviceJpaRepository jpaRepository) {
+        this.jpaRepository = jpaRepository;
+    }
+
+    @Override
+    public Device save(Device device) {
+        return DeviceMapper.toDomain(jpaRepository.save(DeviceMapper.toEntity(device)));
+    }
+
+    @Override
+    public Optional<Device> findById(UUID id) {
+        return jpaRepository.findById(id).map(DeviceMapper::toDomain);
+    }
+
+    @Override
+    public Optional<Device> findByIdAndUserId(UUID id, UUID userId) {
+        return jpaRepository.findByIdAndUserId(id, userId).map(DeviceMapper::toDomain);
+    }
+
+    @Override
+    public List<Device> findByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(UUID userId) {
+        return jpaRepository.findByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(userId).stream()
+                .map(DeviceMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public void revokeAllActiveByUserId(UUID userId, Instant now) {
+        jpaRepository.revokeAllActiveByUserId(userId, now);
+    }
+}
