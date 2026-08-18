@@ -20,6 +20,15 @@ public class CatalogQueueConfig {
     public static final String DLQ_NAME = "catalog.product.changed.dlq";
     private static final String DLX_NAME = "catalog.product.changed.dlx";
 
+    /** Small confirmation queue, search -> catalog, so the outbox row can flip to PROCESSED.
+     * No DLQ of its own — only the main changed-event queue needs one; a lost confirmation
+     * just leaves a row at PUBLISHED for the nightly reconciliation sweep to catch (3c). */
+    public static final String INDEXED_QUEUE_NAME = "catalog.product.indexed";
+
+    /** Correlates a catalog.product.changed message (and its indexed confirmation) back to
+     * the CatalogOutboxEvent row that produced it. */
+    public static final String OUTBOX_EVENT_ID_HEADER = "x-outbox-event-id";
+
     @Bean
     public DirectExchange catalogProductChangedDlx() {
         return new DirectExchange(DLX_NAME);
@@ -41,5 +50,10 @@ public class CatalogQueueConfig {
                 .withArgument("x-dead-letter-exchange", DLX_NAME)
                 .withArgument("x-dead-letter-routing-key", DLQ_NAME)
                 .build();
+    }
+
+    @Bean
+    public Queue catalogProductIndexedQueue() {
+        return new Queue(INDEXED_QUEUE_NAME, true);
     }
 }
