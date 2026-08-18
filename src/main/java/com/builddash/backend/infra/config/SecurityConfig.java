@@ -43,6 +43,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/categories/**", "/products/**").permitAll()
+                        .requestMatchers("/search/**").permitAll()
                         .requestMatchers("/users/**").hasRole("USER")
                         .anyRequest().authenticated()
                 )

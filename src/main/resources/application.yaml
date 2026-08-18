@@ -32,6 +32,14 @@ spring:
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
     publisher-confirm-type: correlated
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-attempts: 3
+
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
 
   flyway:
     enabled: true
