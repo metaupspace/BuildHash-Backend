@@ -3,6 +3,10 @@ spring:
     listener:
       simple:
         auto-startup: false
+  jpa:
+    properties:
+      hibernate:
+        generate_statistics: true
 
 security:
   jwt:
