@@ -2,8 +2,6 @@ package com.builddash.backend.infra.messaging;
 
 import com.builddash.backend.domain.port.CatalogEventPublisher;
 import com.builddash.backend.infra.config.CatalogQueueConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageProperties;
@@ -12,18 +10,17 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@RequiredArgsConstructor
+@Slf4j
 @Component
 public class RabbitCatalogEventPublisher implements CatalogEventPublisher {
-
-    private static final Logger log = LoggerFactory.getLogger(RabbitCatalogEventPublisher.class);
     private static final long CONFIRM_TIMEOUT_MS = 5000;
 
     private final RabbitTemplate rabbitTemplate;
 
-    public RabbitCatalogEventPublisher(RabbitTemplate rabbitTemplate) {
-        this.rabbitTemplate = rabbitTemplate;
-    }
 
     @Override
     public boolean publishProductChanged(UUID correlationId, String payloadJson) {

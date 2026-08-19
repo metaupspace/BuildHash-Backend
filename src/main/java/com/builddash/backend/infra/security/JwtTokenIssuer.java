@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Component
 public class JwtTokenIssuer implements TokenIssuer {
 
@@ -21,10 +23,6 @@ public class JwtTokenIssuer implements TokenIssuer {
     private final JwtCodec codec;
     private final JwtProperties properties;
 
-    public JwtTokenIssuer(JwtCodec codec, JwtProperties properties) {
-        this.codec = codec;
-        this.properties = properties;
-    }
 
     @Override
     public IssuedToken issueAccessToken(UUID userId, UUID deviceId, List<String> roles) {

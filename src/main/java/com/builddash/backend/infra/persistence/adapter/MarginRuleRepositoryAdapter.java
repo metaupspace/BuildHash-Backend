@@ -8,15 +8,14 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class MarginRuleRepositoryAdapter implements MarginRuleRepository {
 
     private final MarginRuleJpaRepository jpaRepository;
 
-    MarginRuleRepositoryAdapter(MarginRuleJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public Optional<MarginRule> findByProductId(UUID productId) {

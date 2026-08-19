@@ -12,15 +12,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class SearchQueryLogRepositoryAdapter implements SearchQueryLogRepository {
 
     private final SearchQueryLogJpaRepository jpaRepository;
 
-    SearchQueryLogRepositoryAdapter(SearchQueryLogJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public SearchQueryLogEntry save(SearchQueryLogEntry entry) {

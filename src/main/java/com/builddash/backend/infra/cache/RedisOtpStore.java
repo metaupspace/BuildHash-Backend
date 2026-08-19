@@ -7,15 +7,14 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Component
 public class RedisOtpStore implements OtpStore {
 
     private final StringRedisTemplate redis;
 
-    public RedisOtpStore(StringRedisTemplate redis) {
-        this.redis = redis;
-    }
 
     @Override
     public void save(String phone, String plainOtp, Duration ttl) {

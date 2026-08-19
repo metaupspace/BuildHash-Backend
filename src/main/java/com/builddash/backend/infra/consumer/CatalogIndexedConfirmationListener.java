@@ -7,6 +7,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 /**
  * The confirmation half of PLAN_PHASE1.md Section 3 step 5 — flips the outbox row's terminal
@@ -14,14 +15,12 @@ import java.util.UUID;
  * broker". A dropped confirmation just leaves the row at PUBLISHED for 3c's nightly
  * reconciliation sweep to catch, not a silent loss.
  */
+@RequiredArgsConstructor
 @Component
 public class CatalogIndexedConfirmationListener {
 
     private final CatalogOutboxEventRepository catalogOutboxEventRepository;
 
-    public CatalogIndexedConfirmationListener(CatalogOutboxEventRepository catalogOutboxEventRepository) {
-        this.catalogOutboxEventRepository = catalogOutboxEventRepository;
-    }
 
     @RabbitListener(queues = CatalogQueueConfig.INDEXED_QUEUE_NAME)
     public void onMessage(Message message) {

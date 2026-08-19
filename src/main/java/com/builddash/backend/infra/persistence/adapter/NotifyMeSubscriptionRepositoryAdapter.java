@@ -8,15 +8,14 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class NotifyMeSubscriptionRepositoryAdapter implements NotifyMeSubscriptionRepository {
 
     private final NotifyMeSubscriptionJpaRepository jpaRepository;
 
-    NotifyMeSubscriptionRepositoryAdapter(NotifyMeSubscriptionJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public NotifyMeSubscription save(NotifyMeSubscription subscription) {

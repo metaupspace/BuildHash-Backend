@@ -9,15 +9,14 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class ReviewRepositoryAdapter implements ReviewRepository {
 
     private final ReviewJpaRepository jpaRepository;
 
-    ReviewRepositoryAdapter(ReviewJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public Review save(Review review) {

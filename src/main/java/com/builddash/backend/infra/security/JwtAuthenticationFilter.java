@@ -18,7 +18,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -26,9 +28,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final TokenValidator tokenValidator;
 
-    public JwtAuthenticationFilter(TokenValidator tokenValidator) {
-        this.tokenValidator = tokenValidator;
-    }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
