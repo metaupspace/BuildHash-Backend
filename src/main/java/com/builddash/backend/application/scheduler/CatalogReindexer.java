@@ -1,4 +1,4 @@
-package com.builddash.backend.application.impl;
+package com.builddash.backend.application.scheduler;
 
 import com.builddash.backend.domain.enums.OutboxStatus;
 import com.builddash.backend.domain.model.Category;
@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Blue-green reindex (PLAN_PHASE1.md Section 3), built against a nightly cron trigger only
@@ -31,6 +32,7 @@ import java.util.stream.Stream;
  * construction, already reflected in the backfill that just completed (same Postgres source
  * of truth). Rows created during the run are left for the next cycle, not raced against.
  */
+@RequiredArgsConstructor
 @Service
 public class CatalogReindexer {
 
@@ -43,15 +45,7 @@ public class CatalogReindexer {
     private final SearchIndexAdmin searchIndexAdmin;
     private final CatalogOutboxEventRepository catalogOutboxEventRepository;
 
-    public CatalogReindexer(ProductRepository productRepository, CategoryRepository categoryRepository,
-                             ProductSyncProjectionBuilder productSyncProjectionBuilder, SearchIndexAdmin searchIndexAdmin,
-                             CatalogOutboxEventRepository catalogOutboxEventRepository) {
-        this.productRepository = productRepository;
-        this.categoryRepository = categoryRepository;
-        this.productSyncProjectionBuilder = productSyncProjectionBuilder;
-        this.searchIndexAdmin = searchIndexAdmin;
-        this.catalogOutboxEventRepository = catalogOutboxEventRepository;
-    }
+
 
     @Scheduled(cron = "${catalog.reindex.cron:0 0 2 * * *}")
     public void reindex() {

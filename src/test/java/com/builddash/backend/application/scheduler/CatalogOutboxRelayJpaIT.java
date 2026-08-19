@@ -1,4 +1,4 @@
-package com.builddash.backend.application.impl;
+package com.builddash.backend.application.scheduler;
 
 import com.builddash.backend.domain.enums.OutboxStatus;
 import com.builddash.backend.domain.enums.ProductStatus;
