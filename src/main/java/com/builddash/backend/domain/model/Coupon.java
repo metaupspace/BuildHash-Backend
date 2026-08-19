@@ -22,6 +22,7 @@ public class Coupon {
     private String code;
     private DiscountType discountType;
     private BigDecimal discountValue;
+    private BigDecimal minOrderValue;
     private Instant expiresAt;
     private Integer maxUsesPerUser;
     private List<UUID> eligibleCategoryIds = new ArrayList<>();

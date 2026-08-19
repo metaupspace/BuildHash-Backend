@@ -9,11 +9,13 @@ public final class CouponMapper {
     }
 
     public static Coupon toDomain(CouponEntity entity) {
+        if (entity == null) return null;
         return new Coupon(
                 entity.getId(),
                 entity.getCode(),
                 entity.getDiscountType(),
                 entity.getDiscountValue(),
+                entity.getMinOrderValue(),
                 entity.getExpiresAt(),
                 entity.getMaxUsesPerUser(),
                 entity.getEligibleCategoryIds(),
