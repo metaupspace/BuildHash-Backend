@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Service
 public class CatalogServiceImpl implements CategoryReader, ProductReader {
 
@@ -28,13 +30,7 @@ public class CatalogServiceImpl implements CategoryReader, ProductReader {
     private final ProductRepository productRepository;
     private final HsnGstRateRepository hsnGstRateRepository;
 
-    public CatalogServiceImpl(CategoryRepository categoryRepository,
-                               ProductRepository productRepository,
-                               HsnGstRateRepository hsnGstRateRepository) {
-        this.categoryRepository = categoryRepository;
-        this.productRepository = productRepository;
-        this.hsnGstRateRepository = hsnGstRateRepository;
-    }
+
 
     @Override
     public List<Category> listAll() {

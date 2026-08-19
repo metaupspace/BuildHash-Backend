@@ -13,15 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Service
 public class DeviceServiceImpl implements DeviceRegistry, RefreshTokenRotator {
 
     private final DeviceRepository deviceRepository;
 
-    public DeviceServiceImpl(DeviceRepository deviceRepository) {
-        this.deviceRepository = deviceRepository;
-    }
 
     @Override
     @Transactional

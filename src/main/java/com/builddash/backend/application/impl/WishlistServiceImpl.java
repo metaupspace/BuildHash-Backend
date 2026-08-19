@@ -11,17 +11,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Service
 public class WishlistServiceImpl implements WishlistReader, WishlistWriter {
 
     private final WishlistRepository wishlistRepository;
     private final ProductRepository productRepository;
 
-    public WishlistServiceImpl(WishlistRepository wishlistRepository, ProductRepository productRepository) {
-        this.wishlistRepository = wishlistRepository;
-        this.productRepository = productRepository;
-    }
 
     @Override
     public List<WishlistEntry> list(UUID userId) {

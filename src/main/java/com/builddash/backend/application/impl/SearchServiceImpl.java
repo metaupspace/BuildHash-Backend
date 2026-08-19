@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 /**
  * No separate interface — single controller caller, one cohesive workflow, same judgment as
@@ -24,6 +25,7 @@ import java.util.UUID;
  * rather than behind a new port: there's no swappable-backend reason to abstract it, same
  * treatment as the *Properties config beans.
  */
+@RequiredArgsConstructor
 @Service
 public class SearchServiceImpl {
 
@@ -41,14 +43,6 @@ public class SearchServiceImpl {
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
 
-    public SearchServiceImpl(SearchQueryGateway searchQueryGateway, SearchQueryLogRepository searchQueryLogRepository,
-                              ImageSearchProvider imageSearchProvider, StringRedisTemplate redis, ObjectMapper objectMapper) {
-        this.searchQueryGateway = searchQueryGateway;
-        this.searchQueryLogRepository = searchQueryLogRepository;
-        this.imageSearchProvider = imageSearchProvider;
-        this.redis = redis;
-        this.objectMapper = objectMapper;
-    }
 
     @Transactional
     public List<ProductSearchHit> search(String query, String lang, String category, int limit, UUID userId) {

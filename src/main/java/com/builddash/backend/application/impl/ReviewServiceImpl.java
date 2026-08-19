@@ -12,17 +12,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Service
 public class ReviewServiceImpl implements ReviewReader, ReviewWriter {
 
     private final ReviewRepository reviewRepository;
     private final ProductRepository productRepository;
 
-    public ReviewServiceImpl(ReviewRepository reviewRepository, ProductRepository productRepository) {
-        this.reviewRepository = reviewRepository;
-        this.productRepository = productRepository;
-    }
 
     @Override
     public List<Review> listApproved(UUID productId) {
