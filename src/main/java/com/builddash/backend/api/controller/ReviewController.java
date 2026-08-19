@@ -27,20 +27,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @Tag(name = "Reviews", description = "Product reviews")
+@RequiredArgsConstructor
 public class ReviewController {
 
     private final ReviewReader reviewReader;
     private final ReviewWriter reviewWriter;
     private final ReviewMapper reviewMapper;
 
-    public ReviewController(ReviewReader reviewReader, ReviewWriter reviewWriter, ReviewMapper reviewMapper) {
-        this.reviewReader = reviewReader;
-        this.reviewWriter = reviewWriter;
-        this.reviewMapper = reviewMapper;
-    }
 
     @GetMapping("/products/{id}/reviews")
     @Operation(summary = "List a product's approved reviews")

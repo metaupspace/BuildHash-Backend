@@ -16,20 +16,18 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/users/me/search-history")
 @Tag(name = "Search History", description = "Capped last-N search history")
 @SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class SearchHistoryController {
 
     private final SearchServiceImpl searchService;
     private final SearchMapper searchMapper;
 
-    public SearchHistoryController(SearchServiceImpl searchService, SearchMapper searchMapper) {
-        this.searchService = searchService;
-        this.searchMapper = searchMapper;
-    }
 
     @GetMapping
     @Operation(summary = "Get my search history", description = "Last 20 queries, newest first.")

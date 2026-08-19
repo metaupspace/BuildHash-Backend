@@ -31,20 +31,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @Tag(name = "Q&A", description = "Product questions and answers")
+@RequiredArgsConstructor
 public class QnaController {
 
     private final QnaReader qnaReader;
     private final QnaWriter qnaWriter;
     private final QnaMapper qnaMapper;
 
-    public QnaController(QnaReader qnaReader, QnaWriter qnaWriter, QnaMapper qnaMapper) {
-        this.qnaReader = qnaReader;
-        this.qnaWriter = qnaWriter;
-        this.qnaMapper = qnaMapper;
-    }
 
     @GetMapping("/products/{id}/questions")
     @Operation(summary = "List a product's questions with their answers")

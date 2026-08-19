@@ -19,18 +19,16 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @Tag(name = "Search", description = "Elasticsearch-backed product search (public, no auth required)")
+@RequiredArgsConstructor
 public class SearchController {
 
     private final SearchServiceImpl searchService;
     private final SearchMapper searchMapper;
 
-    public SearchController(SearchServiceImpl searchService, SearchMapper searchMapper) {
-        this.searchService = searchService;
-        this.searchMapper = searchMapper;
-    }
 
     @GetMapping("/search")
     @Operation(summary = "Search products", description = "Fuzzy match + Hindi/English alias lookup + category filter, all conditional on which params arrived.")

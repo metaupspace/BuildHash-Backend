@@ -23,22 +23,19 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/users")
 @Tag(name = "User Profile", description = "Authenticated user's own profile")
 @SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class UserController {
 
     private final UserProfileReader userProfileReader;
     private final UserProfileWriter userProfileWriter;
     private final UserMapper userMapper;
 
-    public UserController(UserProfileReader userProfileReader, UserProfileWriter userProfileWriter, UserMapper userMapper) {
-        this.userProfileReader = userProfileReader;
-        this.userProfileWriter = userProfileWriter;
-        this.userMapper = userMapper;
-    }
 
     @GetMapping("/me")
     @Operation(summary = "Get my profile", description = "Returns the authenticated user's profile.")

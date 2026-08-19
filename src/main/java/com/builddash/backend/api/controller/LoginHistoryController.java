@@ -18,20 +18,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/users/me/login-history")
 @Tag(name = "Login History", description = "Audit log of account access")
 @SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class LoginHistoryController {
 
     private final LoginHistoryReader loginHistoryReader;
     private final LoginEventMapper loginEventMapper;
 
-    public LoginHistoryController(LoginHistoryReader loginHistoryReader, LoginEventMapper loginEventMapper) {
-        this.loginHistoryReader = loginHistoryReader;
-        this.loginEventMapper = loginEventMapper;
-    }
 
     @GetMapping
     @Operation(summary = "Get my login history", description = "Timestamped log of login events (OTP/Google) with IP + device fingerprint, newest first.")
