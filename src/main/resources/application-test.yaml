@@ -24,3 +24,5 @@ management:
       enabled: false
     rabbit:
       enabled: false
+    elasticsearch:
+      enabled: false

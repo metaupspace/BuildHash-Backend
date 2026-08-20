@@ -6,6 +6,13 @@ logging:
   level:
     com.builddash.backend: DEBUG
 
+# Prod stays on the nightly 2am cron (application.yaml default). Dev overrides to run 30s
+# after boot (then every 30s) so the `products` ES alias exists without waiting for 2am —
+# CatalogReindexer.reindex() is what creates it (index_not_found_exception before it runs once).
+catalog:
+  reindex:
+    cron: "*/30 * * * * *"
+
 management:
   endpoint:
     health:
