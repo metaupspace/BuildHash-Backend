@@ -6,8 +6,8 @@ import com.builddash.backend.domain.model.CategoryAttribute;
 import com.builddash.backend.domain.model.Product;
 import com.builddash.backend.domain.model.ProductImage;
 import com.builddash.backend.domain.model.StockEntry;
+import com.builddash.backend.application.service.CatalogWriteService;
 import com.builddash.backend.domain.port.CategoryRepository;
-import com.builddash.backend.domain.port.ProductRepository;
 import com.builddash.backend.domain.service.ProductFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -28,13 +28,13 @@ import java.util.Map;
 public class CatalogSeeder implements ApplicationRunner {
 
     private final CategoryRepository categoryRepository;
-    private final ProductRepository productRepository;
+    private final CatalogWriteService catalogWriteService;
     private final ProductFactory productFactory;
 
-    public CatalogSeeder(CategoryRepository categoryRepository, ProductRepository productRepository,
+    public CatalogSeeder(CategoryRepository categoryRepository, CatalogWriteService catalogWriteService,
                           ProductFactory productFactory) {
         this.categoryRepository = categoryRepository;
-        this.productRepository = productRepository;
+        this.catalogWriteService = catalogWriteService;
         this.productFactory = productFactory;
     }
 
@@ -81,6 +81,6 @@ public class CatalogSeeder implements ApplicationRunner {
                               Map<String, Object> attributes, List<ProductImage> images) {
         Product product = productFactory.build(category, name, brand, hsnCode, attributes, images);
         product.setStock(List.of(new StockEntry("WH-DEFAULT", 100)));
-        productRepository.save(product);
+        catalogWriteService.saveProductAndEnqueueSync(product);
     }
 }
