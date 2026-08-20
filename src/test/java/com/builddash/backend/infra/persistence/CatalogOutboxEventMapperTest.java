@@ -2,6 +2,8 @@ package com.builddash.backend.infra.persistence;
 
 import com.builddash.backend.domain.enums.OutboxStatus;
 import com.builddash.backend.domain.model.CatalogOutboxEvent;
+import com.builddash.backend.infra.persistence.entity.CatalogOutboxEventEntity;
+import com.builddash.backend.infra.persistence.mapper.CatalogOutboxEventMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

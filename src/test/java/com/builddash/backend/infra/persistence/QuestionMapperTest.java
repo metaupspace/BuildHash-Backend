@@ -1,6 +1,8 @@
 package com.builddash.backend.infra.persistence;
 
 import com.builddash.backend.domain.model.Question;
+import com.builddash.backend.infra.persistence.entity.QuestionEntity;
+import com.builddash.backend.infra.persistence.mapper.QuestionMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

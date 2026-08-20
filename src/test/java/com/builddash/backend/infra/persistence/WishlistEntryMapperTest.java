@@ -1,6 +1,8 @@
 package com.builddash.backend.infra.persistence;
 
 import com.builddash.backend.domain.model.WishlistEntry;
+import com.builddash.backend.infra.persistence.entity.WishlistEntryEntity;
+import com.builddash.backend.infra.persistence.mapper.WishlistEntryMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
