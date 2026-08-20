@@ -1,6 +1,6 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.entity;
 
-import com.builddash.backend.domain.enums.OutboxStatus;
+import com.builddash.backend.domain.enums.LoginEventType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,27 +17,28 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "catalog_outbox_events")
+@Table(name = "login_events")
 @Getter
 @Setter
 @NoArgsConstructor
-public class CatalogOutboxEventEntity {
+public class LoginEventEntity {
 
     @Id
     @UuidGenerator
     private UUID id;
 
-    @Column(name = "product_id")
-    private UUID productId;
-
-    @Column(name = "event_type")
-    private String eventType;
-
-    @Column(columnDefinition = "TEXT")
-    private String payload;
+    @Column(name = "user_id")
+    private UUID userId;
 
     @Enumerated(EnumType.STRING)
-    private OutboxStatus status = OutboxStatus.PENDING;
+    @Column(name = "event_type")
+    private LoginEventType eventType;
+
+    @Column(name = "ip_address")
+    private String ipAddress;
+
+    @Column(name = "device_fingerprint")
+    private String deviceFingerprint;
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

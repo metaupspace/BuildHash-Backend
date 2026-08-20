@@ -1,6 +1,6 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.entity;
 
-import com.builddash.backend.domain.enums.LoginEventType;
+import com.builddash.backend.domain.enums.ModerationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,28 +17,31 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "login_events")
+@Table(name = "reviews")
 @Getter
 @Setter
 @NoArgsConstructor
-public class LoginEventEntity {
+public class ReviewEntity {
 
     @Id
     @UuidGenerator
     private UUID id;
 
+    @Column(name = "product_id")
+    private UUID productId;
+
     @Column(name = "user_id")
     private UUID userId;
 
+    private int rating;
+
+    private String comment;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "event_type")
-    private LoginEventType eventType;
+    private ModerationStatus status = ModerationStatus.APPROVED;
 
-    @Column(name = "ip_address")
-    private String ipAddress;
-
-    @Column(name = "device_fingerprint")
-    private String deviceFingerprint;
+    @Column(name = "verified_purchase")
+    private boolean verifiedPurchase;
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

@@ -1,4 +1,4 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.entity;
 
 import com.builddash.backend.domain.model.CategoryAttribute;
 import jakarta.persistence.Column;

@@ -1,4 +1,4 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,11 +14,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "notify_me_subscriptions")
+@Table(name = "questions")
 @Getter
 @Setter
 @NoArgsConstructor
-public class NotifyMeSubscriptionEntity {
+public class QuestionEntity {
 
     @Id
     @UuidGenerator
@@ -29,6 +29,8 @@ public class NotifyMeSubscriptionEntity {
 
     @Column(name = "user_id")
     private UUID userId;
+
+    private String body;
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
