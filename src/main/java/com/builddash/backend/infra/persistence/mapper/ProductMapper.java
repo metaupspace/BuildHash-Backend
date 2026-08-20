@@ -1,13 +1,14 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.mapper;
 
 import com.builddash.backend.domain.model.Product;
+import com.builddash.backend.infra.persistence.entity.ProductEntity;
 
-final class ProductMapper {
+public final class ProductMapper {
 
     private ProductMapper() {
     }
 
-    static Product toDomain(ProductEntity entity) {
+    public static Product toDomain(ProductEntity entity) {
         Product product = new Product();
         product.setId(entity.getId());
         product.setName(entity.getName());
@@ -24,7 +25,7 @@ final class ProductMapper {
         return product;
     }
 
-    static ProductEntity toEntity(Product product) {
+    public static ProductEntity toEntity(Product product) {
         ProductEntity entity = new ProductEntity();
         entity.setId(product.getId());
         entity.setName(product.getName());

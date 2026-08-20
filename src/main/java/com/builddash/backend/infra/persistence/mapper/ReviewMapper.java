@@ -1,13 +1,14 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.mapper;
 
 import com.builddash.backend.domain.model.Review;
+import com.builddash.backend.infra.persistence.entity.ReviewEntity;
 
-final class ReviewMapper {
+public final class ReviewMapper {
 
     private ReviewMapper() {
     }
 
-    static Review toDomain(ReviewEntity entity) {
+    public static Review toDomain(ReviewEntity entity) {
         Review review = new Review();
         review.setId(entity.getId());
         review.setProductId(entity.getProductId());
@@ -20,7 +21,7 @@ final class ReviewMapper {
         return review;
     }
 
-    static ReviewEntity toEntity(Review review) {
+    public static ReviewEntity toEntity(Review review) {
         ReviewEntity entity = new ReviewEntity();
         entity.setId(review.getId());
         entity.setProductId(review.getProductId());

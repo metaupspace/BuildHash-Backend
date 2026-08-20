@@ -1,13 +1,14 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.mapper;
 
 import com.builddash.backend.domain.model.WishlistEntry;
+import com.builddash.backend.infra.persistence.entity.WishlistEntryEntity;
 
-final class WishlistEntryMapper {
+public final class WishlistEntryMapper {
 
     private WishlistEntryMapper() {
     }
 
-    static WishlistEntry toDomain(WishlistEntryEntity entity) {
+    public static WishlistEntry toDomain(WishlistEntryEntity entity) {
         WishlistEntry entry = new WishlistEntry();
         entry.setId(entity.getId());
         entry.setUserId(entity.getUserId());
@@ -16,7 +17,7 @@ final class WishlistEntryMapper {
         return entry;
     }
 
-    static WishlistEntryEntity toEntity(WishlistEntry entry) {
+    public static WishlistEntryEntity toEntity(WishlistEntry entry) {
         WishlistEntryEntity entity = new WishlistEntryEntity();
         entity.setId(entry.getId());
         entity.setUserId(entry.getUserId());

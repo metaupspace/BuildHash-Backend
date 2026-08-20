@@ -1,13 +1,14 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.mapper;
 
 import com.builddash.backend.domain.model.Answer;
+import com.builddash.backend.infra.persistence.entity.AnswerEntity;
 
-final class AnswerMapper {
+public final class AnswerMapper {
 
     private AnswerMapper() {
     }
 
-    static Answer toDomain(AnswerEntity entity) {
+    public static Answer toDomain(AnswerEntity entity) {
         Answer answer = new Answer();
         answer.setId(entity.getId());
         answer.setQuestionId(entity.getQuestionId());
@@ -19,7 +20,7 @@ final class AnswerMapper {
         return answer;
     }
 
-    static AnswerEntity toEntity(Answer answer) {
+    public static AnswerEntity toEntity(Answer answer) {
         AnswerEntity entity = new AnswerEntity();
         entity.setId(answer.getId());
         entity.setQuestionId(answer.getQuestionId());

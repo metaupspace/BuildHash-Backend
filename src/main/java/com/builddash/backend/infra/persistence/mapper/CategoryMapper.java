@@ -1,13 +1,14 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.mapper;
 
 import com.builddash.backend.domain.model.Category;
+import com.builddash.backend.infra.persistence.entity.CategoryEntity;
 
-final class CategoryMapper {
+public final class CategoryMapper {
 
     private CategoryMapper() {
     }
 
-    static Category toDomain(CategoryEntity entity) {
+    public static Category toDomain(CategoryEntity entity) {
         Category category = new Category();
         category.setId(entity.getId());
         category.setName(entity.getName());
@@ -17,7 +18,7 @@ final class CategoryMapper {
         return category;
     }
 
-    static CategoryEntity toEntity(Category category) {
+    public static CategoryEntity toEntity(Category category) {
         CategoryEntity entity = new CategoryEntity();
         entity.setId(category.getId());
         entity.setName(category.getName());
