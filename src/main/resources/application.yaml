@@ -10,8 +10,8 @@ spring:
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:builddash}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    username: ${DB_USER:builddash}
+    password: ${DB_PASSWORD:builddash}
 
   jpa:
     hibernate:
@@ -47,7 +47,7 @@ spring:
 
 security:
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:super_secret_key_which_must_be_long_enough_to_be_at_least_256_bits_length}
     issuer: builddash-backend
     access-token-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}
     refresh-token-ttl-days: ${JWT_REFRESH_TTL_DAYS:30}
