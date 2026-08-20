@@ -1,5 +1,6 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.repository;
 
+import com.builddash.backend.infra.persistence.entity.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -7,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
+public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
 
     Optional<UserEntity> findByPhone(String phone);
 
