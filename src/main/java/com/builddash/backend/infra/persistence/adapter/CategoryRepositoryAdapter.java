@@ -1,7 +1,9 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.adapter;
 
 import com.builddash.backend.domain.model.Category;
 import com.builddash.backend.domain.port.CategoryRepository;
+import com.builddash.backend.infra.persistence.mapper.CategoryMapper;
+import com.builddash.backend.infra.persistence.repository.CategoryJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;

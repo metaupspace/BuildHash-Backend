@@ -1,7 +1,9 @@
-package com.builddash.backend.infra.persistence;
+package com.builddash.backend.infra.persistence.adapter;
 
 import com.builddash.backend.domain.model.WishlistEntry;
 import com.builddash.backend.domain.port.WishlistRepository;
+import com.builddash.backend.infra.persistence.mapper.WishlistEntryMapper;
+import com.builddash.backend.infra.persistence.repository.WishlistEntryJpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
