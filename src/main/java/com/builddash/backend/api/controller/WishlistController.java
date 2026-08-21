@@ -27,21 +27,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @Tag(name = "Wishlist", description = "Save products for later")
 @SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class WishlistController {
 
     private final WishlistReader wishlistReader;
     private final WishlistWriter wishlistWriter;
     private final WishlistMapper wishlistMapper;
 
-    public WishlistController(WishlistReader wishlistReader, WishlistWriter wishlistWriter, WishlistMapper wishlistMapper) {
-        this.wishlistReader = wishlistReader;
-        this.wishlistWriter = wishlistWriter;
-        this.wishlistMapper = wishlistMapper;
-    }
 
     @GetMapping("/users/me/wishlist")
     @Operation(summary = "Get my wishlist")

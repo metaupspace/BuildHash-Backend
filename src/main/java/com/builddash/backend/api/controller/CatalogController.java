@@ -22,9 +22,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @Tag(name = "Catalog", description = "Category and product browse endpoints (public, no auth required)")
+@RequiredArgsConstructor
 public class CatalogController {
 
     private final CategoryReader categoryReader;
@@ -32,13 +34,6 @@ public class CatalogController {
     private final CategoryMapper categoryMapper;
     private final ProductMapper productMapper;
 
-    public CatalogController(CategoryReader categoryReader, ProductReader productReader,
-                              CategoryMapper categoryMapper, ProductMapper productMapper) {
-        this.categoryReader = categoryReader;
-        this.productReader = productReader;
-        this.categoryMapper = categoryMapper;
-        this.productMapper = productMapper;
-    }
 
     @GetMapping("/categories")
     @Operation(summary = "List categories", description = "All categories, each with its attributeSchema.")

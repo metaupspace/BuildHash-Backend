@@ -26,11 +26,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/users/me")
 @Tag(name = "Device & Session Registry", description = "List, revoke, and bulk-invalidate logged-in devices")
 @SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class DeviceController {
 
     private final DeviceRegistry deviceRegistry;
@@ -38,13 +40,6 @@ public class DeviceController {
     private final DeviceMapper deviceMapper;
     private final AuthMapper authMapper;
 
-    public DeviceController(DeviceRegistry deviceRegistry, AuthenticationFacade authenticationFacade,
-                             DeviceMapper deviceMapper, AuthMapper authMapper) {
-        this.deviceRegistry = deviceRegistry;
-        this.authenticationFacade = authenticationFacade;
-        this.deviceMapper = deviceMapper;
-        this.authMapper = authMapper;
-    }
 
     @GetMapping("/devices")
     @Operation(summary = "List my active devices", description = "Every device currently logged into this account, for security awareness.")

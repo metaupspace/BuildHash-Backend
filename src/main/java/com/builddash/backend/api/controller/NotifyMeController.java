@@ -21,19 +21,17 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @Tag(name = "Back in stock", description = "Notify-me subscriptions for out-of-stock products")
 @SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class NotifyMeController {
 
     private final NotifyMeSubscriptionService notifyMeSubscriptionService;
     private final NotifyMeMapper notifyMeMapper;
 
-    public NotifyMeController(NotifyMeSubscriptionService notifyMeSubscriptionService, NotifyMeMapper notifyMeMapper) {
-        this.notifyMeSubscriptionService = notifyMeSubscriptionService;
-        this.notifyMeMapper = notifyMeMapper;
-    }
 
     @PostMapping("/products/{id}/notify-me")
     @ResponseStatus(HttpStatus.CREATED)

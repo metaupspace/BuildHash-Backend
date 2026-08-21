@@ -23,19 +23,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/auth")
 @Tag(name = "Authentication", description = "OTP login, Google sign-in, guest sessions, and token refresh")
+@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthenticationFacade authenticationFacade;
     private final AuthMapper authMapper;
 
-    public AuthController(AuthenticationFacade authenticationFacade, AuthMapper authMapper) {
-        this.authenticationFacade = authenticationFacade;
-        this.authMapper = authMapper;
-    }
 
     @PostMapping("/otp/send")
     @Operation(summary = "Send OTP", description = "Generates a 6-digit OTP and dispatches it via SMS. "
