@@ -65,3 +65,4 @@ public class SecurityConfig {
         objectMapper.writeValue(response.getWriter(), body);
     }
 }
+//cross origin resourse sharing

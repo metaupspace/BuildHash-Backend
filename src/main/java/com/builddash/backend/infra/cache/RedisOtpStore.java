@@ -14,8 +14,9 @@ import lombok.RequiredArgsConstructor;
 public class RedisOtpStore implements OtpStore {
 
     private final StringRedisTemplate redis;
-
-
+// key value pairs
+// redis TTL time to live ??
+    // redis expire ??? ttl -> 15 min
     @Override
     public void save(String phone, String plainOtp, Duration ttl) {
         redis.opsForValue().set(otpKey(phone), Sha256.hex(plainOtp), ttl);
