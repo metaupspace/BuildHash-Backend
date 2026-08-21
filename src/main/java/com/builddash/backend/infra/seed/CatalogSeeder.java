@@ -7,13 +7,16 @@ import com.builddash.backend.domain.model.Product;
 import com.builddash.backend.domain.model.ProductImage;
 import com.builddash.backend.domain.model.StockEntry;
 import com.builddash.backend.application.service.CatalogWriteService;
+import com.builddash.backend.domain.model.Product;
 import com.builddash.backend.domain.port.CategoryRepository;
+import com.builddash.backend.domain.port.ProductBasePriceRepository;
 import com.builddash.backend.domain.service.ProductFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +24,9 @@ import java.util.Map;
  * Dev-only seed data so /categories and /products are smoke-testable via Swagger without a
  * product-creation endpoint (none exists yet — Catalog writes are vendor/admin-side, out of
  * scope for this customer backend, per builddash-backend-phase-plan.md). Mirrors Phase 0's
- * HSN seed migration: real data seeded early so the phase is actually exercisable.
+ * HSN seed migration: real data seeded early so the phase is actually exercisable. Since Phase
+ * 2, also seeds product_base_prices — without it every seeded product would be unpriceable
+ * (PricingCalculator.calculate fails closed on a missing base price).
  */
 @Component
 @Profile("dev")
@@ -30,12 +35,14 @@ public class CatalogSeeder implements ApplicationRunner {
     private final CategoryRepository categoryRepository;
     private final CatalogWriteService catalogWriteService;
     private final ProductFactory productFactory;
+    private final ProductBasePriceRepository productBasePriceRepository;
 
     public CatalogSeeder(CategoryRepository categoryRepository, CatalogWriteService catalogWriteService,
-                          ProductFactory productFactory) {
+                          ProductFactory productFactory, ProductBasePriceRepository productBasePriceRepository) {
         this.categoryRepository = categoryRepository;
         this.catalogWriteService = catalogWriteService;
         this.productFactory = productFactory;
+        this.productBasePriceRepository = productBasePriceRepository;
     }
 
     @Override
@@ -66,21 +73,25 @@ public class CatalogSeeder implements ApplicationRunner {
 
         seedProduct(cement, "UltraTech Cement OPC 53 Grade 50kg", "UltraTech", "2523",
                 Map.of("weightKg", 50, "gradeType", "OPC53"),
-                List.of(new ProductImage("https://picsum.photos/seed/cement1/400", "UltraTech Cement bag", 0)));
+                List.of(new ProductImage("https://picsum.photos/seed/cement1/400", "UltraTech Cement bag", 0)),
+                new BigDecimal("380.00"));
 
         seedProduct(cement, "ACC Gold Water Shield PPC 50kg", "ACC", "2523",
                 Map.of("weightKg", 50, "gradeType", "PPC"),
-                List.of(new ProductImage("https://picsum.photos/seed/cement2/400", "ACC Cement bag", 0)));
+                List.of(new ProductImage("https://picsum.photos/seed/cement2/400", "ACC Cement bag", 0)),
+                new BigDecimal("360.00"));
 
         seedProduct(paint, "Asian Paints Apcolite Matte 4L", "Asian Paints", "3208",
                 Map.of("volumeLitres", 4, "finish", "MATTE"),
-                List.of(new ProductImage("https://picsum.photos/seed/paint1/400", "Paint can", 0)));
+                List.of(new ProductImage("https://picsum.photos/seed/paint1/400", "Paint can", 0)),
+                new BigDecimal("899.00"));
     }
 
     private void seedProduct(Category category, String name, String brand, String hsnCode,
-                              Map<String, Object> attributes, List<ProductImage> images) {
+                              Map<String, Object> attributes, List<ProductImage> images, BigDecimal basePrice) {
         Product product = productFactory.build(category, name, brand, hsnCode, attributes, images);
         product.setStock(List.of(new StockEntry("WH-DEFAULT", 100)));
-        catalogWriteService.saveProductAndEnqueueSync(product);
+        Product saved = catalogWriteService.saveProductAndEnqueueSync(product);
+        productBasePriceRepository.save(saved.getId(), basePrice);
     }
 }

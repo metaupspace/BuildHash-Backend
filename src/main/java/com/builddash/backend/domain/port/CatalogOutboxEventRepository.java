@@ -14,4 +14,7 @@ public interface CatalogOutboxEventRepository {
 
     /** Bulk update, not fetch-then-mutate — never relies on JPA dirty-checking. */
     void markPublished(UUID id);
+
+    /** Bulk update — set once the search side confirms the ES upsert actually succeeded. */
+    void markProcessed(UUID id);
 }

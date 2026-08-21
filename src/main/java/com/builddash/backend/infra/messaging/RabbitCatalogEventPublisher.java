@@ -29,6 +29,7 @@ public class RabbitCatalogEventPublisher implements CatalogEventPublisher {
     public boolean publishProductChanged(UUID correlationId, String payloadJson) {
         Message message = MessageBuilder.withBody(payloadJson.getBytes(StandardCharsets.UTF_8))
                 .setContentType(MessageProperties.CONTENT_TYPE_JSON)
+                .setHeader(CatalogQueueConfig.OUTBOX_EVENT_ID_HEADER, correlationId.toString())
                 .build();
         try {
             Boolean acked = rabbitTemplate.invoke(operations -> {
