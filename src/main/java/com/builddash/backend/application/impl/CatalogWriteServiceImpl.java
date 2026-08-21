@@ -14,7 +14,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Service
 public class CatalogWriteServiceImpl implements CatalogWriteService {
 
@@ -24,16 +26,7 @@ public class CatalogWriteServiceImpl implements CatalogWriteService {
     private final ProductSyncProjectionBuilder productSyncProjectionBuilder;
     private final ObjectMapper objectMapper;
 
-    public CatalogWriteServiceImpl(ProductRepository productRepository, CategoryRepository categoryRepository,
-                                    CatalogOutboxEventRepository catalogOutboxEventRepository,
-                                    ProductSyncProjectionBuilder productSyncProjectionBuilder,
-                                    ObjectMapper objectMapper) {
-        this.productRepository = productRepository;
-        this.categoryRepository = categoryRepository;
-        this.catalogOutboxEventRepository = catalogOutboxEventRepository;
-        this.productSyncProjectionBuilder = productSyncProjectionBuilder;
-        this.objectMapper = objectMapper;
-    }
+
 
     @Override
     @Transactional

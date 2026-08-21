@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 /**
  * No separate interface — single orchestration workflow, single caller (NotifyMeController),
@@ -15,17 +16,13 @@ import java.util.UUID;
  * scope for Wave 2 — no inventory-update event exists yet (Product.stock is a static stub,
  * see PLAN_PHASE1.md Open Question #1). This service only records the subscription.
  */
+@RequiredArgsConstructor
 @Service
 public class NotifyMeSubscriptionService {
 
     private final NotifyMeSubscriptionRepository notifyMeSubscriptionRepository;
     private final ProductRepository productRepository;
 
-    public NotifyMeSubscriptionService(NotifyMeSubscriptionRepository notifyMeSubscriptionRepository,
-                                        ProductRepository productRepository) {
-        this.notifyMeSubscriptionRepository = notifyMeSubscriptionRepository;
-        this.productRepository = productRepository;
-    }
 
     @Transactional
     public NotifyMeSubscription subscribe(UUID productId, UUID userId) {

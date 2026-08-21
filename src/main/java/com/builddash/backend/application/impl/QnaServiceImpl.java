@@ -17,7 +17,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Service
 public class QnaServiceImpl implements QnaReader, QnaWriter {
 
@@ -26,13 +28,6 @@ public class QnaServiceImpl implements QnaReader, QnaWriter {
     private final ProductRepository productRepository;
     private final AnswerSourceResolver answerSourceResolver;
 
-    public QnaServiceImpl(QuestionRepository questionRepository, AnswerRepository answerRepository,
-                           ProductRepository productRepository, AnswerSourceResolver answerSourceResolver) {
-        this.questionRepository = questionRepository;
-        this.answerRepository = answerRepository;
-        this.productRepository = productRepository;
-        this.answerSourceResolver = answerSourceResolver;
-    }
 
     /**
      * Batch-fetches every answer for the product's questions in one query

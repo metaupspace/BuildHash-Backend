@@ -6,20 +6,18 @@ import com.builddash.backend.domain.port.OtpStore;
 import com.builddash.backend.domain.exception.BadRequestException;
 import com.builddash.backend.domain.exception.UnauthorizedException;
 import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
 
 /**
  * SRP: the "verify an OTP" workflow only — no generation or delivery concerns.
  */
+@RequiredArgsConstructor
 @Service
 public class OtpVerificationService {
 
     private final OtpRateLimiter rateLimiter;
     private final OtpStore store;
 
-    public OtpVerificationService(OtpRateLimiter rateLimiter, OtpStore store) {
-        this.rateLimiter = rateLimiter;
-        this.store = store;
-    }
 
     public void verify(String phone, String otp) {
         rateLimiter.enforceNotLockedOut(phone);

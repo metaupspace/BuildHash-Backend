@@ -18,6 +18,7 @@ import com.builddash.backend.domain.port.PhoneExistenceIndex;
 import com.builddash.backend.domain.port.TokenIssuer;
 import com.builddash.backend.domain.port.TokenValidator;
 import com.builddash.backend.infra.config.OtpProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,6 +30,7 @@ import java.util.UUID;
  * single-purpose collaborator, injected here by interface (DIP).
  */
 @Service
+@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthenticationFacade {
 
     private final OtpSendService otpSendService;
@@ -43,23 +45,6 @@ public class AuthServiceImpl implements AuthenticationFacade {
     private final LoginEventRecorder loginEventRecorder;
     private final PhoneExistenceIndex phoneExistenceIndex;
 
-    public AuthServiceImpl(OtpSendService otpSendService, OtpVerificationService otpVerificationService,
-                            OtpProperties otpProperties, TokenIssuer tokenIssuer, TokenValidator tokenValidator,
-                            GoogleIdentityGateway googleIdentityGateway, UserAccountService userAccountService,
-                            DeviceRegistry deviceRegistry, RefreshTokenRotator refreshTokenRotator,
-                            LoginEventRecorder loginEventRecorder, PhoneExistenceIndex phoneExistenceIndex) {
-        this.otpSendService = otpSendService;
-        this.otpVerificationService = otpVerificationService;
-        this.otpProperties = otpProperties;
-        this.tokenIssuer = tokenIssuer;
-        this.tokenValidator = tokenValidator;
-        this.googleIdentityGateway = googleIdentityGateway;
-        this.userAccountService = userAccountService;
-        this.deviceRegistry = deviceRegistry;
-        this.refreshTokenRotator = refreshTokenRotator;
-        this.loginEventRecorder = loginEventRecorder;
-        this.phoneExistenceIndex = phoneExistenceIndex;
-    }
 
     @Override
     public OtpSendResult sendOtp(String phone) {

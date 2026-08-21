@@ -10,15 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Service
 public class LoginEventServiceImpl implements LoginEventRecorder, LoginHistoryReader {
 
     private final LoginEventRepository loginEventRepository;
 
-    public LoginEventServiceImpl(LoginEventRepository loginEventRepository) {
-        this.loginEventRepository = loginEventRepository;
-    }
 
     @Override
     @Transactional
