@@ -30,6 +30,7 @@ public class OrderServiceImpl implements OrderService {
     private final CheckoutIntentService checkoutIntentService;
     private final OrderRepository orderRepository;
     private final IdempotencyKeyRepository idempotencyKeyRepository;
+    private final com.builddash.backend.domain.port.PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway;
     private final TransactionTemplate transactionTemplate;
 
@@ -61,6 +62,7 @@ public class OrderServiceImpl implements OrderService {
                     slotDate,
                     intent.lockedTotal(),
                     OrderStatus.PAYMENT_PENDING,
+                    intent.deliverySlotLockId(),
                     lineItems
             );
 
@@ -73,6 +75,17 @@ public class OrderServiceImpl implements OrderService {
         PaymentReference ref;
         try {
             ref = paymentGateway.initiate(savedOrder.id(), savedOrder.totalAmount());
+            
+            com.builddash.backend.domain.model.Payment payment = new com.builddash.backend.domain.model.Payment(
+                    UUID.randomUUID(),
+                    savedOrder.id(),
+                    ref.transactionId(),
+                    savedOrder.totalAmount(),
+                    com.builddash.backend.domain.enums.PaymentStatus.PENDING,
+                    ref.paymentUrl()
+            );
+            paymentRepository.save(payment);
+            
         } catch (Exception e) {
             throw new PaymentGatewayException(savedOrder.id(), e.getMessage());
         }

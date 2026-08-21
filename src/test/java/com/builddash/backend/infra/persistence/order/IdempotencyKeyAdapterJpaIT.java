@@ -27,7 +27,7 @@ class IdempotencyKeyAdapterJpaIT extends AbstractIntegrationTest {
 
         jdbcTemplate.update("INSERT INTO users (id) VALUES (?)", userId);
         jdbcTemplate.update("INSERT INTO addresses (id, user_id, type, line1, city, state, zip_code, is_serviceable) VALUES (?, ?, 'HOME', 'A', 'B', 'C', '111', true)", addressId, userId);
-        jdbcTemplate.update("INSERT INTO orders (id, user_id, address_id, slot_id, slot_date, total_amount, status) VALUES (?, ?, ?, ?, CURRENT_DATE, 100, 'PAYMENT_PENDING')", orderId, userId, addressId, UUID.randomUUID());
+        jdbcTemplate.update("INSERT INTO orders (id, user_id, address_id, slot_id, slot_date, delivery_slot_lock_id, total_amount, status) VALUES (?, ?, ?, ?, CURRENT_DATE, gen_random_uuid(), 100, 'PAYMENT_PENDING')", orderId, userId, addressId, UUID.randomUUID());
 
         adapter.save(key, orderId);
 

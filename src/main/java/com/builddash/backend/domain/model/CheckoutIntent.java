@@ -14,6 +14,7 @@ public record CheckoutIntent(
         LocalDate slotDate,
         BigDecimal lockedTotal,
         Instant expiresAt,
+        UUID deliverySlotLockId,
         PricedCart pricedCart
 ) {
 }

@@ -16,6 +16,7 @@ public class OrderMapper {
         entity.setAddressId(domain.addressId());
         entity.setSlotId(domain.slotId());
         entity.setSlotDate(domain.slotDate());
+        entity.setDeliverySlotLockId(domain.deliverySlotLockId());
         entity.setTotalAmount(domain.totalAmount());
         entity.setStatus(domain.status());
         
@@ -45,6 +46,7 @@ public class OrderMapper {
                 entity.getSlotDate(),
                 entity.getTotalAmount(),
                 entity.getStatus(),
+                entity.getDeliverySlotLockId(),
                 items
         );
     }

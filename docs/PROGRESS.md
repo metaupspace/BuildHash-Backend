@@ -1589,13 +1589,29 @@ All 4 Phase 3 checkpoints (Address, Slot Locking/Generator, Cart & Pricing, Chec
   - Atomicity / Rollback test confirmed: failed swap preserves prior lock and counter without capacity leak.
 - **End-to-End Composition:** `CheckoutControllerIT` confirmed full flow across Address, DeliverySlot, Cart, and Pricing composition with GST calculations.
 
-## Phase 3 (Checkout Intent) Checkpoint B & C Complete
-- Confirmed manual testing of POST /orders:
-  - Required manual seeding of user, address, slot, and base price.
-  - Successfully returns 502 with payment status PAYMENT_PENDING on DummyGateway failure.
-  - Replayed idempotency key successfully returns identical 502 response without creating duplicate order.
-- Created Checkpoint C tests:
-  - Unit tests for OrderServiceImpl and OrderController.
-  - Integration tests (real Postgres) for IdempotencyKeyAdapter and OrderRepositoryAdapter.
-- 183 tests green.
+## Status: Phase 4 (Payments & Order Core) — Checkpoints A & B COMPLETE
 
+- **Checkpoint A (Order Creation & Persistence)**: Order, OrderLineItem entities, ports, and repositories implemented. `OrderService.create()` orchestrates saving the order and firing the gateway.
+- **Checkpoint B (Idempotency)**: `Idempotency-Key` intercepting implemented. Concurrent replay protections verified.
+- **Verification**: 
+  - Manual E2E test via `POST /orders` complete. Normal create works.
+  - Idempotency key replay test complete — returns identical order without duplication.
+  - DummyPaymentGateway failure simulation complete (502 response, order remains `PAYMENT_PENDING`).
+  - Tests (`OrderServiceImplTest`, `OrderControllerTest`, `OrderRepositoryAdapterJpaIT`, `IdempotencyKeyAdapterJpaIT`) implemented and committed.
+- **Suite**: 183/183 tests green.
+
+*(Note: Checkpoints C and D are NOT started yet. Orders currently enter `PAYMENT_PENDING` but cannot transition to `CONFIRMED` because the webhook service and sweep jobs do not yet exist.)*
+
+## Status: Ongoing Audits
+
+- **Lombok Getter/Setter Cleanup (Phase 3 & 4)**: Audited code added after the Phase 1/2 cleanup pass (Address, Order, OrderLineItem, Payment, DeliverySlot, Cart, Checkout entities and DTOs). Replaced manually-written getters in `DomainException`, `GstRateUnresolvedException`, and `PaymentGatewayException` with `@Getter` annotations. Verified that no other manual getters/setters existed across all entities and DTOs created for Phase 3/4. Test suite remained 100% green.
+
+## Status: Phase 4 (Payments & Order Core) — Checkpoint C COMPLETE
+
+- **Checkpoint C (Webhook & Sweep)**:
+  - Added `delivery_slot_lock_id` to `CheckoutIntent`, `Order`, and mapping layers (persisted in DB).
+  - Implemented `PaymentWebhookServiceImpl` to transition `Order` to `CONFIRMED` upon `SUCCESS` and correctly mark `Payment` as `FAILED` on `FAILED`.
+  - Implemented real HTTP `PaymentWebhookController` (`/api/webhooks/payment`) with an open Spring Security mapping.
+  - Implemented `StaleOrderSweepServiceImpl` and `StaleOrderSweepJob` (intentional fallback to original planned name over `OrderSweepJob`). Used explicit `SELECT ... FOR UPDATE` via `OrderJpaRepository.findByIdForUpdate` to guarantee strict row-level lock against incoming webhooks before attempting to sweep a stuck order.
+  - Ensured both webhook confirmation and sweep cancellation accurately release the delivery slot lock via the saved `deliverySlotLockId`.
+- **Suite**: Full test suite green (184/184 tests pass), including real `PaymentWebhookControllerIT` via Spring `MockMvc`.
