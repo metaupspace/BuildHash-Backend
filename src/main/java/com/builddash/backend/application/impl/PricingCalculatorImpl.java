@@ -1,6 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.PricingCalculator;
+import com.builddash.backend.application.service.PricingStep;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.exception.ProductNotPricedException;
 import com.builddash.backend.domain.model.Category;
@@ -26,7 +27,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Service
 public class PricingCalculatorImpl implements PricingCalculator {
 
@@ -48,25 +51,7 @@ public class PricingCalculatorImpl implements PricingCalculator {
     private final CouponRedemptionRepository couponRedemptionRepository;
     private final MarginRuleRepository marginRuleRepository;
 
-    public PricingCalculatorImpl(ProductRepository productRepository,
-                                  CategoryRepository categoryRepository,
-                                  HsnGstRateRepository hsnGstRateRepository,
-                                  ProductBasePriceRepository productBasePriceRepository,
-                                  BulkPricingTierRepository bulkPricingTierRepository,
-                                  ContractPriceRepository contractPriceRepository,
-                                  CouponRepository couponRepository,
-                                  CouponRedemptionRepository couponRedemptionRepository,
-                                  MarginRuleRepository marginRuleRepository) {
-        this.productRepository = productRepository;
-        this.categoryRepository = categoryRepository;
-        this.hsnGstRateRepository = hsnGstRateRepository;
-        this.productBasePriceRepository = productBasePriceRepository;
-        this.bulkPricingTierRepository = bulkPricingTierRepository;
-        this.contractPriceRepository = contractPriceRepository;
-        this.couponRepository = couponRepository;
-        this.couponRedemptionRepository = couponRedemptionRepository;
-        this.marginRuleRepository = marginRuleRepository;
-    }
+
 
     @Override
     public PriceCalculationResult calculate(PricingRequest request) {

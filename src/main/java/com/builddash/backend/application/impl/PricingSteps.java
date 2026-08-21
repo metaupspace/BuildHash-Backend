@@ -8,22 +8,20 @@ import com.builddash.backend.domain.model.BulkPricingTier;
 import com.builddash.backend.domain.model.Coupon;
 import com.builddash.backend.domain.model.MarginRule;
 import com.builddash.backend.domain.model.PriceCalculationResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Pure pipeline steps: each takes the running result and the pre-resolved PricingContext,
  * returns the next result. No repository/port calls in here — all I/O happens once in
  * PricingCalculatorImpl.loadContext before the fold runs (see PLAN_PHASE2.md Section 3).
  */
-final class PricingSteps {
-
-    private static final Logger log = LoggerFactory.getLogger(PricingSteps.class);
+final @Slf4j
+class PricingSteps {
 
     private PricingSteps() {
     }

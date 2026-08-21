@@ -111,7 +111,7 @@ class PricingCalculatorImplTest {
         when(contractPriceRepository.findActive(eq(userId), eq(PRODUCT_ID), any(java.time.Instant.class)))
                 .thenReturn(Optional.of(contractPrice));
         var coupon = new com.builddash.backend.domain.model.Coupon(UUID.randomUUID(), "SAVE10",
-                com.builddash.backend.domain.enums.DiscountType.PERCENT, new BigDecimal("10"),
+                com.builddash.backend.domain.enums.DiscountType.PERCENT, new BigDecimal("10"), null,
                 java.time.Instant.now().plusSeconds(3600), null, List.of(), false, true, null, null);
         when(couponRepository.findByCode("SAVE10")).thenReturn(Optional.of(coupon));
 

@@ -131,7 +131,7 @@ class PricingStepsTest {
 
     private static Coupon coupon(DiscountType type, String value, Instant expiresAt, Integer maxUsesPerUser,
                                   List<UUID> eligibleCategoryIds, boolean active) {
-        return new Coupon(UUID.randomUUID(), "SAVE10", type, new BigDecimal(value), expiresAt, maxUsesPerUser,
+        return new Coupon(UUID.randomUUID(), "SAVE10", type, new BigDecimal(value), null, expiresAt, maxUsesPerUser,
                 eligibleCategoryIds, false, active, NOW, NOW);
     }
 

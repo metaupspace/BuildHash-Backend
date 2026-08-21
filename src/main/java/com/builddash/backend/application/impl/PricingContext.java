@@ -15,7 +15,7 @@ import java.util.List;
  * Everything PricingSteps needs, resolved once by PricingCalculatorImpl.loadContext before
  * the pipeline runs. Steps read this and never call a repository/port themselves.
  */
-record PricingContext(
+public record PricingContext(
         Product product,
         Category category,
         List<BulkPricingTier> bulkPricingTiers,
