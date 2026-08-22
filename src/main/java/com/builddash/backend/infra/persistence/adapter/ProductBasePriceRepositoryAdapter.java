@@ -8,15 +8,14 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class ProductBasePriceRepositoryAdapter implements ProductBasePriceRepository {
 
     private final ProductBasePriceJpaRepository jpaRepository;
 
-    ProductBasePriceRepositoryAdapter(ProductBasePriceJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public Optional<BigDecimal> findByProductId(UUID productId) {

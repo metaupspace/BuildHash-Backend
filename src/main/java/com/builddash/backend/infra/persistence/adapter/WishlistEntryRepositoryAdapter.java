@@ -10,15 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class WishlistEntryRepositoryAdapter implements WishlistRepository {
 
     private final WishlistEntryJpaRepository jpaRepository;
 
-    WishlistEntryRepositoryAdapter(WishlistEntryJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public WishlistEntry save(WishlistEntry entry) {

@@ -10,15 +10,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class DeviceRepositoryAdapter implements DeviceRepository {
 
     private final DeviceJpaRepository jpaRepository;
 
-    DeviceRepositoryAdapter(DeviceJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public Device save(Device device) {

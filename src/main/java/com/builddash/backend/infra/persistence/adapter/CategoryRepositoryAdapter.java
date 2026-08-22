@@ -9,15 +9,14 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class CategoryRepositoryAdapter implements CategoryRepository {
 
     private final CategoryJpaRepository jpaRepository;
 
-    CategoryRepositoryAdapter(CategoryJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public List<Category> findAll() {

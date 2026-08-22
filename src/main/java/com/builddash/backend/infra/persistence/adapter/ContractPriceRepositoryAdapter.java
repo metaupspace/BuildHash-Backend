@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Overlap rejection is enforced twice, deliberately:
@@ -28,13 +29,11 @@ import java.util.UUID;
  *    exception, not a raw DataIntegrityViolationException.
  */
 @Repository
+@RequiredArgsConstructor
 class ContractPriceRepositoryAdapter implements ContractPriceRepository {
 
     private final ContractPriceJpaRepository jpaRepository;
 
-    ContractPriceRepositoryAdapter(ContractPriceJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public Optional<ContractPrice> findActive(UUID userId, UUID productId, Instant asOf) {

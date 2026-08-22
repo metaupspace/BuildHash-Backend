@@ -7,15 +7,14 @@ import com.builddash.backend.infra.persistence.repository.CouponJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class CouponRepositoryAdapter implements CouponRepository {
 
     private final CouponJpaRepository jpaRepository;
 
-    CouponRepositoryAdapter(CouponJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public Optional<Coupon> findByCode(String code) {

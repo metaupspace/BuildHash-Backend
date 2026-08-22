@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Dev-only seed data so /categories and /products are smoke-testable via Swagger without a
@@ -30,6 +31,7 @@ import java.util.Map;
  */
 @Component
 @Profile("dev")
+@RequiredArgsConstructor
 public class CatalogSeeder implements ApplicationRunner {
 
     private final CategoryRepository categoryRepository;
@@ -37,13 +39,6 @@ public class CatalogSeeder implements ApplicationRunner {
     private final ProductFactory productFactory;
     private final ProductBasePriceRepository productBasePriceRepository;
 
-    public CatalogSeeder(CategoryRepository categoryRepository, CatalogWriteService catalogWriteService,
-                          ProductFactory productFactory, ProductBasePriceRepository productBasePriceRepository) {
-        this.categoryRepository = categoryRepository;
-        this.catalogWriteService = catalogWriteService;
-        this.productFactory = productFactory;
-        this.productBasePriceRepository = productBasePriceRepository;
-    }
 
     @Override
     public void run(ApplicationArguments args) {

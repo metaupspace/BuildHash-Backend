@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Reads the raw message body directly (bypasses the generic Jackson2JsonMessageConverter,
@@ -20,6 +21,7 @@ import java.nio.charset.StandardCharsets;
  * propagate: that's what lets Spring's configured retry-then-reject engage the queue's DLQ
  * (CatalogQueueConfig) instead of the message silently vanishing.
  */
+@RequiredArgsConstructor
 @Component
 public class CatalogProductChangedListener {
 
@@ -27,11 +29,6 @@ public class CatalogProductChangedListener {
     private final ObjectMapper objectMapper;
     private final RabbitTemplate rabbitTemplate;
 
-    public CatalogProductChangedListener(SearchIndex searchIndex, ObjectMapper objectMapper, RabbitTemplate rabbitTemplate) {
-        this.searchIndex = searchIndex;
-        this.objectMapper = objectMapper;
-        this.rabbitTemplate = rabbitTemplate;
-    }
 
     @RabbitListener(queues = CatalogQueueConfig.QUEUE_NAME)
     public void onMessage(Message message) throws IOException {

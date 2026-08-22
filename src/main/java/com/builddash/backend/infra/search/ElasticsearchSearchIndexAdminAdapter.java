@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Index/alias lifecycle for the blue-green reindex (PLAN_PHASE1.md Section 3). createIndex()
@@ -19,14 +20,12 @@ import java.util.Map;
  * attributes is flattened (schema-free, mirrors the Postgres JSONB shape without an ES
  * mapping change per category).
  */
+@RequiredArgsConstructor
 @Component
 public class ElasticsearchSearchIndexAdminAdapter implements SearchIndexAdmin {
 
     private final ElasticsearchClient client;
 
-    public ElasticsearchSearchIndexAdminAdapter(ElasticsearchClient client) {
-        this.client = client;
-    }
 
     @Override
     public String createIndex() {

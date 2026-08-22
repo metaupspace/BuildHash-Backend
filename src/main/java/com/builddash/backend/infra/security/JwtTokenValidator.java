@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Component
 public class JwtTokenValidator implements TokenValidator {
 
@@ -19,9 +21,6 @@ public class JwtTokenValidator implements TokenValidator {
 
     private final JwtCodec codec;
 
-    public JwtTokenValidator(JwtCodec codec) {
-        this.codec = codec;
-    }
 
     @Override
     public TokenClaims validate(String token, TokenType expectedType) {

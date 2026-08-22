@@ -5,19 +5,18 @@ import com.builddash.backend.infra.config.OtpQueueConfig;
 import com.builddash.backend.infra.messaging.OtpDispatchMessage;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
 
 /**
  * The consumer side of the queue — delegates to OtpSender, the existing channel abstraction,
  * so adding a real SMS provider later only ever means a new OtpSender implementation.
  */
+@RequiredArgsConstructor
 @Component
 public class OtpDispatchListener {
 
     private final OtpSender otpSender;
 
-    public OtpDispatchListener(OtpSender otpSender) {
-        this.otpSender = otpSender;
-    }
 
     @RabbitListener(queues = OtpQueueConfig.QUEUE_NAME)
     public void onMessage(OtpDispatchMessage message) {

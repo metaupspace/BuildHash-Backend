@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Objects;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Component
 public class ElasticsearchSearchQueryGatewayAdapter implements SearchQueryGateway {
 
@@ -21,9 +23,6 @@ public class ElasticsearchSearchQueryGatewayAdapter implements SearchQueryGatewa
 
     private final ElasticsearchClient client;
 
-    public ElasticsearchSearchQueryGatewayAdapter(ElasticsearchClient client) {
-        this.client = client;
-    }
 
     @Override
     public List<ProductSearchHit> search(String query, String lang, String category, int limit) {

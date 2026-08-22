@@ -8,15 +8,14 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class BulkPricingTierRepositoryAdapter implements BulkPricingTierRepository {
 
     private final BulkPricingTierJpaRepository jpaRepository;
 
-    BulkPricingTierRepositoryAdapter(BulkPricingTierJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public List<BulkPricingTier> findByProductId(UUID productId) {

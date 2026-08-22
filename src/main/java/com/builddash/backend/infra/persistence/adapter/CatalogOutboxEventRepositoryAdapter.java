@@ -10,15 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class CatalogOutboxEventRepositoryAdapter implements CatalogOutboxEventRepository {
 
     private final CatalogOutboxEventJpaRepository jpaRepository;
 
-    CatalogOutboxEventRepositoryAdapter(CatalogOutboxEventJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public CatalogOutboxEvent save(CatalogOutboxEvent event) {

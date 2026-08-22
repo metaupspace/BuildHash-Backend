@@ -13,15 +13,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class ProductRepositoryAdapter implements ProductRepository {
 
     private final ProductJpaRepository jpaRepository;
 
-    ProductRepositoryAdapter(ProductJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public Optional<Product> findById(UUID id) {

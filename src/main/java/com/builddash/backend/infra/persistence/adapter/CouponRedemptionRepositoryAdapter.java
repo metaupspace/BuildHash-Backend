@@ -5,15 +5,14 @@ import com.builddash.backend.infra.persistence.repository.CouponRedemptionJpaRep
 import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class CouponRedemptionRepositoryAdapter implements CouponRedemptionRepository {
 
     private final CouponRedemptionJpaRepository jpaRepository;
 
-    CouponRedemptionRepositoryAdapter(CouponRedemptionJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public int countByUserAndCoupon(UUID userId, UUID couponId) {

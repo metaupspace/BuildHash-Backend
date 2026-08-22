@@ -9,15 +9,14 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class UserRepositoryAdapter implements UserRepository {
 
     private final UserJpaRepository jpaRepository;
 
-    UserRepositoryAdapter(UserJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public Optional<User> findById(UUID id) {

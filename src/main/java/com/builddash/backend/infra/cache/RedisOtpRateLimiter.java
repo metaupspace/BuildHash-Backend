@@ -8,17 +8,15 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @Component
 public class RedisOtpRateLimiter implements OtpRateLimiter {
 
     private final StringRedisTemplate redis;
     private final OtpProperties properties;
 
-    public RedisOtpRateLimiter(StringRedisTemplate redis, OtpProperties properties) {
-        this.redis = redis;
-        this.properties = properties;
-    }
 
     @Override
     public void enforceSendAllowed(String phone) {

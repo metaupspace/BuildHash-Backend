@@ -8,15 +8,14 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class AnswerRepositoryAdapter implements AnswerRepository {
 
     private final AnswerJpaRepository jpaRepository;
 
-    AnswerRepositoryAdapter(AnswerJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public Answer save(Answer answer) {

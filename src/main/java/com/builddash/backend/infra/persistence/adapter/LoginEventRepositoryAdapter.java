@@ -8,15 +8,14 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class LoginEventRepositoryAdapter implements LoginEventRepository {
 
     private final LoginEventJpaRepository jpaRepository;
 
-    LoginEventRepositoryAdapter(LoginEventJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public LoginEvent save(LoginEvent event) {

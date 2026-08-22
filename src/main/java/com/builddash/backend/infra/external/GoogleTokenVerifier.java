@@ -1,12 +1,12 @@
 package com.builddash.backend.infra.external;
 
+import com.builddash.backend.domain.exception.UnauthorizedException;
 import com.builddash.backend.domain.model.GoogleUserInfo;
 import com.builddash.backend.domain.port.GoogleIdentityGateway;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
-import com.builddash.backend.domain.exception.UnauthorizedException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

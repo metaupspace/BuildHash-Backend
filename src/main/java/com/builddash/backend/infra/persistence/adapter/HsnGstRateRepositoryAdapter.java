@@ -7,15 +7,14 @@ import com.builddash.backend.infra.persistence.repository.HsnGstRateJpaRepositor
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Repository
+@RequiredArgsConstructor
 class HsnGstRateRepositoryAdapter implements HsnGstRateRepository {
 
     private final HsnGstRateJpaRepository jpaRepository;
 
-    HsnGstRateRepositoryAdapter(HsnGstRateJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
 
     @Override
     public Optional<HsnGstRate> findByHsnCode(String hsnCode) {
