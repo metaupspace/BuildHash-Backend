@@ -35,7 +35,7 @@ GET /orders
 Response: [ { id: <uuid>, status: "...", ... } ]  (New Phase 5 work)
 
 GET /orders/{id}
-Response: { id: <uuid>, status: "...", ... }      (New Phase 5 work)
+Response: { id: <uuid>, status: "...", ... }      (Phase 4 gap, closed here)
 
 GET /orders/{id}/tracking
 Response: { status: "DISPATCHED", driver: { id: "...", phone: "..." }, location: { lat: 12.3, lng: 45.6 }, updatedAt: "..." }
@@ -61,6 +61,7 @@ Response: { status: "CALL_INITIATED" }
 
 ## 7. Pre-existing Codebase Status & Gaps
 - **OrderStatus Enum**: `PACKED`, `DISPATCHED`, `DELIVERED`, `CANCELLED` exist but lack transition logic in `Order.java`.
-- **Phase 4 Gap**: `Order` currently lacks a `placedAt` field (and `OrderEntity` does not map the DB `created_at` column). This will be patched at the start of Phase 5 implementation to support the modification-window logic.
-- **Missing Endpoints**: `GET /orders`, `GET /orders/{id}`, and `POST /orders/{id}/reorder` do NOT exist from Phase 4. They are net-new additions for Phase 5.
+- **Phase 4 Gap 1 (placedAt)**: `Order` currently lacks a `placedAt` field (and `OrderEntity` does not map the DB `created_at` column). This will be patched at the start of Phase 5 implementation to support the modification-window logic.
+- **Phase 4 Gap 2 (GET /orders/{id})**: Planned in Phase 4 but completely omitted. No controller endpoint or test stub exists. Will be implemented now. Does not include tracking data (that belongs to `/tracking`).
+- **Missing Endpoints**: `GET /orders` and `POST /orders/{id}/reorder` do NOT exist. They are net-new additions for Phase 5.
 - **Missing Infra**: No WebSocket or CallProxy gateways exist yet.
