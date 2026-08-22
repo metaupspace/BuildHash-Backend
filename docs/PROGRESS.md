@@ -1615,3 +1615,15 @@ All 4 Phase 3 checkpoints (Address, Slot Locking/Generator, Cart & Pricing, Chec
   - Implemented `StaleOrderSweepServiceImpl` and `StaleOrderSweepJob` (intentional fallback to original planned name over `OrderSweepJob`). Used explicit `SELECT ... FOR UPDATE` via `OrderJpaRepository.findByIdForUpdate` to guarantee strict row-level lock against incoming webhooks before attempting to sweep a stuck order.
   - Ensured both webhook confirmation and sweep cancellation accurately release the delivery slot lock via the saved `deliverySlotLockId`.
 - **Suite**: Full test suite green (184/184 tests pass), including real `PaymentWebhookControllerIT` via Spring `MockMvc`.
+
+## Status: Phase 4 (Payments & Order Core) — Checkpoint D COMPLETE
+
+- **Checkpoint D (Retry API & Webhook Race Test)**:
+  - `retryPayment`: Implemented sequence: `findByIdForUpdate` lock -> `PAYMENT_PENDING` verify -> new `PENDING` payment row saved -> `gateway.initiate()` via `TransactionSynchronizationManager.registerSynchronization(afterCommit)`.
+  - **Payment->Order 1:N discovery**: DB schema was already 1:N (no `UNIQUE` on `order_id`, no migration needed), but JPA layer assumed 1:1 (`findByOrderId` returned `Optional`, would throw `NonUniqueResultException` on retry). Fixed via `findFirstByOrderIdOrderByCreatedAtDescIdDesc` (deterministic tiebreak on id).
+  - `InvalidOrderStateException` extended to accept `OrderStatus`, producing `ORDER_ALREADY_CONFIRMED` / `ORDER_ALREADY_CANCELLED` codes mapped to 409. Kept separate from the new `PaymentRetryInProgressException` (409, `RETRY_ALREADY_IN_PROGRESS`), since these are different failure modes (terminal state vs. in-flight retry).
+  - `PaymentWebhookServiceImpl`'s `findLatestByOrderId` matching is a documented dummy-gateway simplification (comment in code) — real gateway integration should match by its own transaction ID once that field exists on the webhook payload.
+  - `SweepVsWebhookJpaIT`: Structurally proves exactly one terminal state wins when sweep and webhook hit concurrently, loser takes its existing graceful path.
+- **Suite**: Full test suite green. Test count: 184 -> 190.
+
+*(Phase 4 is COMPLETE. Checkpoints A-D are all done with no open items.)*
