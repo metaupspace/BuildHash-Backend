@@ -82,7 +82,7 @@ public class OrderController {
 
     @PostMapping("/{id}/reorder")
     @Operation(summary = "Add an existing order's items to the cart")
-    public com.builddash.backend.api.dto.response.PricedCartResponse reorder(
+    public ReorderResponse reorder(
             @org.springframework.web.bind.annotation.PathVariable("id") java.util.UUID orderId,
             @AuthenticationPrincipal AuthenticatedUser user) {
         return orderService.reorder(user.userId(), orderId);

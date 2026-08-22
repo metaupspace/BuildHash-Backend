@@ -18,5 +18,7 @@ public interface CartService {
 
     void clearCart(UUID userId, UUID projectId);
 
-    PricedCart replaceItems(UUID userId, UUID projectId, java.util.List<com.builddash.backend.domain.model.CartLineItem> items);
+    PricedCart getCartById(UUID userId, UUID cartId);
+
+    PricedCart createReorderCart(UUID userId, java.util.List<com.builddash.backend.domain.model.CartLineItem> items);
 }

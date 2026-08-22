@@ -13,5 +13,5 @@ public interface OrderService {
     OrderResponse retryPayment(UUID userId, UUID orderId);
     OrderResponse getOrder(UUID userId, UUID orderId);
     List<OrderResponse> listOrders(UUID userId);
-    com.builddash.backend.api.dto.response.PricedCartResponse reorder(UUID userId, UUID orderId);
+    ReorderResponse reorder(UUID userId, UUID orderId);
 }

@@ -39,7 +39,8 @@ public class CheckoutController {
                 request.addressId(),
                 request.slotId(),
                 request.slotDate(),
-                request.expectedTotal()
+                request.expectedTotal(),
+                request.cartId()
         );
         return checkoutDtoMapper.toResponse(intent);
     }

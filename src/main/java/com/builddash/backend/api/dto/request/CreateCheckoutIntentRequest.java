@@ -10,6 +10,7 @@ public record CreateCheckoutIntentRequest(
         @NotNull UUID addressId,
         @NotNull UUID slotId,
         @NotNull LocalDate slotDate,
-        BigDecimal expectedTotal
+        BigDecimal expectedTotal,
+        UUID cartId
 ) {
 }

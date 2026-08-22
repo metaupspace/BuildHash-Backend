@@ -118,12 +118,13 @@ class OrderControllerTest {
     @Test
     void reorder_happyPath_returnsCartId() throws Exception {
         UUID orderId = UUID.randomUUID();
-        com.builddash.backend.api.dto.response.PricedCartResponse response = new com.builddash.backend.api.dto.response.PricedCartResponse(UUID.randomUUID(), userId, null, java.util.List.of(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, null);
+        UUID cartId = UUID.randomUUID();
+        com.builddash.backend.api.dto.response.ReorderResponse response = new com.builddash.backend.api.dto.response.ReorderResponse(cartId, "Items added to cart");
         when(orderService.reorder(userId, orderId)).thenReturn(response);
 
         mockMvc.perform(post("/orders/" + orderId + "/reorder"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").exists());
+                .andExpect(jsonPath("$.cartId").exists());
     }
 
     
