@@ -1604,6 +1604,8 @@ All 4 Phase 3 checkpoints (Address, Slot Locking/Generator, Cart & Pricing, Chec
 
 ## Status: Ongoing Audits
 
+- **JWT_SECRET Leak Resolution**: The previously flagged issue of a real JWT_SECRET being committed to `.env.example` is resolved. Security fact-finding confirmed the value was local-only and never deployed (no CI/CD or deployment infrastructure exists in the repo). The secret was rotated locally, `.env.example` was scrubbed back to a dummy placeholder, and the application was confirmed operational against the new key. The remote git history containing the old secret was deliberately left as-is (no history rewrite) since the leaked value was never live and a rewrite would break existing clones/forks for no real security benefit.
+
 - **Lombok Getter/Setter Cleanup (Phase 3 & 4)**: Audited code added after the Phase 1/2 cleanup pass (Address, Order, OrderLineItem, Payment, DeliverySlot, Cart, Checkout entities and DTOs). Replaced manually-written getters in `DomainException`, `GstRateUnresolvedException`, and `PaymentGatewayException` with `@Getter` annotations. Verified that no other manual getters/setters existed across all entities and DTOs created for Phase 3/4. Test suite remained 100% green.
 
 ## Status: Phase 4 (Payments & Order Core) — Checkpoint C COMPLETE
