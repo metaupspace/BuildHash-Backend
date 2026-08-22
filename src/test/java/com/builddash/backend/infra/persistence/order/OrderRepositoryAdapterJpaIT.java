@@ -40,7 +40,7 @@ class OrderRepositoryAdapterJpaIT extends AbstractIntegrationTest {
         jdbcTemplate.update("INSERT INTO products (id, name, slug, category_id, status) VALUES (?, 'Test', 'test-prod', ?, 'ACTIVE')", productId, categoryId);
 
         OrderLineItem item = new OrderLineItem(UUID.randomUUID(), productId, 1, new BigDecimal("100.00"), new BigDecimal("18.00"));
-        Order order = new Order(orderId, userId, addressId, UUID.randomUUID(), LocalDate.now(), new BigDecimal("118.00"), OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), List.of(item));
+        Order order = new Order(orderId, userId, addressId, UUID.randomUUID(), LocalDate.now(), new BigDecimal("118.00"), OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), java.time.Instant.now(), null, null, List.of(item));
 
         Order saved = adapter.save(order);
         assertThat(saved.id()).isEqualTo(orderId);

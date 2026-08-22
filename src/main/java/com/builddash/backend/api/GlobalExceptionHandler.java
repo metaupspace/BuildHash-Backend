@@ -7,8 +7,10 @@ import com.builddash.backend.domain.exception.ContractPriceOverlapException;
 import com.builddash.backend.domain.exception.DomainException;
 import com.builddash.backend.domain.exception.ForbiddenException;
 import com.builddash.backend.domain.exception.GstRateUnresolvedException;
+import com.builddash.backend.domain.exception.InvalidOrderStateException;
 import com.builddash.backend.domain.exception.LockedException;
 import com.builddash.backend.domain.exception.NotFoundException;
+import com.builddash.backend.domain.exception.PaymentRetryInProgressException;
 import com.builddash.backend.domain.exception.ProductNotPricedException;
 import com.builddash.backend.domain.exception.SlotUnavailableException;
 import com.builddash.backend.domain.exception.TooManyRequestsException;
@@ -40,7 +42,9 @@ public class GlobalExceptionHandler {
             Map.entry(CheckoutValidationException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             Map.entry(ContractPriceOverlapException.class, HttpStatus.CONFLICT),
             Map.entry(ProductNotPricedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
-            Map.entry(GstRateUnresolvedException.class, HttpStatus.UNPROCESSABLE_ENTITY)
+            Map.entry(GstRateUnresolvedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(InvalidOrderStateException.class, HttpStatus.CONFLICT),
+            Map.entry(PaymentRetryInProgressException.class, HttpStatus.CONFLICT)
     );
 
     @ExceptionHandler(DomainException.class)

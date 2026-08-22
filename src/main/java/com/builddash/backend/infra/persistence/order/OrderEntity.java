@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +45,15 @@ public class OrderEntity {
 
     @Column(name = "delivery_slot_lock_id", nullable = false)
     private UUID deliverySlotLockId;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private Instant placedAt;
+
+    @Column(name = "driver_id")
+    private String driverId;
+
+    @Column(name = "driver_phone")
+    private String driverPhone;
 
     @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount;

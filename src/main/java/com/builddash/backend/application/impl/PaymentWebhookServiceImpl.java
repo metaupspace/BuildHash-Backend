@@ -49,8 +49,9 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
     }
 
     private void updatePaymentStatus(UUID orderId, PaymentStatus status) {
-        paymentRepository.findByOrderId(orderId).ifPresent(payment -> {
-            com.builddash.backend.domain.model.Payment updated = status == PaymentStatus.SUCCESS ? 
+        // ponytail: matches latest Payment row since dummy gateway doesn't provide transactionId. Real gateway should match on transactionId.
+        paymentRepository.findLatestByOrderId(orderId).ifPresent(payment -> {
+            com.builddash.backend.domain.model.Payment updated = status == PaymentStatus.SUCCESS ?
                 payment.markSuccess(payment.transactionId()) : payment.markFailed(payment.transactionId());
             paymentRepository.save(updated);
         });

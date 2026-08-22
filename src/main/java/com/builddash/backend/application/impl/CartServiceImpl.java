@@ -96,6 +96,32 @@ public class CartServiceImpl implements CartService {
         cartRepository.save(updated);
     }
 
+    @Override
+    @Transactional
+    public PricedCart replaceItems(UUID userId, UUID projectId, List<CartLineItem> items) {
+        Cart cart = getOrCreateCart(userId, projectId);
+        cartLineItemRepository.deleteByCartId(cart.id());
+
+        for (CartLineItem inputItem : items) {
+            if (productRepository.findById(inputItem.productId()).isEmpty()) {
+                throw new NotFoundException("PRODUCT_NOT_FOUND", "Product not found: " + inputItem.productId());
+            }
+            CartLineItem lineItem = new CartLineItem(
+                    UUID.randomUUID(),
+                    cart.id(),
+                    inputItem.productId(),
+                    inputItem.quantity(),
+                    null
+            );
+            cartLineItemRepository.save(lineItem);
+        }
+
+        Cart updated = new Cart(cart.id(), cart.userId(), cart.projectId(), null, List.of());
+        cartRepository.save(updated);
+        Cart refreshed = cartRepository.findById(cart.id()).orElseThrow();
+        return cartPricingCalculator.calculate(refreshed, userId);
+    }
+
     private Cart getOrCreateCart(UUID userId, UUID projectId) {
         return cartRepository.findByUserIdAndProjectId(userId, projectId)
                 .orElseGet(() -> {

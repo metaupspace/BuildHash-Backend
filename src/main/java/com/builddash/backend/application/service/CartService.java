@@ -17,4 +17,6 @@ public interface CartService {
     PricedCart removeCartCoupon(UUID userId, UUID projectId);
 
     void clearCart(UUID userId, UUID projectId);
+
+    PricedCart replaceItems(UUID userId, UUID projectId, java.util.List<com.builddash.backend.domain.model.CartLineItem> items);
 }

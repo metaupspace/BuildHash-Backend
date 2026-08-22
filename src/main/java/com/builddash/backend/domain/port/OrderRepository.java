@@ -12,4 +12,5 @@ public interface OrderRepository {
     Optional<Order> findById(UUID id);
     Optional<Order> findByIdForUpdate(UUID id);
     List<UUID> findStalePaymentPendingOrderIds(Instant cutoff);
+    List<Order> findAllByUserId(UUID userId);
 }
