@@ -42,6 +42,9 @@ public class CouponEntity {
     @Column(name = "discount_value")
     private BigDecimal discountValue;
 
+    @Column(name = "min_order_value")
+    private BigDecimal minOrderValue;
+
     @Column(name = "expires_at")
     private Instant expiresAt;
 
