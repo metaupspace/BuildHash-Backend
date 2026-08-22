@@ -59,7 +59,7 @@ class CartPricingCalculatorTest {
         String couponCode = "MIN5000";
 
         CartLineItem item = new CartLineItem(UUID.randomUUID(), UUID.randomUUID(), productId, 1, null);
-        Cart cart = new Cart(UUID.randomUUID(), userId, null, couponCode, List.of(item));
+        Cart cart = new Cart(UUID.randomUUID(), userId, null, com.builddash.backend.domain.enums.CartType.PRIMARY, couponCode, List.of(item));
 
         PriceCalculationResult itemResult = new PriceCalculationResult(
                 productId, 1, "1234", cartTotal, cartTotal,
@@ -98,7 +98,7 @@ class CartPricingCalculatorTest {
         String couponCode = "EXPIRED10";
 
         CartLineItem item = new CartLineItem(UUID.randomUUID(), UUID.randomUUID(), productId, 1, null);
-        Cart cart = new Cart(UUID.randomUUID(), userId, null, couponCode, List.of(item));
+        Cart cart = new Cart(UUID.randomUUID(), userId, null, com.builddash.backend.domain.enums.CartType.PRIMARY, couponCode, List.of(item));
 
         BigDecimal cartTotal = new BigDecimal("1000.00");
         PriceCalculationResult itemResult = new PriceCalculationResult(

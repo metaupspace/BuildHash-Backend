@@ -13,3 +13,6 @@ CREATE INDEX idx_delivery_tracking_events_order_recorded ON delivery_tracking_ev
 ALTER TABLE orders
     ADD COLUMN driver_id VARCHAR(100),
     ADD COLUMN driver_phone VARCHAR(20);
+
+ALTER TABLE carts
+    ADD COLUMN cart_type VARCHAR(20) NOT NULL DEFAULT 'PRIMARY';
