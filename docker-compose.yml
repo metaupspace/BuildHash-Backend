@@ -13,7 +13,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6379:6379"https://medium.com/from-tutorials-to-real-applications/spring-data-jpa-for-beginners-who-want-to-build-real-applications-not-just-demos-47f4e1ed4de3
     volumes:
       - redis-data:/data
 

@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
  * wire instead of Java serialization, so messages stay human-readable and language-agnostic.
  */
 @Configuration
-public class RabbitConfig {
+public class RabbitMqConfig {
 
     @Bean
     public MessageConverter jsonMessageConverter() {

@@ -37,7 +37,7 @@ import lombok.RequiredArgsConstructor;
 public class CatalogReindexer {
 
     private static final String PRODUCTS_ALIAS = "products";
-    private static final int PAGE_SIZE = 200;
+    private static final int PAGE_SIZE = 200; // fix it should come from request dto
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
