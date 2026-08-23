@@ -20,6 +20,10 @@ public class DummyPaymentGatewayAdapter implements PaymentGateway {
 
     @Override
     public PaymentReference initiate(UUID orderId, BigDecimal amount) {
+        if (amount != null && amount.compareTo(new BigDecimal("9999")) == 0) {
+            throw new RuntimeException("Simulated gateway connection timeout");
+        }
+
         String txId = "dummy_tx_" + UUID.randomUUID();
         String url = "https://dummy.gateway.local/pay/" + txId;
 
