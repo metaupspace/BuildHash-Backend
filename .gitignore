@@ -20,3 +20,6 @@ docs/builddash-backend-side-features-detailed.md
 docs/PROGRESS.md
 docs/INFRA.md
 docs
+graphify-out
+app.log
+app.pid
