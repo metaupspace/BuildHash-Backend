@@ -1,0 +1,28 @@
+package com.builddash.backend.infra.persistence.order;
+
+import com.builddash.backend.domain.model.Order;
+import com.builddash.backend.domain.port.OrderRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+import java.util.UUID;
+
+@Component
+@RequiredArgsConstructor
+public class OrderRepositoryAdapter implements OrderRepository {
+
+    private final OrderJpaRepository jpaRepository;
+    private final OrderMapper mapper;
+
+    @Override
+    public Order save(Order order) {
+        OrderEntity saved = jpaRepository.save(mapper.toEntity(order));
+        return mapper.toDomain(saved);
+    }
+
+    @Override
+    public Optional<Order> findById(UUID id) {
+        return jpaRepository.findById(id).map(mapper::toDomain);
+    }
+}
