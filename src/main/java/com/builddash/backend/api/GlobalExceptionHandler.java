@@ -2,15 +2,18 @@ package com.builddash.backend.api;
 
 import com.builddash.backend.api.dto.ApiError;
 import com.builddash.backend.domain.exception.BadRequestException;
+import com.builddash.backend.domain.exception.CheckoutValidationException;
+import com.builddash.backend.domain.exception.ContractPriceOverlapException;
 import com.builddash.backend.domain.exception.DomainException;
 import com.builddash.backend.domain.exception.ForbiddenException;
+import com.builddash.backend.domain.exception.GstRateUnresolvedException;
 import com.builddash.backend.domain.exception.LockedException;
 import com.builddash.backend.domain.exception.NotFoundException;
+import com.builddash.backend.domain.exception.ProductNotPricedException;
+import com.builddash.backend.domain.exception.SlotUnavailableException;
 import com.builddash.backend.domain.exception.TooManyRequestsException;
 import com.builddash.backend.domain.exception.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -20,24 +23,24 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
-    /**
-     * Domain exceptions carry no HttpStatus themselves (domain code stays ignorant of
-     * HTTP) — this is the one place that maps each business-rule-violation type to its
-     * wire-level status.
-     */
-    private static final Map<Class<? extends DomainException>, HttpStatus> STATUS_BY_EXCEPTION = Map.of(
-            BadRequestException.class, HttpStatus.BAD_REQUEST,
-            UnauthorizedException.class, HttpStatus.UNAUTHORIZED,
-            ForbiddenException.class, HttpStatus.FORBIDDEN,
-            NotFoundException.class, HttpStatus.NOT_FOUND,
-            LockedException.class, HttpStatus.LOCKED,
-            TooManyRequestsException.class, HttpStatus.TOO_MANY_REQUESTS
+    private static final Map<Class<? extends DomainException>, HttpStatus> STATUS_BY_EXCEPTION = Map.ofEntries(
+            Map.entry(BadRequestException.class, HttpStatus.BAD_REQUEST),
+            Map.entry(UnauthorizedException.class, HttpStatus.UNAUTHORIZED),
+            Map.entry(ForbiddenException.class, HttpStatus.FORBIDDEN),
+            Map.entry(NotFoundException.class, HttpStatus.NOT_FOUND),
+            Map.entry(LockedException.class, HttpStatus.LOCKED),
+            Map.entry(TooManyRequestsException.class, HttpStatus.TOO_MANY_REQUESTS),
+            Map.entry(SlotUnavailableException.class, HttpStatus.CONFLICT),
+            Map.entry(CheckoutValidationException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(ContractPriceOverlapException.class, HttpStatus.CONFLICT),
+            Map.entry(ProductNotPricedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(GstRateUnresolvedException.class, HttpStatus.UNPROCESSABLE_ENTITY)
     );
 
     @ExceptionHandler(DomainException.class)
@@ -54,12 +57,6 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", message, request);
     }
 
-    /**
-     * Covers malformed request input that isn't a validation-annotated field — e.g. a
-     * non-UUID value in a filter query param. Path-variable resource ids are handled
-     * separately by the controller (a malformed id is treated as "not found", not "bad
-     * request") before this ever fires for those.
-     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", ex.getMessage(), request);
