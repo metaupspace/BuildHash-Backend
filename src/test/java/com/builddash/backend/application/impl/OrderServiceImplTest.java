@@ -11,6 +11,7 @@ import com.builddash.backend.domain.model.PaymentReference;
 import com.builddash.backend.domain.model.PricedCart;
 import com.builddash.backend.domain.port.IdempotencyKeyRepository;
 import com.builddash.backend.domain.port.OrderRepository;
+import com.builddash.backend.domain.port.PaymentRepository;
 import com.builddash.backend.domain.port.PaymentGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,8 @@ class OrderServiceImplTest {
     @Mock
     private OrderRepository orderRepository;
     @Mock
+    private PaymentRepository paymentRepository;
+    @Mock
     private IdempotencyKeyRepository idempotencyKeyRepository;
     @Mock
     private PaymentGateway paymentGateway;
@@ -67,7 +70,7 @@ class OrderServiceImplTest {
     @Test
     void create_whenIdempotencyKeyExists_returnsExistingOrderAndInitiatesPayment() {
         UUID existingOrderId = UUID.randomUUID();
-        Order existingOrder = new Order(existingOrderId, userId, addressId, slotId, slotDate, expectedTotal, OrderStatus.PAYMENT_PENDING, List.of());
+        Order existingOrder = new Order(existingOrderId, userId, addressId, slotId, slotDate, expectedTotal, OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), List.of());
 
         when(idempotencyKeyRepository.findOrderId(idempotencyKey)).thenReturn(Optional.of(existingOrderId));
         when(orderRepository.findById(existingOrderId)).thenReturn(Optional.of(existingOrder));
@@ -93,7 +96,7 @@ class OrderServiceImplTest {
         
         when(checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal)).thenReturn(intent);
         
-        Order savedOrder = new Order(UUID.randomUUID(), userId, addressId, slotId, slotDate, expectedTotal, OrderStatus.PAYMENT_PENDING, List.of());
+        Order savedOrder = new Order(UUID.randomUUID(), userId, addressId, slotId, slotDate, expectedTotal, OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), List.of());
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
         
         when(paymentGateway.initiate(savedOrder.id(), expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
@@ -117,7 +120,7 @@ class OrderServiceImplTest {
         
         when(checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal)).thenReturn(intent);
         
-        Order savedOrder = new Order(UUID.randomUUID(), userId, addressId, slotId, slotDate, expectedTotal, OrderStatus.PAYMENT_PENDING, List.of());
+        Order savedOrder = new Order(UUID.randomUUID(), userId, addressId, slotId, slotDate, expectedTotal, OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), List.of());
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
         
         when(paymentGateway.initiate(savedOrder.id(), expectedTotal)).thenThrow(new RuntimeException("Gateway down"));

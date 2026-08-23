@@ -65,6 +65,7 @@ public class CheckoutIntentServiceImpl implements CheckoutIntentService {
                 slotDate,
                 pricedCart.finalTotal(),
                 lock.expiresAt(),
+                lock.id(),
                 pricedCart
         );
     }

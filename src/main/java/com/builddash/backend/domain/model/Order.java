@@ -16,19 +16,20 @@ public record Order(
         LocalDate slotDate,
         BigDecimal totalAmount,
         OrderStatus status,
+        UUID deliverySlotLockId,
         List<OrderLineItem> lineItems
 ) {
     public Order confirm() {
         if (status != OrderStatus.PAYMENT_PENDING) {
             throw new InvalidOrderStateException(status.name(), OrderStatus.CONFIRMED.name());
         }
-        return new Order(id, userId, addressId, slotId, slotDate, totalAmount, OrderStatus.CONFIRMED, lineItems);
+        return new Order(id, userId, addressId, slotId, slotDate, totalAmount, OrderStatus.CONFIRMED, deliverySlotLockId, lineItems);
     }
 
     public Order cancel() {
         if (status == OrderStatus.DELIVERED || status == OrderStatus.CANCELLED) {
             throw new InvalidOrderStateException(status.name(), OrderStatus.CANCELLED.name());
         }
-        return new Order(id, userId, addressId, slotId, slotDate, totalAmount, OrderStatus.CANCELLED, lineItems);
+        return new Order(id, userId, addressId, slotId, slotDate, totalAmount, OrderStatus.CANCELLED, deliverySlotLockId, lineItems);
     }
 }

@@ -42,6 +42,9 @@ public class OrderEntity {
     @Column(name = "slot_date", nullable = false)
     private LocalDate slotDate;
 
+    @Column(name = "delivery_slot_lock_id", nullable = false)
+    private UUID deliverySlotLockId;
+
     @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount;
 
