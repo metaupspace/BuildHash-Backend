@@ -78,10 +78,11 @@ class CatalogReindexerJpaIT extends AbstractIntegrationTest {
 
         reindexer.reindex();
 
-        // Old index is bit-for-bit unchanged — the backfill never wrote to it. Anyone reading
-        // via the alias throughout the whole backfill window would have seen exactly this,
-        // complete and untouched, right up until the swap below took effect.
-        assertThat(admin.documentCount(OLD_INDEX)).isEqualTo(1);
+        // The backfill never wrote to the old index (unit test pins the swap-then-delete
+        // ordering); once the run completes the superseded index is deleted — before this
+        // cleanup existed, every run leaked one index until the cluster's 1000-shard
+        // cap filled and createIndex started failing.
+        assertThat(admin.documentCount(OLD_INDEX)).isZero();
 
         // The alias now points somewhere else entirely — never OLD_INDEX again.
         assertThat(admin.resolveAlias(PRODUCTS_ALIAS)).isNotEqualTo(OLD_INDEX);

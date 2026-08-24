@@ -20,6 +20,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Blue-green reindex (PLAN_PHASE1.md Section 3), built against a nightly cron trigger only
@@ -32,6 +33,7 @@ import lombok.RequiredArgsConstructor;
  * construction, already reflected in the backfill that just completed (same Postgres source
  * of truth). Rows created during the run are left for the next cycle, not raced against.
  */
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class CatalogReindexer {
@@ -54,11 +56,23 @@ public class CatalogReindexer {
         Map<UUID, Category> categoriesById = categoryRepository.findAll().stream()
                 .collect(Collectors.toMap(Category::getId, category -> category));
 
+        String previousIndex = searchIndexAdmin.resolveAlias(PRODUCTS_ALIAS);
         String newIndex = searchIndexAdmin.createIndex();
         backfill(newIndex, categoriesById);
         searchIndexAdmin.swapAlias(PRODUCTS_ALIAS, newIndex);
 
         reconcileOutbox(startedAt);
+
+        // Blue-green cleanup: without this every run leaks one index — 500 leaked indices
+        // filled the cluster's 1000-shard cap and createIndex started failing. Best-effort:
+        // a failed delete only leaks one index for a later sweep, it must not fail the run.
+        if (previousIndex != null && !previousIndex.equals(newIndex)) {
+            try {
+                searchIndexAdmin.deleteIndex(previousIndex);
+            } catch (RuntimeException e) {
+                log.warn("Failed to delete superseded index {}: {}", previousIndex, e.getMessage());
+            }
+        }
     }
 
     private void backfill(String indexName, Map<UUID, Category> categoriesById) {

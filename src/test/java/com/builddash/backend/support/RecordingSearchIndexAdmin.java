@@ -42,6 +42,12 @@ public class RecordingSearchIndexAdmin implements SearchIndexAdmin {
         return aliasToIndex.get(alias);
     }
 
+    @Override
+    public void deleteIndex(String indexName) {
+        indices.remove(indexName);
+        aliasToIndex.values().remove(indexName);
+    }
+
     public ProductSyncPayload getFromAlias(String alias, UUID productId) {
         String index = aliasToIndex.get(alias);
         return index == null ? null : indices.get(index).get(productId);

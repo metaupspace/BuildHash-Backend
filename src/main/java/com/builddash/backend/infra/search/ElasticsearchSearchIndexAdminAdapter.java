@@ -87,6 +87,15 @@ public class ElasticsearchSearchIndexAdminAdapter implements SearchIndexAdmin {
     }
 
     @Override
+    public void deleteIndex(String indexName) {
+        try {
+            client.indices().delete(d -> d.index(indexName));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to delete index " + indexName, e);
+        }
+    }
+
+    @Override
     public String resolveAlias(String alias) {
         try {
             GetAliasResponse response = client.indices().getAlias(g -> g.name(alias));

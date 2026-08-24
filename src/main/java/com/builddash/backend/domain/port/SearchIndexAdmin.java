@@ -19,6 +19,10 @@ public interface SearchIndexAdmin {
     /** Atomically repoints alias to newIndexName (remove old + add new in one call). */
     void swapAlias(String alias, String newIndexName);
 
+    /** Deletes a superseded index by name. Best-effort caller-side: a failure must not
+     *  break the reindex run, only leak one index for a later sweep. */
+    void deleteIndex(String indexName);
+
     /** The index an alias currently resolves to, or null if the alias doesn't exist yet. */
     String resolveAlias(String alias);
 }
