@@ -59,4 +59,13 @@ class ProductSyncProjectionBuilderTest {
 
         assertThat(payload.stockStatus()).isEqualTo("out_of_stock");
     }
+
+    @Test
+    void build_nullCategory_indexesWithoutCategoryName() {
+        // Orphan product (category row deleted) must not crash the nightly reindex
+        ProductSyncPayload payload = builder.build(product(List.of(new StockEntry("WH-1", 5))), null);
+
+        assertThat(payload).isNotNull();
+        assertThat(payload.category()).isNull();
+    }
 }

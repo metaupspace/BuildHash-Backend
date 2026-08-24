@@ -18,4 +18,15 @@ class CouponRedemptionRepositoryAdapter implements CouponRedemptionRepository {
     public int countByUserAndCoupon(UUID userId, UUID couponId) {
         return jpaRepository.countByUserIdAndCouponId(userId, couponId);
     }
+
+    @Override
+    public void record(UUID userId, UUID couponId, UUID orderId) {
+        com.builddash.backend.infra.persistence.entity.CouponRedemptionEntity entity =
+                new com.builddash.backend.infra.persistence.entity.CouponRedemptionEntity();
+        entity.setCouponId(couponId);
+        entity.setUserId(userId);
+        entity.setOrderId(orderId);
+        entity.setRedeemedAt(java.time.Instant.now());
+        jpaRepository.save(entity);
+    }
 }

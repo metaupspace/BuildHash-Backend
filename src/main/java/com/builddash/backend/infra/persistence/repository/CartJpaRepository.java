@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public interface CartJpaRepository extends JpaRepository<CartEntity, UUID> {
 
-    @Query("SELECT c FROM CartEntity c LEFT JOIN FETCH c.items WHERE c.userId = :userId AND ((:projectId IS NULL AND c.projectId IS NULL) OR (c.projectId = :projectId))")
+    @Query("SELECT c FROM CartEntity c LEFT JOIN FETCH c.items WHERE c.userId = :userId AND c.type = com.builddash.backend.domain.enums.CartType.PRIMARY AND ((:projectId IS NULL AND c.projectId IS NULL) OR (c.projectId = :projectId))")
     Optional<CartEntity> findByUserIdAndProjectId(@Param("userId") UUID userId, @Param("projectId") UUID projectId);
 
     @Query("SELECT c FROM CartEntity c LEFT JOIN FETCH c.items WHERE c.id = :id")

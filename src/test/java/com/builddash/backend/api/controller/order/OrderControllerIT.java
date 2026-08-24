@@ -99,7 +99,7 @@ class OrderControllerIT extends AbstractIntegrationTest {
         jdbcTemplate.update("INSERT INTO hsn_gst_rates (hsn_code, description, gst_rate_percent, category, created_at, updated_at) VALUES ('1234', 'Desc', 18.00, 'Cat', now(), now()) ON CONFLICT DO NOTHING");
 
         Order order = new Order(orderId, userId, addressId, UUID.fromString("33333333-3333-3333-3333-333333333333"), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.DELIVERED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of(
-            new com.builddash.backend.domain.model.OrderLineItem(UUID.randomUUID(), productId, 2, new BigDecimal("50.00"), BigDecimal.ZERO)
+            new com.builddash.backend.domain.model.OrderLineItem(UUID.randomUUID(), productId, 2, new BigDecimal("50.00"), BigDecimal.ZERO, new BigDecimal("100.00"))
         ));
         orderRepository.save(order);
 

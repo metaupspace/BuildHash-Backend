@@ -5,6 +5,7 @@ import com.builddash.backend.domain.model.PaymentReference;
 import com.builddash.backend.domain.port.PaymentGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Component
+@Profile("!prod")
 @RequiredArgsConstructor
 public class DummyPaymentGatewayAdapter implements PaymentGateway {
 

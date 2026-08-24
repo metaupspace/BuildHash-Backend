@@ -15,4 +15,11 @@ public interface DeliverySlotService {
     DeliverySlotLock acquireOrSwapLock(UUID userId, UUID slotId, LocalDate date, Duration ttl);
 
     void releaseLock(UUID lockId, UUID userId);
+
+    /**
+     * Marks an ACTIVE lock CONSUMED on payment success. Unlike release, the counter
+     * is NOT decremented — the confirmed order still occupies delivery capacity.
+     * (Releasing on success let a capacity-N slot sell more than N deliveries.)
+     */
+    void consumeLock(UUID lockId, UUID userId);
 }

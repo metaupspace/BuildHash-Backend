@@ -21,6 +21,7 @@ public class OrderMapper {
         entity.setDriverPhone(domain.driverPhone());
         entity.setTotalAmount(domain.totalAmount());
         entity.setStatus(domain.status());
+        entity.setPlacedAt(domain.placedAt());
         
         domain.lineItems().forEach(item -> {
             OrderLineItemEntity lineEntity = new OrderLineItemEntity();
@@ -29,6 +30,7 @@ public class OrderMapper {
             lineEntity.setQuantity(item.quantity());
             lineEntity.setUnitPrice(item.unitPrice());
             lineEntity.setTaxAmount(item.taxAmount());
+            lineEntity.setLineTotal(item.lineTotal());
             entity.addLineItem(lineEntity);
         });
         
@@ -37,7 +39,7 @@ public class OrderMapper {
 
     public Order toDomain(OrderEntity entity) {
         var items = entity.getLineItems().stream()
-                .map(e -> new OrderLineItem(e.getId(), e.getProductId(), e.getQuantity(), e.getUnitPrice(), e.getTaxAmount()))
+                .map(e -> new OrderLineItem(e.getId(), e.getProductId(), e.getQuantity(), e.getUnitPrice(), e.getTaxAmount(), e.getLineTotal()))
                 .collect(Collectors.toList());
                 
         return new Order(

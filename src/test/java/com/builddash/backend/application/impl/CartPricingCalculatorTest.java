@@ -122,4 +122,68 @@ class CartPricingCalculatorTest {
         assertThat(pricedCart.couponDroppedReason()).isEqualTo("COUPON_EXPIRED");
         assertThat(pricedCart.cartDiscountTotal()).isEqualByComparingTo(BigDecimal.ZERO);
     }
+
+    @Test
+    void calculate_nonStackableCartCoupon_withItemCouponApplied_dropsCartCoupon() {
+        UUID userId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        String couponCode = "NOSTACK";
+
+        CartLineItem itemWithCoupon = new CartLineItem(UUID.randomUUID(), UUID.randomUUID(), productId, 1, "ITEM5");
+        Cart cart = new Cart(UUID.randomUUID(), userId, null, com.builddash.backend.domain.enums.CartType.PRIMARY, couponCode, List.of(itemWithCoupon));
+
+        BigDecimal cartTotal = new BigDecimal("1000.00");
+        PriceCalculationResult itemResult = new PriceCalculationResult(
+                productId, 1, "1234", cartTotal, cartTotal,
+                null, null, null, null, null, null,
+                null, BigDecimal.ZERO, null, false, BigDecimal.ZERO, null,
+                cartTotal, null, BigDecimal.ZERO, cartTotal
+        );
+        when(pricingCalculator.calculate(any())).thenReturn(itemResult);
+
+        Coupon nonStackable = new Coupon(
+                UUID.randomUUID(), couponCode, DiscountType.FLAT, new BigDecimal("100.00"),
+                null, Instant.now().plus(1, ChronoUnit.DAYS), null, List.of(), false, true,
+                Instant.now(), Instant.now()
+        );
+        when(couponRepository.findByCode(couponCode)).thenReturn(Optional.of(nonStackable));
+
+        PricedCart pricedCart = cartPricingCalculator.calculate(cart, userId);
+
+        assertThat(pricedCart.appliedCartCoupon()).isNull();
+        assertThat(pricedCart.couponDroppedReason()).isEqualTo("NON_STACKABLE");
+        assertThat(pricedCart.cartDiscountTotal()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void calculate_stackableCartCoupon_withItemCouponApplied_appliesBoth() {
+        UUID userId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        String couponCode = "STACKOK";
+
+        CartLineItem itemWithCoupon = new CartLineItem(UUID.randomUUID(), UUID.randomUUID(), productId, 1, "ITEM5");
+        Cart cart = new Cart(UUID.randomUUID(), userId, null, com.builddash.backend.domain.enums.CartType.PRIMARY, couponCode, List.of(itemWithCoupon));
+
+        BigDecimal cartTotal = new BigDecimal("1000.00");
+        PriceCalculationResult itemResult = new PriceCalculationResult(
+                productId, 1, "1234", cartTotal, cartTotal,
+                null, null, null, null, null, null,
+                null, BigDecimal.ZERO, null, false, BigDecimal.ZERO, null,
+                cartTotal, null, BigDecimal.ZERO, cartTotal
+        );
+        when(pricingCalculator.calculate(any())).thenReturn(itemResult);
+
+        Coupon stackable = new Coupon(
+                UUID.randomUUID(), couponCode, DiscountType.FLAT, new BigDecimal("100.00"),
+                null, Instant.now().plus(1, ChronoUnit.DAYS), null, List.of(), true, true,
+                Instant.now(), Instant.now()
+        );
+        when(couponRepository.findByCode(couponCode)).thenReturn(Optional.of(stackable));
+
+        PricedCart pricedCart = cartPricingCalculator.calculate(cart, userId);
+
+        assertThat(pricedCart.appliedCartCoupon()).isEqualTo(couponCode);
+        assertThat(pricedCart.couponDroppedReason()).isNull();
+        assertThat(pricedCart.cartDiscountTotal()).isEqualByComparingTo("100.00");
+    }
 }

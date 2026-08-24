@@ -28,6 +28,7 @@ class AddressServiceTest {
     private AddressRepository addressRepository;
     private GeocodingGateway geocodingGateway;
     private ServiceabilityGateway serviceabilityGateway;
+    private com.builddash.backend.domain.port.OrderRepository orderRepository;
     private AddressService addressService;
 
     @BeforeEach
@@ -35,7 +36,8 @@ class AddressServiceTest {
         addressRepository = mock(AddressRepository.class);
         geocodingGateway = mock(GeocodingGateway.class);
         serviceabilityGateway = mock(ServiceabilityGateway.class);
-        addressService = new AddressServiceImpl(addressRepository, geocodingGateway, serviceabilityGateway);
+        orderRepository = mock(com.builddash.backend.domain.port.OrderRepository.class);
+        addressService = new AddressServiceImpl(addressRepository, orderRepository, geocodingGateway, serviceabilityGateway);
     }
 
     @Test
@@ -86,9 +88,34 @@ class AddressServiceTest {
     void getAddress_whenNotFound_throwsException() {
         when(addressRepository.findById(any())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> addressService.getAddress(UUID.randomUUID()))
+        assertThatThrownBy(() -> addressService.getAddress(UUID.randomUUID(), UUID.randomUUID()))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("Address not found");
+    }
+
+    @Test
+    void getAddress_whenOwnAddress_returnsAddress() {
+        UUID userId = UUID.randomUUID();
+        UUID addrId = UUID.randomUUID();
+        Address addr = new Address(addrId, userId, "HOME", "A", null, "B", "C", "D", 0.0, 0.0, true);
+        when(addressRepository.findById(addrId)).thenReturn(Optional.of(addr));
+
+        Address result = addressService.getAddress(addrId, userId);
+
+        assertThat(result).isEqualTo(addr);
+    }
+
+    @Test
+    void getAddress_whenAnotherUsersAddress_throwsUnauthorized() {
+        UUID userId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        UUID addrId = UUID.randomUUID();
+        Address addr = new Address(addrId, otherUserId, "HOME", "A", null, "B", "C", "D", 0.0, 0.0, true);
+        when(addressRepository.findById(addrId)).thenReturn(Optional.of(addr));
+
+        assertThatThrownBy(() -> addressService.getAddress(addrId, userId))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("another user");
     }
 
     @Test
@@ -113,6 +140,21 @@ class AddressServiceTest {
 
         assertThatThrownBy(() -> addressService.deleteAddress(addrId, userId))
                 .isInstanceOf(UnauthorizedException.class)
-                .hasMessageContaining("Cannot delete an address belonging to another user");
+                .hasMessageContaining("Cannot access an address belonging to another user");
+    }
+
+    @Test
+    void deleteAddress_whenOrdersReferenceAddress_throwsBadRequest() {
+        UUID userId = UUID.randomUUID();
+        UUID addrId = UUID.randomUUID();
+        Address addr = new Address(addrId, userId, "HOME", "A", null, "B", "C", "D", 0.0, 0.0, true);
+        when(addressRepository.findById(addrId)).thenReturn(Optional.of(addr));
+        when(orderRepository.existsByAddressId(addrId)).thenReturn(true);
+
+        assertThatThrownBy(() -> addressService.deleteAddress(addrId, userId))
+                .isInstanceOf(com.builddash.backend.domain.exception.BadRequestException.class)
+                .hasMessageContaining("used by existing orders");
+
+        verify(addressRepository, org.mockito.Mockito.never()).deleteById(any());
     }
 }

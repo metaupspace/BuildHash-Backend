@@ -79,4 +79,35 @@ class CartRepositoryAdapterJpaIT extends AbstractIntegrationTest {
         assertThat(found.get().items()).hasSize(1);
         assertThat(found.get().items().get(0).quantity()).isEqualTo(5);
     }
+
+    @Test
+    void findByUserIdAndProjectId_ignoresReorderScratchCarts_andReturnsPrimaryCart() {
+        User u = new User();
+        u.setPhone("+919876543211");
+        User user = userRepository.save(u);
+
+        Cart primaryCart = new Cart(
+                UUID.randomUUID(),
+                user.getId(),
+                null,
+                com.builddash.backend.domain.enums.CartType.PRIMARY, null,
+                List.of()
+        );
+        cartRepository.save(primaryCart);
+
+        Cart scratchCart = new Cart(
+                UUID.randomUUID(),
+                user.getId(),
+                null,
+                com.builddash.backend.domain.enums.CartType.REORDER_SCRATCH, null,
+                List.of()
+        );
+        cartRepository.save(scratchCart);
+
+        Optional<Cart> found = cartRepository.findByUserIdAndProjectId(user.getId(), null);
+
+        assertThat(found).isPresent();
+        assertThat(found.get().id()).isEqualTo(primaryCart.id());
+        assertThat(found.get().type()).isEqualTo(com.builddash.backend.domain.enums.CartType.PRIMARY);
+    }
 }

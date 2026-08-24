@@ -1,9 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.domain.enums.DiscountType;
-import com.builddash.backend.domain.exception.BadRequestException;
 import com.builddash.backend.domain.exception.GstRateUnresolvedException;
-import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.model.BulkPricingTier;
 import com.builddash.backend.domain.model.Coupon;
 import com.builddash.backend.domain.model.MarginRule;
@@ -58,26 +56,30 @@ class PricingSteps {
                 .build();
     }
 
+    /**
+     * Invalid coupon (missing, inactive, expired, per-user limit reached, category
+     * ineligible, minOrderValue above the line total) SKIPS the coupon rather than
+     * throwing: this step runs per line inside cart pricing, and a throw makes the
+     * whole cart unreadable — GET /cart fails and the poisoned line can't be removed.
+     * Skipping charges full price, the safe direction for money.
+     */
     static PriceCalculationResult applyCoupon(PriceCalculationResult running, PricingContext ctx) {
         if (ctx.requestedCouponCode() == null) {
             return copy(running).couponDiscountAmount(BigDecimal.ZERO).build();
         }
 
         Coupon coupon = ctx.coupon();
-        if (coupon == null || !coupon.isActive()) {
-            throw new NotFoundException("COUPON_NOT_FOUND", "Coupon not found: " + ctx.requestedCouponCode());
-        }
-        if (coupon.getExpiresAt().isBefore(ctx.asOf())) {
-            throw new BadRequestException("COUPON_EXPIRED", "Coupon has expired: " + coupon.getCode());
-        }
-        if (coupon.getMaxUsesPerUser() != null && ctx.couponRedemptionCountForUser() >= coupon.getMaxUsesPerUser()) {
-            throw new BadRequestException("COUPON_USAGE_LIMIT_REACHED",
-                    "Coupon usage limit reached: " + coupon.getCode());
-        }
-        if (!coupon.getEligibleCategoryIds().isEmpty()
-                && !coupon.getEligibleCategoryIds().contains(ctx.product().getCategoryId())) {
-            throw new BadRequestException("COUPON_CATEGORY_INELIGIBLE",
-                    "Coupon not eligible for this product's category: " + coupon.getCode());
+        if (coupon == null || !coupon.isActive()
+                || coupon.getExpiresAt().isBefore(ctx.asOf())
+                || (coupon.getMaxUsesPerUser() != null
+                        && ctx.couponRedemptionCountForUser() >= coupon.getMaxUsesPerUser())
+                || (!coupon.getEligibleCategoryIds().isEmpty()
+                        && !coupon.getEligibleCategoryIds().contains(ctx.product().getCategoryId()))
+                || (coupon.getMinOrderValue() != null
+                        && running.contractAdjustedTotal().compareTo(coupon.getMinOrderValue()) < 0)) {
+            log.warn("Skipping item coupon {}: not applicable (inactive/expired/limit/category/min-order)",
+                    ctx.requestedCouponCode());
+            return copy(running).couponDiscountAmount(BigDecimal.ZERO).build();
         }
 
         BigDecimal rawDiscount = coupon.getDiscountType() == DiscountType.PERCENT

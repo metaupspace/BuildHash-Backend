@@ -14,11 +14,6 @@ public class IdempotencyKeyRepositoryAdapter implements IdempotencyKeyRepository
     private final IdempotencyKeyJpaRepository jpaRepository;
 
     @Override
-    public boolean exists(String key) {
-        return jpaRepository.existsById(key);
-    }
-
-    @Override
     public Optional<UUID> findOrderId(String key) {
         return jpaRepository.findById(key).map(IdempotencyKeyEntity::getOrderId);
     }

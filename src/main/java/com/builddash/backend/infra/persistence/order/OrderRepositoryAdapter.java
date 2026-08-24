@@ -40,6 +40,11 @@ public class OrderRepositoryAdapter implements OrderRepository {
     }
 
     @Override
+    public boolean existsByAddressId(UUID addressId) {
+        return jpaRepository.existsByAddressId(addressId);
+    }
+
+    @Override
     public List<Order> findAllByUserId(UUID userId) {
         return jpaRepository.findAllByUserIdOrderByPlacedAtDesc(userId).stream()
                 .map(mapper::toDomain)

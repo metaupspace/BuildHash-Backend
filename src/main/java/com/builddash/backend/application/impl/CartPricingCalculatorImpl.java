@@ -94,6 +94,9 @@ public class CartPricingCalculatorImpl implements CartPricingCalculator {
                     couponDroppedReason = "MAX_USES_EXCEEDED";
                 } else if (coupon.getMinOrderValue() != null && subtotal.subtract(itemDiscountsTotal).compareTo(coupon.getMinOrderValue()) < 0) {
                     couponDroppedReason = "MIN_ORDER_VALUE_NOT_MET";
+                } else if (!coupon.isStackable() && cart.items().stream()
+                        .anyMatch(item -> item.appliedItemCoupon() != null && !item.appliedItemCoupon().isBlank())) {
+                    couponDroppedReason = "NON_STACKABLE";
                 } else {
                     // Valid coupon, compute discount
                     BigDecimal cartEligibleAmount = subtotal.subtract(itemDiscountsTotal);

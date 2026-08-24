@@ -40,4 +40,7 @@ public class OrderLineItemEntity {
 
     @Column(name = "tax_amount", nullable = false)
     private BigDecimal taxAmount;
+
+    @Column(name = "line_total", nullable = false)
+    private BigDecimal lineTotal;
 }

@@ -2,9 +2,14 @@ package com.builddash.backend.api.controller.order;
 
 import com.builddash.backend.api.dto.request.CreateOrderRequest;
 import com.builddash.backend.api.dto.response.OrderResponse;
+import com.builddash.backend.api.mapper.OrderDtoMapper;
 import com.builddash.backend.application.service.OrderService;
+import com.builddash.backend.application.service.OrderResult;
+import com.builddash.backend.application.service.ReorderResult;
 import com.builddash.backend.common.AuthenticatedUser;
+import com.builddash.backend.domain.enums.OrderStatus;
 import com.builddash.backend.domain.exception.PaymentGatewayException;
+import com.builddash.backend.domain.model.Order;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +44,9 @@ class OrderControllerTest {
     @Mock
     private OrderService orderService;
 
+    @Mock
+    private OrderDtoMapper orderMapper;
+
     @InjectMocks
     private OrderController orderController;
 
@@ -67,13 +75,16 @@ class OrderControllerTest {
     }
 
 
-    
+
     @Test
     void createOrder_happyPath_returnsCreatedOrder() throws Exception {
         UUID orderId = UUID.randomUUID();
+        Order order = new Order(orderId, userId, UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of());
+        OrderResult result = new OrderResult(order, "url-1");
         OrderResponse response = new OrderResponse(orderId, "PAYMENT_PENDING", new BigDecimal("100.00"), "url-1", java.time.Instant.now(), null, null, java.util.List.of());
-        
-        when(orderService.create(eq(userId), any(), any(), any(), any(), eq("key-1"))).thenReturn(response);
+
+        when(orderService.create(eq(userId), any(), any(), any(), any(), eq("key-1"))).thenReturn(result);
+        when(orderMapper.toResponse(result)).thenReturn(response);
 
         CreateOrderRequest request = new CreateOrderRequest(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), new BigDecimal("100.00"));
 
@@ -88,12 +99,15 @@ class OrderControllerTest {
 
 
 
-    
+
     @Test
     void getOrder_happyPath_returnsOrder() throws Exception {
         UUID orderId = UUID.randomUUID();
+        Order order = new Order(orderId, userId, UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.CONFIRMED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of());
         OrderResponse response = new OrderResponse(orderId, "CONFIRMED", new BigDecimal("100.00"), null, java.time.Instant.now(), null, null, java.util.List.of());
-        when(orderService.getOrder(userId, orderId)).thenReturn(response);
+
+        when(orderService.getOrder(userId, orderId)).thenReturn(order);
+        when(orderMapper.toResponse(order)).thenReturn(response);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/orders/" + orderId))
                 .andExpect(status().isOk())
@@ -101,12 +115,15 @@ class OrderControllerTest {
     }
 
 
-    
+
     @Test
     void listOrders_happyPath_returnsOrders() throws Exception {
         UUID orderId = UUID.randomUUID();
+        Order order = new Order(orderId, userId, UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.CONFIRMED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of());
         OrderResponse response = new OrderResponse(orderId, "CONFIRMED", new BigDecimal("100.00"), null, java.time.Instant.now(), null, null, java.util.List.of());
-        when(orderService.listOrders(userId)).thenReturn(java.util.List.of(response));
+
+        when(orderService.listOrders(userId)).thenReturn(java.util.List.of(order));
+        when(orderMapper.toResponse(order)).thenReturn(response);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/orders"))
                 .andExpect(status().isOk())
@@ -114,20 +131,20 @@ class OrderControllerTest {
     }
 
 
-    
+
     @Test
     void reorder_happyPath_returnsCartId() throws Exception {
         UUID orderId = UUID.randomUUID();
         UUID cartId = UUID.randomUUID();
-        com.builddash.backend.api.dto.response.ReorderResponse response = new com.builddash.backend.api.dto.response.ReorderResponse(cartId, "Items added to cart");
-        when(orderService.reorder(userId, orderId)).thenReturn(response);
+        ReorderResult result = new ReorderResult(cartId, "Items added to cart");
+        when(orderService.reorder(userId, orderId)).thenReturn(result);
 
         mockMvc.perform(post("/orders/" + orderId + "/reorder"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cartId").exists());
     }
 
-    
+
     @Test
     void createOrder_whenPaymentGatewayFails_returnsBadGatewayWithOrderId() throws Exception {
         UUID orderId = UUID.randomUUID();

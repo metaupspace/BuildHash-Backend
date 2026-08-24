@@ -22,6 +22,8 @@ public class StaleOrderSweepServiceImpl implements StaleOrderSweepService {
 
     private final OrderRepository orderRepository;
     private final DeliverySlotService deliverySlotService;
+    private final com.builddash.backend.domain.port.DeliverySlotLockRepository deliverySlotLockRepository;
+    private final com.builddash.backend.domain.port.DeliverySlotCounterRepository deliverySlotCounterRepository;
     private @org.springframework.context.annotation.Lazy @org.springframework.beans.factory.annotation.Autowired StaleOrderSweepServiceImpl self; // Self-injection for REQUIRED_NEW transaction boundary
 
     @Override
@@ -62,5 +64,31 @@ public class StaleOrderSweepServiceImpl implements StaleOrderSweepService {
         } catch (Exception e) {
             log.warn("Could not release slot lock {} for order {}", cancelled.deliverySlotLockId(), orderId, e);
         }
+    }
+
+    @Override
+    public void sweepExpiredLocks() {
+        List<com.builddash.backend.domain.model.DeliverySlotLock> expired =
+                deliverySlotLockRepository.findExpiredActiveLocks(Instant.now());
+        if (expired.isEmpty()) {
+            return;
+        }
+        log.info("Sweeping {} expired delivery-slot locks", expired.size());
+
+        for (com.builddash.backend.domain.model.DeliverySlotLock lock : expired) {
+            try {
+                self.sweepExpiredLock(lock.id(), lock.slotId(), lock.slotDate());
+            } catch (Exception e) {
+                log.error("Failed to sweep expired lock {}", lock.id(), e);
+            }
+        }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sweepExpiredLock(UUID lockId, UUID slotId, java.time.LocalDate slotDate) {
+        deliverySlotCounterRepository.findBySlotIdAndSlotDateForUpdate(slotId, slotDate)
+                .ifPresent(counter -> deliverySlotCounterRepository.save(counter.decrement()));
+        deliverySlotLockRepository.updateStatus(lockId,
+                com.builddash.backend.domain.enums.DeliverySlotLockStatus.EXPIRED);
     }
 }

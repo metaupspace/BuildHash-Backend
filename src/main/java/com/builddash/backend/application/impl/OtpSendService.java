@@ -1,7 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.domain.service.OtpGenerator;
-import com.builddash.backend.infra.config.OtpProperties;
+import com.builddash.backend.domain.port.OtpConfig;
 import com.builddash.backend.domain.port.OtpDispatchQueue;
 import com.builddash.backend.domain.port.OtpRateLimiter;
 import com.builddash.backend.domain.port.OtpStore;
@@ -22,14 +22,14 @@ public class OtpSendService {
     private final OtpGenerator generator;
     private final OtpStore store;
     private final OtpDispatchQueue dispatchQueue;
-    private final OtpProperties properties;
+    private final OtpConfig config;
 
 
     public void send(String phone) {
         rateLimiter.enforceSendAllowed(phone);
 
-        String otp = generator.generate(properties.getLength());
-        store.save(phone, otp, Duration.ofSeconds(properties.getTtlSeconds()));
+        String otp = generator.generate(config.getLength());
+        store.save(phone, otp, Duration.ofSeconds(config.getTtlSeconds()));
         rateLimiter.resetFailures(phone);
 
         dispatchQueue.enqueue(phone, otp);

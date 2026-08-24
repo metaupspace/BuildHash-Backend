@@ -14,5 +14,6 @@ public class StaleOrderSweepJob {
     @Scheduled(fixedDelay = 60000)
     public void run() {
         staleOrderSweepService.sweepStaleOrders();
+        staleOrderSweepService.sweepExpiredLocks();
     }
 }

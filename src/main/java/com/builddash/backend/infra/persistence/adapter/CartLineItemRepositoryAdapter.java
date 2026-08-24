@@ -34,6 +34,7 @@ class CartLineItemRepositoryAdapter implements CartLineItemRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public CartLineItem save(CartLineItem item) {
         CartLineItemEntity entity = jpaRepository.findByCartIdAndProductId(item.cartId(), item.productId())
                 .orElseGet(() -> {
@@ -46,12 +47,24 @@ class CartLineItemRepositoryAdapter implements CartLineItemRepository {
         entity.setQuantity(item.quantity());
         entity.setAppliedItemCoupon(item.appliedItemCoupon());
         CartLineItemEntity saved = jpaRepository.save(entity);
+
+        // Keep the bidirectional collection consistent within the session — a cart
+        // read later in the same transaction maps from CartEntity.items and must
+        // see this row without a redundant re-query.
+        cartJpaRepository.findById(item.cartId()).ifPresent(cart -> {
+            cart.getItems().removeIf(existing -> existing.getId().equals(saved.getId()));
+            cart.getItems().add(saved);
+        });
+
         return CartMapper.toDomain(saved);
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void deleteByCartIdAndProductId(UUID cartId, UUID productId) {
         jpaRepository.deleteByCartIdAndProductId(cartId, productId);
+        cartJpaRepository.findById(cartId)
+                .ifPresent(cart -> cart.getItems().removeIf(item -> item.getProductId().equals(productId)));
     }
 
     @Override

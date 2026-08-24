@@ -8,6 +8,8 @@ public record OrderLineItem(
         UUID productId,
         int quantity,
         BigDecimal unitPrice,
-        BigDecimal taxAmount
+        BigDecimal taxAmount,
+        /** Charged line total, GST included. unitPrice×quantity drifts by paise (unitPrice = total/qty rounded). */
+        BigDecimal lineTotal
 ) {
 }

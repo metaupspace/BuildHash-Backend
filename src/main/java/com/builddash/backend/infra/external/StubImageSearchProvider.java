@@ -1,6 +1,7 @@
 package com.builddash.backend.infra.external;
 
 import com.builddash.backend.domain.port.ImageSearchProvider;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.UUID;
  * to enforce yet.
  */
 @Component
+@Profile("!prod")
 public class StubImageSearchProvider implements ImageSearchProvider {
 
     @Override

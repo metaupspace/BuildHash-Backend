@@ -26,3 +26,6 @@ management:
       enabled: false
     elasticsearch:
       enabled: false
+
+payment:
+  webhook-secret: test-only-webhook-secret-0123456789abcdef

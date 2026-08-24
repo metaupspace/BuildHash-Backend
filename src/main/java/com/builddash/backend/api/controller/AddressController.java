@@ -61,7 +61,7 @@ public class AddressController {
     @GetMapping("/{id}")
     @Operation(summary = "Get a single address by ID")
     public AddressResponse getAddress(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUser user) {
-        Address address = addressService.getAddress(id);
+        Address address = addressService.getAddress(id, user.userId());
         return addressDtoMapper.toResponse(address);
     }
 

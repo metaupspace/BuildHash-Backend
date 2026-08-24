@@ -44,6 +44,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/categories/**", "/products/**").permitAll()
                         .requestMatchers("/search/**").permitAll()
                         .requestMatchers("/users/**").hasRole("USER")
+                        // Guest tokens may browse (GET) but never write
+                        .requestMatchers(HttpMethod.POST, "/**").hasRole("USER")
+                        .requestMatchers(HttpMethod.PUT, "/**").hasRole("USER")
+                        .requestMatchers(HttpMethod.PATCH, "/**").hasRole("USER")
+                        .requestMatchers(HttpMethod.DELETE, "/**").hasRole("USER")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

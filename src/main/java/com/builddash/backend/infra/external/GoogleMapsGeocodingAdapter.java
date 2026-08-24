@@ -2,6 +2,7 @@ package com.builddash.backend.infra.external;
 
 import com.builddash.backend.domain.port.GeocodingGateway;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -11,6 +12,7 @@ import java.util.Optional;
  * In a real implementation, this would call the Google Maps Geocoding API.
  */
 @Component
+@Profile("!prod")
 @Slf4j
 public class GoogleMapsGeocodingAdapter implements GeocodingGateway {
 

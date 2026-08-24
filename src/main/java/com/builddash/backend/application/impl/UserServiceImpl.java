@@ -22,12 +22,18 @@ public class UserServiceImpl implements UserAccountService, UserProfileReader, U
 
 
     @Override
-    @Transactional
     public User findOrCreateByPhone(String phone) {
+        // No wrapping @Transactional: the recovery read after a constraint violation
+        // needs a fresh transaction, not the aborted one
         return userRepository.findByPhone(phone).orElseGet(() -> {
-            User user = new User();
-            user.setPhone(phone);
-            return userRepository.save(user);
+            try {
+                User user = new User();
+                user.setPhone(phone);
+                return userRepository.save(user);
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                // Concurrent first login won the phone unique index — return their row
+                return userRepository.findByPhone(phone).orElseThrow(() -> e);
+            }
         });
     }
 

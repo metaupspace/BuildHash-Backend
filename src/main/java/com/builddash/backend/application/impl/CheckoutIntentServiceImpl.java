@@ -43,10 +43,7 @@ public class CheckoutIntentServiceImpl implements CheckoutIntentService {
         }
 
         // 2. Validate Address
-        Address address = addressService.getAddress(addressId);
-        if (!address.userId().equals(userId)) {
-            throw new CheckoutValidationException("INVALID_ADDRESS", "Address does not belong to the user");
-        }
+        Address address = addressService.getAddress(addressId, userId);
         if (!address.isServiceable()) {
             throw new CheckoutValidationException("ADDRESS_NOT_SERVICEABLE", "Delivery address is outside serviceable area");
         }

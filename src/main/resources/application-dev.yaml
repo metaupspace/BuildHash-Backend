@@ -17,3 +17,6 @@ management:
   endpoint:
     health:
       show-details: always
+
+payment:
+  webhook-secret: ${PAYMENT_WEBHOOK_SECRET:dev-only-webhook-secret-0123456789abcdef}

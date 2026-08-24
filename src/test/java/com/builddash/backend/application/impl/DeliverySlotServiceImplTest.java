@@ -145,4 +145,39 @@ class DeliverySlotServiceImplTest {
         // Verifies new counter incremented
         verify(deliverySlotCounterRepository).save(new DeliverySlotCounter(newCounter.id(), newSlotId, date, 50, 1));
     }
+
+    @Test
+    void consumeLock_activeLock_marksConsumedWithoutDecrement() {
+        UUID lockId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        DeliverySlotLock lock = new DeliverySlotLock(lockId, userId, UUID.randomUUID(), LocalDate.now(), Instant.now().plusSeconds(60), DeliverySlotLockStatus.ACTIVE);
+        when(deliverySlotLockRepository.findById(lockId)).thenReturn(Optional.of(lock));
+
+        deliverySlotService.consumeLock(lockId, userId);
+
+        verify(deliverySlotLockRepository).updateStatus(lockId, DeliverySlotLockStatus.CONSUMED);
+        verify(deliverySlotCounterRepository, never()).save(any());
+    }
+
+    @Test
+    void consumeLock_alreadyReleased_noop() {
+        UUID lockId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        DeliverySlotLock lock = new DeliverySlotLock(lockId, userId, UUID.randomUUID(), LocalDate.now(), Instant.now().plusSeconds(60), DeliverySlotLockStatus.RELEASED);
+        when(deliverySlotLockRepository.findById(lockId)).thenReturn(Optional.of(lock));
+
+        deliverySlotService.consumeLock(lockId, userId);
+
+        verify(deliverySlotLockRepository, org.mockito.Mockito.never()).updateStatus(any(), any());
+    }
+
+    @Test
+    void consumeLock_wrongUser_throwsUnauthorized() {
+        UUID lockId = UUID.randomUUID();
+        DeliverySlotLock lock = new DeliverySlotLock(lockId, UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), Instant.now().plusSeconds(60), DeliverySlotLockStatus.ACTIVE);
+        when(deliverySlotLockRepository.findById(lockId)).thenReturn(Optional.of(lock));
+
+        assertThatThrownBy(() -> deliverySlotService.consumeLock(lockId, UUID.randomUUID()))
+                .isInstanceOf(com.builddash.backend.domain.exception.UnauthorizedException.class);
+    }
 }

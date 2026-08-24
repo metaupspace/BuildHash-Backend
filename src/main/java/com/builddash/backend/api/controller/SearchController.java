@@ -35,7 +35,7 @@ public class SearchController {
     public SearchResultResponse search(@RequestParam(required = false) String q,
                                         @RequestParam(required = false) String lang,
                                         @RequestParam(required = false) String category,
-                                        @RequestParam(defaultValue = "20") int limit,
+                                        @RequestParam(defaultValue = "20") @jakarta.validation.constraints.Max(value = 100, message = "limit must be at most 100") @jakarta.validation.constraints.Min(value = 1, message = "limit must be at least 1") int limit,
                                         @AuthenticationPrincipal(errorOnInvalidType = false) AuthenticatedUser principal) {
         var userId = principal == null ? null : principal.userId();
         return searchMapper.toSearchResultResponse(searchService.search(q, lang, category, limit, userId));

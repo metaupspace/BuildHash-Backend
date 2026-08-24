@@ -1,6 +1,7 @@
 package com.builddash.backend.infra.external;
 
 import com.builddash.backend.domain.port.ServiceabilityGateway;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Component;
  * For Phase 3, this simply approves all geocoded addresses as serviceable.
  */
 @Component
+@Profile("!prod")
 public class StubServiceabilityGateway implements ServiceabilityGateway {
 
     @Override

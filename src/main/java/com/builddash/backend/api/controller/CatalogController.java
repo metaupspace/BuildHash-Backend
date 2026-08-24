@@ -59,7 +59,7 @@ public class CatalogController {
     public ProductListResponse listProducts(@RequestParam(required = false) String category,
                                              @RequestParam(required = false) String brand,
                                              @RequestParam(required = false) String cursor,
-                                             @RequestParam(defaultValue = "20") int limit) {
+                                             @RequestParam(defaultValue = "20") @jakarta.validation.constraints.Max(value = 100, message = "limit must be at most 100") @jakarta.validation.constraints.Min(value = 1, message = "limit must be at least 1") int limit) {
         UUID categoryId = category == null ? null : UUID.fromString(category);
         return productMapper.toListResponse(
                 productReader.list(categoryId, brand, productMapper.toCursor(cursor), limit));

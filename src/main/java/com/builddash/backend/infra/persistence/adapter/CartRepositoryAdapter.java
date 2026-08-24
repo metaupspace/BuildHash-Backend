@@ -23,22 +23,20 @@ class CartRepositoryAdapter implements CartRepository {
 
     @Override
     public Optional<Cart> findByUserIdAndProjectId(UUID userId, UUID projectId) {
+        // Both JPA queries JOIN-FETCH items — map from the entity, don't re-query
         return jpaRepository.findByUserIdAndProjectId(userId, projectId)
-                .map(entity -> {
-                    List<CartLineItemEntity> items = cartLineItemJpaRepository.findByCartId(entity.getId());
-                    return new Cart(entity.getId(), entity.getUserId(), entity.getProjectId(), entity.getType(), entity.getAppliedCartCoupon(),
-                            items.stream().map(CartMapper::toDomain).toList());
-                });
+                .map(this::toDomain);
     }
 
     @Override
     public Optional<Cart> findById(UUID id) {
-        return jpaRepository.findById(id)
-                .map(entity -> {
-                    List<CartLineItemEntity> items = cartLineItemJpaRepository.findByCartId(entity.getId());
-                    return new Cart(entity.getId(), entity.getUserId(), entity.getProjectId(), entity.getType(), entity.getAppliedCartCoupon(),
-                            items.stream().map(CartMapper::toDomain).toList());
-                });
+        return jpaRepository.findByIdWithItems(id)
+                .map(this::toDomain);
+    }
+
+    private Cart toDomain(CartEntity entity) {
+        return new Cart(entity.getId(), entity.getUserId(), entity.getProjectId(), entity.getType(), entity.getAppliedCartCoupon(),
+                entity.getItems().stream().map(CartMapper::toDomain).toList());
     }
 
     @Override

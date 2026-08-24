@@ -144,61 +144,93 @@ class PricingStepsTest {
         assertThat(result.couponDiscountAmount()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
+    // Invalid coupons skip (discount ZERO, no appliedCouponId) instead of throwing —
+    // a throw here poisons the whole cart: GET /cart 404s and the line can't be removed.
+
     @Test
-    void applyCoupon_codeNotFound_throws() {
+    void applyCoupon_codeNotFound_skipsCoupon() {
         PriceCalculationResult running = afterContract(new BigDecimal("200.00"));
         PricingContext ctx = new ContextBuilder().coupon("BADCODE", null, 0).build();
 
-        assertThatThrownBy(() -> PricingSteps.applyCoupon(running, ctx))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining("BADCODE");
+        PriceCalculationResult result = PricingSteps.applyCoupon(running, ctx);
+
+        assertThat(result.appliedCouponId()).isNull();
+        assertThat(result.couponDiscountAmount()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test
-    void applyCoupon_inactive_treatedAsNotFound() {
+    void applyCoupon_inactive_skipsCoupon() {
         PriceCalculationResult running = afterContract(new BigDecimal("200.00"));
         Coupon inactive = coupon(DiscountType.FLAT, "10", NOW.plusSeconds(3600), null, List.of(), false);
         PricingContext ctx = new ContextBuilder().coupon("SAVE10", inactive, 0).build();
 
-        assertThatThrownBy(() -> PricingSteps.applyCoupon(running, ctx))
-                .isInstanceOf(NotFoundException.class);
+        PriceCalculationResult result = PricingSteps.applyCoupon(running, ctx);
+
+        assertThat(result.appliedCouponId()).isNull();
+        assertThat(result.couponDiscountAmount()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test
-    void applyCoupon_expired_throws() {
+    void applyCoupon_expired_skipsCoupon() {
         PriceCalculationResult running = afterContract(new BigDecimal("200.00"));
         Coupon expired = coupon(DiscountType.FLAT, "10", NOW.minusSeconds(1), null, List.of(), true);
         PricingContext ctx = new ContextBuilder().coupon("SAVE10", expired, 0).build();
 
-        assertThatThrownBy(() -> PricingSteps.applyCoupon(running, ctx))
-                .isInstanceOf(BadRequestException.class)
-                .extracting(ex -> ((BadRequestException) ex).getCode())
-                .isEqualTo("COUPON_EXPIRED");
+        PriceCalculationResult result = PricingSteps.applyCoupon(running, ctx);
+
+        assertThat(result.appliedCouponId()).isNull();
+        assertThat(result.couponDiscountAmount()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test
-    void applyCoupon_usageLimitReached_throws() {
+    void applyCoupon_usageLimitReached_skipsCoupon() {
         PriceCalculationResult running = afterContract(new BigDecimal("200.00"));
         Coupon limited = coupon(DiscountType.FLAT, "10", NOW.plusSeconds(3600), 2, List.of(), true);
         PricingContext ctx = new ContextBuilder().coupon("SAVE10", limited, 2).build();
 
-        assertThatThrownBy(() -> PricingSteps.applyCoupon(running, ctx))
-                .isInstanceOf(BadRequestException.class)
-                .extracting(ex -> ((BadRequestException) ex).getCode())
-                .isEqualTo("COUPON_USAGE_LIMIT_REACHED");
+        PriceCalculationResult result = PricingSteps.applyCoupon(running, ctx);
+
+        assertThat(result.appliedCouponId()).isNull();
+        assertThat(result.couponDiscountAmount()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test
-    void applyCoupon_categoryIneligible_throws() {
+    void applyCoupon_categoryIneligible_skipsCoupon() {
         PriceCalculationResult running = afterContract(new BigDecimal("200.00"));
         Coupon ineligible = coupon(DiscountType.FLAT, "10", NOW.plusSeconds(3600), null,
                 List.of(UUID.randomUUID()), true);
         PricingContext ctx = new ContextBuilder().coupon("SAVE10", ineligible, 0).build();
 
-        assertThatThrownBy(() -> PricingSteps.applyCoupon(running, ctx))
-                .isInstanceOf(BadRequestException.class)
-                .extracting(ex -> ((BadRequestException) ex).getCode())
-                .isEqualTo("COUPON_CATEGORY_INELIGIBLE");
+        PriceCalculationResult result = PricingSteps.applyCoupon(running, ctx);
+
+        assertThat(result.appliedCouponId()).isNull();
+        assertThat(result.couponDiscountAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void applyCoupon_minOrderValueNotMet_skipsCoupon() {
+        PriceCalculationResult running = afterContract(new BigDecimal("200.00"));
+        Coupon minOrder = new Coupon(UUID.randomUUID(), "SAVE10", DiscountType.FLAT, new BigDecimal("10"),
+                new BigDecimal("500.00"), NOW.plusSeconds(3600), null, List.of(), false, true, NOW, NOW);
+        PricingContext ctx = new ContextBuilder().coupon("SAVE10", minOrder, 0).build();
+
+        PriceCalculationResult result = PricingSteps.applyCoupon(running, ctx);
+
+        assertThat(result.appliedCouponId()).isNull();
+        assertThat(result.couponDiscountAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void applyCoupon_minOrderValueMet_appliesCoupon() {
+        PriceCalculationResult running = afterContract(new BigDecimal("600.00"));
+        Coupon minOrder = new Coupon(UUID.randomUUID(), "SAVE10", DiscountType.FLAT, new BigDecimal("10"),
+                new BigDecimal("500.00"), NOW.plusSeconds(3600), null, List.of(), false, true, NOW, NOW);
+        PricingContext ctx = new ContextBuilder().coupon("SAVE10", minOrder, 0).build();
+
+        PriceCalculationResult result = PricingSteps.applyCoupon(running, ctx);
+
+        assertThat(result.appliedCouponId()).isEqualTo(minOrder.getId());
+        assertThat(result.couponDiscountAmount()).isEqualByComparingTo(new BigDecimal("10.00"));
     }
 
     @Test

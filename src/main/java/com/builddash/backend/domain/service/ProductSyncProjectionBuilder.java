@@ -15,7 +15,9 @@ public class ProductSyncProjectionBuilder {
                 product.getId(),
                 product.getName(),
                 product.getSlug(),
-                category.getName(),
+                // Null category = orphan product; index without category rather than
+                // crash the nightly reindex before the alias swap
+                category != null ? category.getName() : null,
                 product.getBrand(),
                 product.getAttributes(),
                 inStock ? "in_stock" : "out_of_stock",

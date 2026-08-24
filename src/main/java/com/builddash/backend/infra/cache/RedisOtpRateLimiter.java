@@ -8,15 +8,32 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Component
 public class RedisOtpRateLimiter implements OtpRateLimiter {
 
+    /**
+     * INCR + PEXPIRE in one atomic Lua call. Two separate commands leave a window
+     * where a crash persists the counter without a TTL — the phone then stays
+     * rate-locked forever with no self-heal.
+     */
+    private static final org.springframework.data.redis.core.script.DefaultRedisScript<Long> INCR_WITH_TTL =
+            new org.springframework.data.redis.core.script.DefaultRedisScript<>(
+                    "local count = redis.call('INCR', KEYS[1]) " +
+                            "if count == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end " +
+                            "return count",
+                    Long.class);
+
     private final StringRedisTemplate redis;
     private final OtpProperties properties;
 
+    private long incrementWithTtlMillis(String key, long ttlMillis) {
+        Long count = redis.execute(INCR_WITH_TTL, List.of(key), String.valueOf(ttlMillis));
+        return count == null ? 0L : count;
+    }
 
     @Override
     public void enforceSendAllowed(String phone) {
@@ -25,12 +42,8 @@ public class RedisOtpRateLimiter implements OtpRateLimiter {
             throw new TooManyRequestsException("OTP_COOLDOWN", "Please wait before requesting another OTP");
         }
 
-        String sendCountKey = sendCountKey(phone);
-        Long sendCount = redis.opsForValue().increment(sendCountKey);
-        if (sendCount != null && sendCount == 1L) {
-            redis.expire(sendCountKey, Duration.ofHours(1));
-        }
-        if (sendCount != null && sendCount > properties.getRateLimitPerHour()) {
+        long sendCount = incrementWithTtlMillis(sendCountKey(phone), Duration.ofHours(1).toMillis());
+        if (sendCount > properties.getRateLimitPerHour()) {
             throw new TooManyRequestsException("OTP_RATE_LIMIT_EXCEEDED", "Too many OTP requests for this phone number, try again later");
         }
 
@@ -50,11 +63,7 @@ public class RedisOtpRateLimiter implements OtpRateLimiter {
 
     @Override
     public void recordFailedVerification(String phone) {
-        String failKey = failKey(phone);
-        Long newFailCount = redis.opsForValue().increment(failKey);
-        if (newFailCount != null && newFailCount == 1L) {
-            redis.expire(failKey, Duration.ofSeconds(properties.getTtlSeconds()));
-        }
+        incrementWithTtlMillis(failKey(phone), Duration.ofSeconds(properties.getTtlSeconds()).toMillis());
     }
 
     @Override

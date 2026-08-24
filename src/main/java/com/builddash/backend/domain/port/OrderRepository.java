@@ -13,4 +13,5 @@ public interface OrderRepository {
     Optional<Order> findByIdForUpdate(UUID id);
     List<UUID> findStalePaymentPendingOrderIds(Instant cutoff);
     List<Order> findAllByUserId(UUID userId);
+    boolean existsByAddressId(UUID addressId);
 }

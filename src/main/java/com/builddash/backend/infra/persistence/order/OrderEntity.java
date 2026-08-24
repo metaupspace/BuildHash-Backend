@@ -46,7 +46,7 @@ public class OrderEntity {
     @Column(name = "delivery_slot_lock_id", nullable = false)
     private UUID deliverySlotLockId;
 
-    @Column(name = "created_at", insertable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant placedAt;
 
     @Column(name = "driver_id")
@@ -63,6 +63,7 @@ public class OrderEntity {
     private OrderStatus status;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @org.hibernate.annotations.BatchSize(size = 50)
     private List<OrderLineItemEntity> lineItems = new ArrayList<>();
     
     public void addLineItem(OrderLineItemEntity item) {

@@ -1,8 +1,9 @@
 package com.builddash.backend.application.impl;
 
-import com.builddash.backend.api.dto.response.OrderResponse;
 import com.builddash.backend.application.service.CheckoutIntentService;
 import com.builddash.backend.application.service.OrderService;
+import com.builddash.backend.application.service.OrderResult;
+import com.builddash.backend.application.service.ReorderResult;
 import com.builddash.backend.domain.enums.OrderStatus;
 import com.builddash.backend.domain.exception.PaymentGatewayException;
 import com.builddash.backend.domain.model.CheckoutIntent;
@@ -21,16 +22,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import com.builddash.backend.api.dto.response.OrderLineItemResponse;
-import com.builddash.backend.api.dto.response.ReorderResponse;
 import com.builddash.backend.application.service.CartService;
 import com.builddash.backend.domain.model.CartLineItem;
 import java.util.stream.Collectors;
 
 import com.builddash.backend.domain.exception.InvalidOrderStateException;
 import com.builddash.backend.domain.exception.PaymentRetryInProgressException;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -44,14 +41,15 @@ public class OrderServiceImpl implements OrderService {
     private final PaymentGateway paymentGateway;
     private final TransactionTemplate transactionTemplate;
     private final CartService cartService;
+    private final com.builddash.backend.domain.port.CouponRepository couponRepository;
+    private final com.builddash.backend.domain.port.CouponRedemptionRepository couponRedemptionRepository;
 
     @Override
-    public OrderResponse create(UUID userId, UUID addressId, UUID slotId, LocalDate slotDate, BigDecimal expectedTotal, String idempotencyKey) {
+    public OrderResult create(UUID userId, UUID addressId, UUID slotId, LocalDate slotDate, BigDecimal expectedTotal, String idempotencyKey) {
         Order savedOrder = transactionTemplate.execute(status -> {
             Optional<UUID> existingOrderId = idempotencyKeyRepository.findOrderId(idempotencyKey);
             if (existingOrderId.isPresent()) {
-                return orderRepository.findById(existingOrderId.get())
-                        .orElseThrow(() -> new IllegalStateException("Order not found for idempotency key"));
+                return existingOrderForKey(idempotencyKey, userId);
             }
 
             CheckoutIntent intent = checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal, null);
@@ -62,7 +60,8 @@ public class OrderServiceImpl implements OrderService {
                             item.productId(),
                             item.quantity(),
                             item.unitFinalPrice(),
-                            item.lineGst()
+                            item.lineGst(),
+                            item.lineFinalTotal()
                     )).collect(Collectors.toList());
 
             Order newOrder = new Order(
@@ -81,136 +80,138 @@ public class OrderServiceImpl implements OrderService {
             );
 
             Order saved = orderRepository.save(newOrder);
-            idempotencyKeyRepository.save(idempotencyKey, saved.id());
+            try {
+                idempotencyKeyRepository.save(idempotencyKey, saved.id());
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                // Concurrent double-submit: this thread lost the PK race — the winner's
+                // order already exists under this key, return it instead of surfacing 500
+                return existingOrderForKey(idempotencyKey, userId);
+            }
+            recordCouponRedemptions(userId, intent.pricedCart(), saved.id());
 
             return saved;
         });
 
-        PaymentReference ref;
+        // Only the gateway call maps to PaymentGatewayException — a DB failure after a
+        // successful initiate must surface as itself, not be mislabeled "gateway down".
+        final PaymentReference ref;
         try {
             ref = paymentGateway.initiate(savedOrder.id(), savedOrder.totalAmount());
-
-            com.builddash.backend.domain.model.Payment payment = new com.builddash.backend.domain.model.Payment(
-                    UUID.randomUUID(),
-                    savedOrder.id(),
-                    ref.transactionId(),
-                    savedOrder.totalAmount(),
-                    com.builddash.backend.domain.enums.PaymentStatus.PENDING,
-                    ref.paymentUrl()
-            );
-            paymentRepository.save(payment);
-
         } catch (Exception e) {
             throw new PaymentGatewayException(savedOrder.id(), e.getMessage());
         }
 
-        return mapToResponse(savedOrder, ref.paymentUrl());
+        paymentRepository.save(new com.builddash.backend.domain.model.Payment(
+                UUID.randomUUID(),
+                savedOrder.id(),
+                ref.transactionId(),
+                savedOrder.totalAmount(),
+                com.builddash.backend.domain.enums.PaymentStatus.PENDING,
+                ref.paymentUrl()
+        ));
+
+        cartService.clearCart(userId, null);
+
+        return new OrderResult(savedOrder, ref.paymentUrl());
     }
 
-    private OrderResponse mapToResponse(Order order, String paymentUrl) {
-        List<OrderLineItemResponse> items = order.lineItems().stream()
-                .map(item -> new OrderLineItemResponse(item.productId(), item.quantity(), item.unitPrice(), item.taxAmount()))
-                .toList();
-
-        return new OrderResponse(
-                order.id(),
-                order.status().name(),
-                order.totalAmount(),
-                paymentUrl,
-                order.placedAt(),
-                order.driverId(),
-                order.driverPhone(),
-                items
-        );
-    }
-
-    @Override
-    @Transactional
-    public OrderResponse retryPayment(UUID userId, UUID orderId) {
-        // Find by ID for update to lock the row against sweep/webhook races
-        Order order = orderRepository.findByIdForUpdate(orderId)
-                .orElseThrow(() -> new com.builddash.backend.domain.exception.NotFoundException("Order", orderId.toString()));
-
+    private Order existingOrderForKey(String idempotencyKey, UUID userId) {
+        UUID orderId = idempotencyKeyRepository.findOrderId(idempotencyKey)
+                .orElseThrow(() -> new IllegalStateException("Order not found for idempotency key"));
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalStateException("Order not found for idempotency key"));
         if (!order.userId().equals(userId)) {
             throw new com.builddash.backend.domain.exception.ForbiddenException("FORBIDDEN", "User does not own this order");
         }
+        return order;
+    }
 
-        // Verify PAYMENT_PENDING under lock
-        if (order.status() != OrderStatus.PAYMENT_PENDING) {
-            throw new InvalidOrderStateException(order.status());
+    /**
+     * Persists one redemption row per applied coupon so maxUsesPerUser limits hold.
+     * Records the requested code — item coupons count as used even if a later step
+     * (e.g. margin floor) absorbed the discount; over-counting is the safe direction.
+     */
+    private void recordCouponRedemptions(UUID userId, com.builddash.backend.domain.model.PricedCart pricedCart, UUID orderId) {
+        java.util.Set<String> codes = new java.util.LinkedHashSet<>();
+        if (pricedCart.appliedCartCoupon() != null) {
+            codes.add(pricedCart.appliedCartCoupon());
         }
+        pricedCart.items().stream()
+                .map(com.builddash.backend.domain.model.PricedCartLineItem::appliedItemCoupon)
+                .filter(code -> code != null && !code.isBlank())
+                .forEach(codes::add);
 
-        // Verify latest payment status
-        Optional<com.builddash.backend.domain.model.Payment> latestPayment = paymentRepository.findLatestByOrderId(orderId);
-        if (latestPayment.isPresent() && latestPayment.get().status() == com.builddash.backend.domain.enums.PaymentStatus.PENDING) {
-            throw new PaymentRetryInProgressException();
+        for (String code : codes) {
+            couponRepository.findByCode(code)
+                    .ifPresent(coupon -> couponRedemptionRepository.record(userId, coupon.getId(), orderId));
         }
+    }
 
-        // Create new pending payment row
-        com.builddash.backend.domain.model.Payment newPayment = new com.builddash.backend.domain.model.Payment(
-                UUID.randomUUID(),
-                order.id(),
-                null,
-                order.totalAmount(),
-                com.builddash.backend.domain.enums.PaymentStatus.PENDING,
-                null
-        );
-        com.builddash.backend.domain.model.Payment savedPayment = paymentRepository.save(newPayment);
+    @Override
+    public OrderResult retryPayment(UUID userId, UUID orderId) {
+        // Tx 1: lock the order row against sweep/webhook races, validate, insert pending payment
+        final Order[] orderHolder = new Order[1];
+        com.builddash.backend.domain.model.Payment savedPayment = transactionTemplate.execute(status -> {
+            Order order = orderRepository.findByIdForUpdate(orderId)
+                    .orElseThrow(() -> new com.builddash.backend.domain.exception.NotFoundException("Order", orderId.toString()));
 
-        // Register gateway.initiate() via afterCommit
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    PaymentReference ref = paymentGateway.initiate(order.id(), order.totalAmount());
-                    com.builddash.backend.domain.model.Payment updated = new com.builddash.backend.domain.model.Payment(
-                            savedPayment.id(),
-                            order.id(),
-                            ref.transactionId(),
-                            order.totalAmount(),
-                            com.builddash.backend.domain.enums.PaymentStatus.PENDING,
-                            ref.paymentUrl()
-                    );
-                    paymentRepository.save(updated);
-                } catch (Exception e) {
-                    // Gateway failed; mark payment as failed.
-                    com.builddash.backend.domain.model.Payment failed = new com.builddash.backend.domain.model.Payment(
-                            savedPayment.id(),
-                            order.id(),
-                            null,
-                            order.totalAmount(),
-                            com.builddash.backend.domain.enums.PaymentStatus.FAILED,
-                            null
-                    );
-                    paymentRepository.save(failed);
-                }
+            if (!order.userId().equals(userId)) {
+                throw new com.builddash.backend.domain.exception.ForbiddenException("FORBIDDEN", "User does not own this order");
             }
-        });
+            if (order.status() != OrderStatus.PAYMENT_PENDING) {
+                throw new InvalidOrderStateException(order.status());
+            }
+            Optional<com.builddash.backend.domain.model.Payment> latestPayment = paymentRepository.findLatestByOrderId(orderId);
+            if (latestPayment.isPresent() && latestPayment.get().status() == com.builddash.backend.domain.enums.PaymentStatus.PENDING) {
+                throw new PaymentRetryInProgressException();
+            }
 
-        return mapToResponse(order, null);
+            orderHolder[0] = order;
+            return paymentRepository.save(new com.builddash.backend.domain.model.Payment(
+                    UUID.randomUUID(), order.id(), null, order.totalAmount(),
+                    com.builddash.backend.domain.enums.PaymentStatus.PENDING, null
+            ));
+        });
+        Order order = orderHolder[0];
+
+        // Gateway outside the tx so the row lock isn't held during the network call
+        final PaymentReference ref;
+        try {
+            ref = paymentGateway.initiate(orderId, order.totalAmount());
+        } catch (Exception e) {
+            transactionTemplate.executeWithoutResult(status -> paymentRepository.save(
+                    new com.builddash.backend.domain.model.Payment(
+                            savedPayment.id(), orderId, null, order.totalAmount(),
+                            com.builddash.backend.domain.enums.PaymentStatus.FAILED, null)));
+            throw new PaymentGatewayException(orderId, e.getMessage());
+        }
+
+        // Tx 2: record transaction id + payment URL so the client can actually pay
+        transactionTemplate.executeWithoutResult(status -> paymentRepository.save(
+                new com.builddash.backend.domain.model.Payment(
+                        savedPayment.id(), orderId, ref.transactionId(), order.totalAmount(),
+                        com.builddash.backend.domain.enums.PaymentStatus.PENDING, ref.paymentUrl())));
+
+        return new OrderResult(order, ref.paymentUrl());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public OrderResponse getOrder(UUID userId, UUID orderId) {
-        Order order = orderRepository.findById(orderId)
+    public Order getOrder(UUID userId, UUID orderId) {
+        return orderRepository.findById(orderId)
                 .filter(o -> o.userId().equals(userId))
                 .orElseThrow(() -> new com.builddash.backend.domain.exception.NotFoundException("Order", orderId.toString()));
-
-        return mapToResponse(order, null);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> listOrders(UUID userId) {
-        return orderRepository.findAllByUserId(userId).stream()
-                .map(order -> mapToResponse(order, null))
-                .toList();
+    public List<Order> listOrders(UUID userId) {
+        return orderRepository.findAllByUserId(userId);
     }
 
     @Override
     @Transactional
-    public ReorderResponse reorder(UUID userId, UUID orderId) {
+    public ReorderResult reorder(UUID userId, UUID orderId) {
         Order order = orderRepository.findById(orderId)
                 .filter(o -> o.userId().equals(userId))
                 .orElseThrow(() -> new com.builddash.backend.domain.exception.NotFoundException("Order", orderId.toString()));
@@ -227,6 +228,6 @@ public class OrderServiceImpl implements OrderService {
 
         com.builddash.backend.domain.model.PricedCart pricedCart = cartService.createReorderCart(userId, cartItems);
 
-        return new ReorderResponse(pricedCart.id(), "Items added to cart");
+        return new ReorderResult(pricedCart.id(), "Items added to cart");
     }
 }

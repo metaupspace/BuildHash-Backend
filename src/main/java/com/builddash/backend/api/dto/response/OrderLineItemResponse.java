@@ -7,6 +7,7 @@ public record OrderLineItemResponse(
         UUID productId,
         int quantity,
         BigDecimal unitPrice,
-        BigDecimal taxAmount
+        BigDecimal taxAmount,
+        BigDecimal lineTotal
 ) {
 }

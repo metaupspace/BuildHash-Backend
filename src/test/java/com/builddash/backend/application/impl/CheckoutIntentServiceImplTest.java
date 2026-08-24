@@ -59,24 +59,6 @@ class CheckoutIntentServiceImplTest {
     }
 
     @Test
-    void createIntent_addressNotBelongingToUser_throwsValidationException() {
-        UUID userId = UUID.randomUUID();
-        UUID otherUserId = UUID.randomUUID();
-        UUID addressId = UUID.randomUUID();
-
-        PricedCartLineItem item = new PricedCartLineItem(UUID.randomUUID(), 1, "123", BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.TEN, null);
-        PricedCart cart = new PricedCart(UUID.randomUUID(), userId, null, List.of(item), BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.TEN, null, null);
-        when(cartService.getCart(userId, null)).thenReturn(cart);
-
-        Address address = new Address(addressId, otherUserId, "HOME", "123 St", null, "City", "State", "12345", 10.0, 20.0, true);
-        when(addressService.getAddress(addressId)).thenReturn(address);
-
-        assertThatThrownBy(() -> checkoutIntentService.createIntent(userId, addressId, UUID.randomUUID(), LocalDate.now(), null, null))
-                .isInstanceOf(CheckoutValidationException.class)
-                .hasMessageContaining("Address does not belong to the user");
-    }
-
-    @Test
     void createIntent_addressNotServiceable_throwsValidationException() {
         UUID userId = UUID.randomUUID();
         UUID addressId = UUID.randomUUID();
@@ -86,7 +68,7 @@ class CheckoutIntentServiceImplTest {
         when(cartService.getCart(userId, null)).thenReturn(cart);
 
         Address address = new Address(addressId, userId, "HOME", "123 St", null, "City", "State", "12345", 10.0, 20.0, false);
-        when(addressService.getAddress(addressId)).thenReturn(address);
+        when(addressService.getAddress(eq(addressId), eq(userId))).thenReturn(address);
 
         assertThatThrownBy(() -> checkoutIntentService.createIntent(userId, addressId, UUID.randomUUID(), LocalDate.now(), null, null))
                 .isInstanceOf(CheckoutValidationException.class)
@@ -103,7 +85,7 @@ class CheckoutIntentServiceImplTest {
         when(cartService.getCart(userId, null)).thenReturn(cart);
 
         Address address = new Address(addressId, userId, "HOME", "123 St", null, "City", "State", "12345", 10.0, 20.0, true);
-        when(addressService.getAddress(addressId)).thenReturn(address);
+        when(addressService.getAddress(eq(addressId), eq(userId))).thenReturn(address);
 
         assertThatThrownBy(() -> checkoutIntentService.createIntent(userId, addressId, UUID.randomUUID(), LocalDate.now(), new BigDecimal("90.00"), null))
                 .isInstanceOf(CheckoutValidationException.class)
@@ -122,7 +104,7 @@ class CheckoutIntentServiceImplTest {
         when(cartService.getCart(userId, null)).thenReturn(cart);
 
         Address address = new Address(addressId, userId, "HOME", "123 St", null, "City", "State", "12345", 10.0, 20.0, true);
-        when(addressService.getAddress(addressId)).thenReturn(address);
+        when(addressService.getAddress(eq(addressId), eq(userId))).thenReturn(address);
 
         DeliverySlotLock lock = new DeliverySlotLock(UUID.randomUUID(), userId, slotId, slotDate, Instant.now().plusSeconds(900), DeliverySlotLockStatus.ACTIVE);
         when(deliverySlotService.acquireOrSwapLock(eq(userId), eq(slotId), eq(slotDate), any(Duration.class))).thenReturn(lock);

@@ -24,4 +24,5 @@ public interface OrderJpaRepository extends JpaRepository<OrderEntity, UUID> {
     List<UUID> findStalePaymentPendingOrderIds(@Param("status") OrderStatus status, @Param("cutoff") Instant cutoff);
 
     List<OrderEntity> findAllByUserIdOrderByPlacedAtDesc(UUID userId);
+    boolean existsByAddressId(UUID addressId);
 }

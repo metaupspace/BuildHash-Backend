@@ -144,4 +144,20 @@ public class DeliverySlotServiceImpl implements DeliverySlotService {
             deliverySlotLockRepository.updateStatus(lockId, DeliverySlotLockStatus.RELEASED);
         }
     }
+
+    @Override
+    @Transactional
+    public void consumeLock(UUID lockId, UUID userId) {
+        DeliverySlotLock lock = deliverySlotLockRepository.findById(lockId)
+                .orElseThrow(() -> new NotFoundException("LOCK_NOT_FOUND", "Delivery slot lock not found"));
+
+        if (!lock.userId().equals(userId)) {
+            throw new UnauthorizedException("ACCESS_DENIED", "Cannot consume lock belonging to another user");
+        }
+
+        if (lock.status() == DeliverySlotLockStatus.ACTIVE) {
+            // No decrement: the confirmed order holds this capacity for delivery
+            deliverySlotLockRepository.updateStatus(lockId, DeliverySlotLockStatus.CONSUMED);
+        }
+    }
 }

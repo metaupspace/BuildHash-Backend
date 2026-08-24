@@ -17,7 +17,7 @@ import com.builddash.backend.domain.port.GoogleIdentityGateway;
 import com.builddash.backend.domain.port.PhoneExistenceIndex;
 import com.builddash.backend.domain.port.TokenIssuer;
 import com.builddash.backend.domain.port.TokenValidator;
-import com.builddash.backend.infra.config.OtpProperties;
+import com.builddash.backend.domain.port.OtpConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -35,7 +35,7 @@ public class AuthServiceImpl implements AuthenticationFacade {
 
     private final OtpSendService otpSendService;
     private final OtpVerificationService otpVerificationService;
-    private final OtpProperties otpProperties;
+    private final OtpConfig otpConfig;
     private final TokenIssuer tokenIssuer;
     private final TokenValidator tokenValidator;
     private final GoogleIdentityGateway googleIdentityGateway;
@@ -49,7 +49,7 @@ public class AuthServiceImpl implements AuthenticationFacade {
     @Override
     public OtpSendResult sendOtp(String phone) {
         otpSendService.send(phone);
-        return new OtpSendResult(otpProperties.getTtlSeconds(), phoneExistenceIndex.mightExist(phone));
+        return new OtpSendResult(otpConfig.getTtlSeconds(), phoneExistenceIndex.mightExist(phone));
     }
 
     @Override

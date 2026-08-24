@@ -18,9 +18,15 @@ import com.builddash.backend.domain.exception.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.time.Instant;
 import java.util.Map;
@@ -64,6 +70,44 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", ex.getMessage(), request);
+    }
+
+    /**
+     * Framework-raised client errors that must not fall through to the 500 catch-all.
+     * Without these, a missing header or malformed JSON returns INTERNAL_ERROR.
+     */
+    @ExceptionHandler({
+            MissingRequestHeaderException.class,
+            MissingServletRequestParameterException.class,
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class,
+            HttpRequestMethodNotSupportedException.class,
+            MaxUploadSizeExceededException.class,
+            org.springframework.web.method.annotation.HandlerMethodValidationException.class
+    })
+    public ResponseEntity<ApiError> handleClientError(Exception ex, HttpServletRequest request) {
+        if (ex instanceof HttpRequestMethodNotSupportedException) {
+            return build(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", ex.getMessage(), request);
+        }
+        if (ex instanceof MaxUploadSizeExceededException) {
+            return build(HttpStatus.PAYLOAD_TOO_LARGE, "PAYLOAD_TOO_LARGE", ex.getMessage(), request);
+        }
+        if (ex instanceof MissingRequestHeaderException missing) {
+            return build(HttpStatus.BAD_REQUEST, "MISSING_REQUEST_HEADER",
+                    "Missing required header: " + missing.getHeaderName(), request);
+        }
+        if (ex instanceof MissingServletRequestParameterException missing) {
+            return build(HttpStatus.BAD_REQUEST, "MISSING_PARAMETER",
+                    "Missing required parameter: " + missing.getParameterName(), request);
+        }
+        if (ex instanceof MethodArgumentTypeMismatchException mismatch) {
+            return build(HttpStatus.BAD_REQUEST, "INVALID_PARAMETER",
+                    "Invalid value for parameter: " + mismatch.getName(), request);
+        }
+        if (ex instanceof org.springframework.web.method.annotation.HandlerMethodValidationException) {
+            return build(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", ex.getMessage(), request);
+        }
+        return build(HttpStatus.BAD_REQUEST, "UNREADABLE_REQUEST", "Malformed request body", request);
     }
 
     @ExceptionHandler(Exception.class)

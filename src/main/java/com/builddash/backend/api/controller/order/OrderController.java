@@ -2,7 +2,9 @@ package com.builddash.backend.api.controller.order;
 
 import com.builddash.backend.api.dto.request.CreateOrderRequest;
 import com.builddash.backend.api.dto.response.OrderResponse;
+import com.builddash.backend.api.mapper.OrderDtoMapper;
 import com.builddash.backend.application.service.OrderService;
+import com.builddash.backend.application.service.OrderResult;
 import com.builddash.backend.common.AuthenticatedUser;
 import com.builddash.backend.domain.exception.PaymentGatewayException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,6 +39,7 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+    private final OrderDtoMapper orderMapper;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -46,7 +49,7 @@ public class OrderController {
             @Valid @RequestBody CreateOrderRequest request,
             @AuthenticationPrincipal AuthenticatedUser user) {
 
-        return orderService.create(
+        OrderResult result = orderService.create(
                 user.userId(),
                 request.addressId(),
                 request.slotId(),
@@ -54,6 +57,7 @@ public class OrderController {
                 request.expectedTotal(),
                 idempotencyKey
         );
+        return orderMapper.toResponse(result);
     }
 
     @PostMapping("/{id}/payments/retry")
@@ -63,13 +67,16 @@ public class OrderController {
             @org.springframework.web.bind.annotation.PathVariable("id") java.util.UUID orderId,
             @AuthenticationPrincipal AuthenticatedUser user) {
 
-        return orderService.retryPayment(user.userId(), orderId);
+        OrderResult result = orderService.retryPayment(user.userId(), orderId);
+        return orderMapper.toResponse(result);
     }
 
     @GetMapping
     @Operation(summary = "List customer's orders")
     public List<OrderResponse> listOrders(@AuthenticationPrincipal AuthenticatedUser user) {
-        return orderService.listOrders(user.userId());
+        return orderService.listOrders(user.userId()).stream()
+                .map(orderMapper::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")
@@ -77,7 +84,7 @@ public class OrderController {
     public OrderResponse getOrder(
             @org.springframework.web.bind.annotation.PathVariable("id") java.util.UUID orderId,
             @AuthenticationPrincipal AuthenticatedUser user) {
-        return orderService.getOrder(user.userId(), orderId);
+        return orderMapper.toResponse(orderService.getOrder(user.userId(), orderId));
     }
 
     @PostMapping("/{id}/reorder")
@@ -85,7 +92,8 @@ public class OrderController {
     public ReorderResponse reorder(
             @org.springframework.web.bind.annotation.PathVariable("id") java.util.UUID orderId,
             @AuthenticationPrincipal AuthenticatedUser user) {
-        return orderService.reorder(user.userId(), orderId);
+        com.builddash.backend.application.service.ReorderResult result = orderService.reorder(user.userId(), orderId);
+        return new ReorderResponse(result.cartId(), result.message());
     }
 
     @ExceptionHandler(PaymentGatewayException.class)

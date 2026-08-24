@@ -1,6 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.AddressService;
+import com.builddash.backend.domain.exception.BadRequestException;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.exception.UnauthorizedException;
 import com.builddash.backend.domain.model.Address;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class AddressServiceImpl implements AddressService {
 
     private final AddressRepository addressRepository;
+    private final com.builddash.backend.domain.port.OrderRepository orderRepository;
     private final GeocodingGateway geocodingGateway;
     private final ServiceabilityGateway serviceabilityGateway;
 
@@ -60,17 +62,22 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     @Transactional(readOnly = true)
-    public Address getAddress(UUID id) {
-        return addressRepository.findById(id)
+    public Address getAddress(UUID id, UUID userId) {
+        Address address = addressRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("ADDRESS_NOT_FOUND", "Address not found"));
+        if (!address.userId().equals(userId)) {
+            throw new UnauthorizedException("ACCESS_DENIED", "Cannot access an address belonging to another user");
+        }
+        return address;
     }
 
     @Override
     @Transactional
     public void deleteAddress(UUID id, UUID userId) {
-        Address address = getAddress(id);
-        if (!address.userId().equals(userId)) {
-            throw new UnauthorizedException("ACCESS_DENIED", "Cannot delete an address belonging to another user");
+        getAddress(id, userId);
+        // orders.address_id FK has no ON DELETE action — surface a clear 400 instead of a 500
+        if (orderRepository.existsByAddressId(id)) {
+            throw new BadRequestException("ADDRESS_IN_USE", "Address is used by existing orders and cannot be deleted");
         }
         addressRepository.deleteById(id);
     }

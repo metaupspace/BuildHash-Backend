@@ -47,11 +47,14 @@ spring:
 
 security:
   jwt:
-    secret: ${JWT_SECRET:super_secret_key_which_must_be_long_enough_to_be_at_least_256_bits_length}
+    secret: ${JWT_SECRET}
     issuer: builddash-backend
     access-token-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}
     refresh-token-ttl-days: ${JWT_REFRESH_TTL_DAYS:30}
     guest-token-ttl-hours: ${GUEST_TOKEN_TTL_HOURS:24}
+
+payment:
+  webhook-secret: ${PAYMENT_WEBHOOK_SECRET}
 
 google:
   client-id: ${GOOGLE_CLIENT_ID:}
