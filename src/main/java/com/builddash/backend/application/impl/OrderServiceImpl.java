@@ -43,8 +43,7 @@ public class OrderServiceImpl implements OrderService {
     private final com.builddash.backend.domain.port.PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway;
     private final TransactionTemplate transactionTemplate;
-    private final com.builddash.backend.domain.port.CartPricingCalculator cartPricingCalculator;
-    private final com.builddash.backend.api.mapper.CartDtoMapper cartDtoMapper;
+    private final CartService cartService;
 
     @Override
     public OrderResponse create(UUID userId, UUID addressId, UUID slotId, LocalDate slotDate, BigDecimal expectedTotal, String idempotencyKey) {
@@ -55,7 +54,7 @@ public class OrderServiceImpl implements OrderService {
                         .orElseThrow(() -> new IllegalStateException("Order not found for idempotency key"));
             }
 
-            CheckoutIntent intent = checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal);
+            CheckoutIntent intent = checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal, null);
 
             List<OrderLineItem> lineItems = intent.pricedCart().items().stream()
                     .map(item -> new OrderLineItem(
@@ -210,30 +209,24 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public com.builddash.backend.api.dto.response.PricedCartResponse reorder(UUID userId, UUID orderId) {
+    @Transactional
+    public ReorderResponse reorder(UUID userId, UUID orderId) {
         Order order = orderRepository.findById(orderId)
                 .filter(o -> o.userId().equals(userId))
                 .orElseThrow(() -> new com.builddash.backend.domain.exception.NotFoundException("Order", orderId.toString()));
 
-        com.builddash.backend.domain.model.Cart tempCart = new com.builddash.backend.domain.model.Cart(
-                UUID.randomUUID(),
-                userId,
-                null,
-                null,
-                order.lineItems().stream()
-                        .map(li -> new com.builddash.backend.domain.model.CartLineItem(
-                                UUID.randomUUID(),
-                                null,
-                                li.productId(),
-                                li.quantity(),
-                                null
-                        ))
-                        .toList()
-        );
+        List<CartLineItem> cartItems = order.lineItems().stream()
+                .map(li -> new CartLineItem(
+                        UUID.randomUUID(),
+                        null,
+                        li.productId(),
+                        li.quantity(),
+                        null
+                ))
+                .toList();
 
-        com.builddash.backend.domain.model.PricedCart pricedCart = cartPricingCalculator.calculate(tempCart, userId);
+        com.builddash.backend.domain.model.PricedCart pricedCart = cartService.createReorderCart(userId, cartItems);
 
-        return cartDtoMapper.toResponse(pricedCart);
+        return new ReorderResponse(pricedCart.id(), "Items added to cart");
     }
 }

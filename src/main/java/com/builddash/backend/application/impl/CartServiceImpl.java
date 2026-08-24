@@ -97,10 +97,19 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PricedCart getCartById(UUID userId, UUID cartId) {
+        Cart cart = cartRepository.findById(cartId)
+                .filter(c -> c.userId().equals(userId))
+                .orElseThrow(() -> new NotFoundException("CART_NOT_FOUND", "Cart not found: " + cartId));
+        return cartPricingCalculator.calculate(cart, userId);
+    }
+
+    @Override
     @Transactional
-    public PricedCart replaceItems(UUID userId, UUID projectId, List<CartLineItem> items) {
-        Cart cart = getOrCreateCart(userId, projectId);
-        cartLineItemRepository.deleteByCartId(cart.id());
+    public PricedCart createReorderCart(UUID userId, List<CartLineItem> items) {
+        Cart cart = new Cart(UUID.randomUUID(), userId, UUID.randomUUID(), null, List.of());
+        cartRepository.save(cart);
 
         for (CartLineItem inputItem : items) {
             if (productRepository.findById(inputItem.productId()).isEmpty()) {
@@ -116,8 +125,6 @@ public class CartServiceImpl implements CartService {
             cartLineItemRepository.save(lineItem);
         }
 
-        Cart updated = new Cart(cart.id(), cart.userId(), cart.projectId(), null, List.of());
-        cartRepository.save(updated);
         Cart refreshed = cartRepository.findById(cart.id()).orElseThrow();
         return cartPricingCalculator.calculate(refreshed, userId);
     }

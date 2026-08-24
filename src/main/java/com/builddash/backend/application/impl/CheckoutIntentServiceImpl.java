@@ -30,9 +30,14 @@ public class CheckoutIntentServiceImpl implements CheckoutIntentService {
 
     @Override
     @Transactional
-    public CheckoutIntent createIntent(UUID userId, UUID addressId, UUID slotId, LocalDate slotDate, BigDecimal expectedTotal) {
+    public CheckoutIntent createIntent(UUID userId, UUID addressId, UUID slotId, LocalDate slotDate, BigDecimal expectedTotal, UUID cartId) {
         // 1. Verify Cart not empty and re-calculate live pricing
-        PricedCart pricedCart = cartService.getCart(userId, null);
+        PricedCart pricedCart;
+        if (cartId != null) {
+            pricedCart = cartService.getCartById(userId, cartId);
+        } else {
+            pricedCart = cartService.getCart(userId, null);
+        }
         if (pricedCart.items().isEmpty()) {
             throw new CheckoutValidationException("CART_EMPTY", "Cannot initiate checkout with an empty cart");
         }

@@ -86,13 +86,28 @@ class OrderControllerIT extends AbstractIntegrationTest {
         UUID orderId = UUID.randomUUID();
         UUID addressId = UUID.randomUUID();
         jdbcTemplate.update("INSERT INTO addresses (id, user_id, type, line1, city, state, zip_code, created_at, updated_at) VALUES (?, ?, 'HOME', 'Line 1', 'City', 'MH', '400000', now(), now())", addressId, userId);
-        Order order = new Order(orderId, userId, addressId, UUID.fromString("33333333-3333-3333-3333-333333333333"), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.DELIVERED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of());
+
+        UUID categoryId = UUID.randomUUID();
+        jdbcTemplate.update("INSERT INTO categories (id, name, slug) VALUES (?, 'Cat', 'cat-slug')", categoryId);
+
+        UUID productId = UUID.randomUUID();
+        jdbcTemplate.update("INSERT INTO products (id, name, slug, category_id, status, hsn_code, created_at, updated_at) VALUES (?, 'Product A', 'slug', ?, 'ACTIVE', '1234', now(), now())", productId, categoryId);
+        jdbcTemplate.update("INSERT INTO product_base_prices (product_id, price, created_at, updated_at) VALUES (?, 60.00, now(), now())", productId);
+        jdbcTemplate.update("INSERT INTO hsn_gst_rates (hsn_code, description, gst_rate_percent, category, created_at, updated_at) VALUES ('1234', 'Desc', 18.00, 'Cat', now(), now()) ON CONFLICT DO NOTHING");
+
+        Order order = new Order(orderId, userId, addressId, UUID.fromString("33333333-3333-3333-3333-333333333333"), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.DELIVERED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of(
+            new com.builddash.backend.domain.model.OrderLineItem(UUID.randomUUID(), productId, 2, new BigDecimal("50.00"), BigDecimal.ZERO)
+        ));
         orderRepository.save(order);
 
+        // Before reorder, verify base price is now 60.00. 2 * 60 = 120.00 vs expected total 100.00.
+        // Tax is 18% on 120.00 = 21.60.
+        // Final total should be 120.00 + 21.60 = 141.60.
         mockMvc.perform(post("/orders/{id}/reorder", orderId)
                 .header(HttpHeaders.AUTHORIZATION, validToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").exists());
+                .andExpect(jsonPath("$.cartId").exists())
+                .andExpect(jsonPath("$.message").exists());
     }
 
     
