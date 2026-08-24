@@ -38,4 +38,11 @@ public class OrderRepositoryAdapter implements OrderRepository {
     public List<UUID> findStalePaymentPendingOrderIds(Instant cutoff) {
         return jpaRepository.findStalePaymentPendingOrderIds(OrderStatus.PAYMENT_PENDING, cutoff);
     }
+
+    @Override
+    public List<Order> findAllByUserId(UUID userId) {
+        return jpaRepository.findAllByUserIdOrderByPlacedAtDesc(userId).stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
 }

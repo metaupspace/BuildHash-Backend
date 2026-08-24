@@ -4,6 +4,7 @@ import com.builddash.backend.domain.enums.OrderStatus;
 import com.builddash.backend.domain.exception.InvalidOrderStateException;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -17,19 +18,22 @@ public record Order(
         BigDecimal totalAmount,
         OrderStatus status,
         UUID deliverySlotLockId,
+        Instant placedAt,
+        String driverId,
+        String driverPhone,
         List<OrderLineItem> lineItems
 ) {
     public Order confirm() {
         if (status != OrderStatus.PAYMENT_PENDING) {
             throw new InvalidOrderStateException(status.name(), OrderStatus.CONFIRMED.name());
         }
-        return new Order(id, userId, addressId, slotId, slotDate, totalAmount, OrderStatus.CONFIRMED, deliverySlotLockId, lineItems);
+        return new Order(id, userId, addressId, slotId, slotDate, totalAmount, OrderStatus.CONFIRMED, deliverySlotLockId, placedAt, driverId, driverPhone, lineItems);
     }
 
     public Order cancel() {
         if (status == OrderStatus.DELIVERED || status == OrderStatus.CANCELLED) {
             throw new InvalidOrderStateException(status.name(), OrderStatus.CANCELLED.name());
         }
-        return new Order(id, userId, addressId, slotId, slotDate, totalAmount, OrderStatus.CANCELLED, deliverySlotLockId, lineItems);
+        return new Order(id, userId, addressId, slotId, slotDate, totalAmount, OrderStatus.CANCELLED, deliverySlotLockId, placedAt, driverId, driverPhone, lineItems);
     }
 }

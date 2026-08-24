@@ -44,4 +44,6 @@ public class PaymentEntity {
 
     @Column(name = "payment_url")
     private String paymentUrl;
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private java.time.Instant createdAt;
 }

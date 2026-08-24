@@ -33,8 +33,8 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
     }
 
     @Override
-    public Optional<Payment> findByOrderId(UUID orderId) {
-        return jpaRepository.findByOrderId(orderId).map(this::toDomain);
+    public Optional<Payment> findLatestByOrderId(UUID orderId) {
+        return jpaRepository.findFirstByOrderIdOrderByCreatedAtDescIdDesc(orderId).map(this::toDomain);
     }
 
     private Payment toDomain(PaymentEntity entity) {

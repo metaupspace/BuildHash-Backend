@@ -44,11 +44,11 @@ class PaymentWebhookServiceImplTest {
         UUID userId = UUID.randomUUID();
         UUID lockId = UUID.randomUUID();
         
-        Order order = new Order(orderId, userId, UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), BigDecimal.TEN, OrderStatus.PAYMENT_PENDING, lockId, List.of());
+        Order order = new Order(orderId, userId, UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), BigDecimal.TEN, OrderStatus.PAYMENT_PENDING, lockId, java.time.Instant.now(), null, null, List.of());
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
         
         Payment payment = new Payment(UUID.randomUUID(), orderId, "tx1", BigDecimal.TEN, PaymentStatus.PENDING, "url");
-        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+        when(paymentRepository.findLatestByOrderId(orderId)).thenReturn(Optional.of(payment));
 
         webhookService.handleWebhook(orderId, "SUCCESS", "sig");
 
@@ -63,11 +63,11 @@ class PaymentWebhookServiceImplTest {
         UUID userId = UUID.randomUUID();
         UUID lockId = UUID.randomUUID();
         
-        Order order = new Order(orderId, userId, UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), BigDecimal.TEN, OrderStatus.PAYMENT_PENDING, lockId, List.of());
+        Order order = new Order(orderId, userId, UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), BigDecimal.TEN, OrderStatus.PAYMENT_PENDING, lockId, java.time.Instant.now(), null, null, List.of());
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
         
         Payment payment = new Payment(UUID.randomUUID(), orderId, "tx1", BigDecimal.TEN, PaymentStatus.PENDING, "url");
-        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+        when(paymentRepository.findLatestByOrderId(orderId)).thenReturn(Optional.of(payment));
 
         webhookService.handleWebhook(orderId, "FAILED", "sig");
 

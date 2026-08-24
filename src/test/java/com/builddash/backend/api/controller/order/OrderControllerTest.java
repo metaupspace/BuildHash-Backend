@@ -66,10 +66,12 @@ class OrderControllerTest {
         objectMapper.findAndRegisterModules();
     }
 
+
+    
     @Test
     void createOrder_happyPath_returnsCreatedOrder() throws Exception {
         UUID orderId = UUID.randomUUID();
-        OrderResponse response = new OrderResponse(orderId, "PAYMENT_PENDING", new BigDecimal("100.00"), "url-1");
+        OrderResponse response = new OrderResponse(orderId, "PAYMENT_PENDING", new BigDecimal("100.00"), "url-1", java.time.Instant.now(), null, null, java.util.List.of());
         
         when(orderService.create(eq(userId), any(), any(), any(), any(), eq("key-1"))).thenReturn(response);
 
@@ -84,6 +86,47 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.paymentUrl").value("url-1"));
     }
 
+
+
+    
+    @Test
+    void getOrder_happyPath_returnsOrder() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        OrderResponse response = new OrderResponse(orderId, "CONFIRMED", new BigDecimal("100.00"), null, java.time.Instant.now(), null, null, java.util.List.of());
+        when(orderService.getOrder(userId, orderId)).thenReturn(response);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/orders/" + orderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(orderId.toString()));
+    }
+
+
+    
+    @Test
+    void listOrders_happyPath_returnsOrders() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        OrderResponse response = new OrderResponse(orderId, "CONFIRMED", new BigDecimal("100.00"), null, java.time.Instant.now(), null, null, java.util.List.of());
+        when(orderService.listOrders(userId)).thenReturn(java.util.List.of(response));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/orders"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(orderId.toString()));
+    }
+
+
+    
+    @Test
+    void reorder_happyPath_returnsCartId() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        com.builddash.backend.api.dto.response.PricedCartResponse response = new com.builddash.backend.api.dto.response.PricedCartResponse(UUID.randomUUID(), userId, null, java.util.List.of(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, null);
+        when(orderService.reorder(userId, orderId)).thenReturn(response);
+
+        mockMvc.perform(post("/orders/" + orderId + "/reorder"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").exists());
+    }
+
+    
     @Test
     void createOrder_whenPaymentGatewayFails_returnsBadGatewayWithOrderId() throws Exception {
         UUID orderId = UUID.randomUUID();
