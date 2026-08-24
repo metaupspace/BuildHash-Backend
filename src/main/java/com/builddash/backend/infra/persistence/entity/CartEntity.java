@@ -9,6 +9,8 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -36,6 +38,10 @@ public class CartEntity {
 
     @Column(name = "applied_cart_coupon")
     private String appliedCartCoupon;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cart_type", nullable = false)
+    private com.builddash.backend.domain.enums.CartType type = com.builddash.backend.domain.enums.CartType.PRIMARY;
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<CartLineItemEntity> items = new ArrayList<>();

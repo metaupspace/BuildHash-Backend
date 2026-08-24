@@ -79,7 +79,7 @@ class CartServiceImplTest {
         UUID userId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         UUID cartId = UUID.randomUUID();
-        Cart cart = new Cart(cartId, userId, null, null, new ArrayList<>());
+        Cart cart = new Cart(cartId, userId, null, com.builddash.backend.domain.enums.CartType.PRIMARY, null, new ArrayList<>());
 
         when(productRepository.findById(productId)).thenReturn(Optional.of(new com.builddash.backend.domain.model.Product()));
         when(cartRepository.findByUserIdAndProjectId(userId, null)).thenReturn(Optional.of(cart));
@@ -91,5 +91,19 @@ class CartServiceImplTest {
         cartService.upsertItem(userId, null, productId, 0, null);
 
         verify(cartLineItemRepository).deleteByCartIdAndProductId(cartId, productId);
+    }
+
+    @Test
+    void getCartById_mismatchedOwner_throwsNotFound() {
+        UUID cartId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+
+        Cart cart = new Cart(cartId, ownerId, null, com.builddash.backend.domain.enums.CartType.PRIMARY, null, List.of());
+        when(cartRepository.findById(cartId)).thenReturn(Optional.of(cart));
+
+        assertThatThrownBy(() -> cartService.getCartById(otherUserId, cartId))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("Cart not found");
     }
 }

@@ -34,6 +34,9 @@ class OrderControllerIT extends AbstractIntegrationTest {
     @Autowired
     private PaymentRepository paymentRepository;
 
+    @Autowired
+    private com.builddash.backend.application.service.CartService cartService;
+
     private String validToken;
     @Autowired private com.builddash.backend.domain.port.UserRepository userRepository;
     private UUID userId;
@@ -103,11 +106,18 @@ class OrderControllerIT extends AbstractIntegrationTest {
         // Before reorder, verify base price is now 60.00. 2 * 60 = 120.00 vs expected total 100.00.
         // Tax is 18% on 120.00 = 21.60.
         // Final total should be 120.00 + 21.60 = 141.60.
-        mockMvc.perform(post("/orders/{id}/reorder", orderId)
+        String responseContent = mockMvc.perform(post("/orders/{id}/reorder", orderId)
                 .header(HttpHeaders.AUTHORIZATION, validToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cartId").exists())
-                .andExpect(jsonPath("$.message").exists());
+                .andExpect(jsonPath("$.message").exists())
+                .andReturn().getResponse().getContentAsString();
+
+        com.fasterxml.jackson.databind.JsonNode responseJson = new com.fasterxml.jackson.databind.ObjectMapper().readTree(responseContent);
+        UUID cartId = UUID.fromString(responseJson.get("cartId").asText());
+
+        com.builddash.backend.domain.model.PricedCart resultingCart = cartService.getCartById(userId, cartId);
+        org.assertj.core.api.Assertions.assertThat(resultingCart.finalTotal()).isEqualByComparingTo("141.60");
     }
 
     

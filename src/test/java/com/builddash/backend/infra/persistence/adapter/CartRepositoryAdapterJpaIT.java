@@ -59,7 +59,7 @@ class CartRepositoryAdapterJpaIT extends AbstractIntegrationTest {
                 UUID.randomUUID(),
                 user.getId(),
                 null,
-                "WELCOME50",
+                com.builddash.backend.domain.enums.CartType.PRIMARY, "WELCOME50",
                 List.of()
         );
         cartRepository.save(cart);

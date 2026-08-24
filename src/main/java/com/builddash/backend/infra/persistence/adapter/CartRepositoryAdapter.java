@@ -26,7 +26,7 @@ class CartRepositoryAdapter implements CartRepository {
         return jpaRepository.findByUserIdAndProjectId(userId, projectId)
                 .map(entity -> {
                     List<CartLineItemEntity> items = cartLineItemJpaRepository.findByCartId(entity.getId());
-                    return new Cart(entity.getId(), entity.getUserId(), entity.getProjectId(), entity.getAppliedCartCoupon(),
+                    return new Cart(entity.getId(), entity.getUserId(), entity.getProjectId(), entity.getType(), entity.getAppliedCartCoupon(),
                             items.stream().map(CartMapper::toDomain).toList());
                 });
     }
@@ -36,7 +36,7 @@ class CartRepositoryAdapter implements CartRepository {
         return jpaRepository.findById(id)
                 .map(entity -> {
                     List<CartLineItemEntity> items = cartLineItemJpaRepository.findByCartId(entity.getId());
-                    return new Cart(entity.getId(), entity.getUserId(), entity.getProjectId(), entity.getAppliedCartCoupon(),
+                    return new Cart(entity.getId(), entity.getUserId(), entity.getProjectId(), entity.getType(), entity.getAppliedCartCoupon(),
                             items.stream().map(CartMapper::toDomain).toList());
                 });
     }
@@ -51,10 +51,13 @@ class CartRepositoryAdapter implements CartRepository {
                 });
         entity.setUserId(cart.userId());
         entity.setProjectId(cart.projectId());
+        if (cart.type() != null) {
+            entity.setType(cart.type());
+        }
         entity.setAppliedCartCoupon(cart.appliedCartCoupon());
         CartEntity saved = jpaRepository.save(entity);
         List<CartLineItemEntity> items = cartLineItemJpaRepository.findByCartId(saved.getId());
-        return new Cart(saved.getId(), saved.getUserId(), saved.getProjectId(), saved.getAppliedCartCoupon(),
+        return new Cart(saved.getId(), saved.getUserId(), saved.getProjectId(), saved.getType(), saved.getAppliedCartCoupon(),
                 items.stream().map(CartMapper::toDomain).toList());
     }
 

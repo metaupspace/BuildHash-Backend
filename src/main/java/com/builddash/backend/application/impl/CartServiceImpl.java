@@ -73,6 +73,7 @@ public class CartServiceImpl implements CartService {
                 cart.id(),
                 cart.userId(),
                 cart.projectId(),
+                cart.type(),
                 couponCode,
                 cart.items()
         );
@@ -92,7 +93,7 @@ public class CartServiceImpl implements CartService {
     public void clearCart(UUID userId, UUID projectId) {
         Cart cart = getOrCreateCart(userId, projectId);
         cartLineItemRepository.deleteByCartId(cart.id());
-        Cart updated = new Cart(cart.id(), cart.userId(), cart.projectId(), null, List.of());
+        Cart updated = new Cart(cart.id(), cart.userId(), cart.projectId(), cart.type(), null, List.of());
         cartRepository.save(updated);
     }
 
@@ -108,7 +109,10 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public PricedCart createReorderCart(UUID userId, List<CartLineItem> items) {
-        Cart cart = new Cart(UUID.randomUUID(), userId, UUID.randomUUID(), null, List.of());
+        // ponytail: projectId remains null for reorder carts to avoid collision with Phase 9 company accounts
+        // Cleanup story: REORDER_SCRATCH carts are meant to be short-lived. A scheduled job (similar to
+        // expired delivery slot locks) should sweep carts of type REORDER_SCRATCH older than 24h.
+        Cart cart = new Cart(UUID.randomUUID(), userId, null, com.builddash.backend.domain.enums.CartType.REORDER_SCRATCH, null, List.of());
         cartRepository.save(cart);
 
         for (CartLineItem inputItem : items) {
@@ -136,6 +140,7 @@ public class CartServiceImpl implements CartService {
                             UUID.randomUUID(),
                             userId,
                             projectId,
+                            com.builddash.backend.domain.enums.CartType.PRIMARY,
                             null,
                             new ArrayList<>()
                     );

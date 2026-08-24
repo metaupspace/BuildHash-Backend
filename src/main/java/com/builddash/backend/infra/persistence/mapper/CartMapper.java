@@ -21,6 +21,7 @@ public final class CartMapper {
                 entity.getId(),
                 entity.getUserId(),
                 entity.getProjectId(),
+                entity.getType(),
                 entity.getAppliedCartCoupon(),
                 items
         );
@@ -43,6 +44,9 @@ public final class CartMapper {
         entity.setId(domain.id());
         entity.setUserId(domain.userId());
         entity.setProjectId(domain.projectId());
+        if (domain.type() != null) {
+            entity.setType(domain.type());
+        }
         entity.setAppliedCartCoupon(domain.appliedCartCoupon());
         if (domain.items() != null) {
             List<CartLineItemEntity> items = new ArrayList<>();
