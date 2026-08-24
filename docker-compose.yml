@@ -10,6 +10,18 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      # Dev-only placeholder credentials, same convention as postgres above
+      PGADMIN_DEFAULT_EMAIL: admin@local.dev
+      PGADMIN_DEFAULT_PASSWORD: dev-only-password
+    ports:
+      # Loopback only — administrative UI must not be reachable off-host
+      - "127.0.0.1:5050:80"
+    depends_on:
+      - postgres
+
   redis:
     image: redis:7-alpine
     ports:
