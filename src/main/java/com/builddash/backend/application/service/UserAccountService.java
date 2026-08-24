@@ -11,4 +11,6 @@ public interface UserAccountService {
     User findOrCreateByPhone(String phone);
 
     User findOrCreateByGoogle(String googleId, String email, String name);
+    User createGuestUser();
+    void markGuestMerged(java.util.UUID guestUserId, java.util.UUID realUserId);
 }

@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/categories/**", "/products/**").permitAll()
                         .requestMatchers("/search/**").permitAll()
                         .requestMatchers("/users/**").hasRole("USER")
+                        .requestMatchers("/cart/**").hasAnyRole("GUEST", "USER")
                         // Guest tokens may browse (GET) but never write
                         .requestMatchers(HttpMethod.POST, "/**").hasRole("USER")
                         .requestMatchers(HttpMethod.PUT, "/**").hasRole("USER")
@@ -70,4 +71,3 @@ public class SecurityConfig {
         objectMapper.writeValue(response.getWriter(), body);
     }
 }
-//cross origin resourse sharing

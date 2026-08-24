@@ -18,6 +18,8 @@ public final class UserMapper {
         user.setBusinessName(entity.getBusinessName());
         user.setGstNumber(entity.getGstNumber());
         user.setGstinStatus(entity.getGstinStatus());
+        user.setGuest(entity.isGuest());
+        user.setMergedIntoUserId(entity.getMergedIntoUserId());
         user.setCreatedAt(entity.getCreatedAt());
         user.setUpdatedAt(entity.getUpdatedAt());
         return user;
@@ -33,6 +35,8 @@ public final class UserMapper {
         entity.setBusinessName(user.getBusinessName());
         entity.setGstNumber(user.getGstNumber());
         entity.setGstinStatus(user.getGstinStatus());
+        entity.setGuest(user.isGuest());
+        entity.setMergedIntoUserId(user.getMergedIntoUserId());
         entity.setCreatedAt(user.getCreatedAt());
         entity.setUpdatedAt(user.getUpdatedAt());
         return entity;

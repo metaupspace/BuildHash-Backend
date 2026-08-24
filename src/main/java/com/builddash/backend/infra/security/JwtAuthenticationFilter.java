@@ -3,6 +3,7 @@ package com.builddash.backend.infra.security;
 import com.builddash.backend.domain.enums.TokenType;
 import com.builddash.backend.domain.model.TokenClaims;
 import com.builddash.backend.domain.port.TokenValidator;
+import com.builddash.backend.domain.port.UserRepository;
 import com.builddash.backend.common.AuthenticatedUser;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -18,6 +19,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -27,6 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final TokenValidator tokenValidator;
+    private final UserRepository userRepository;
 
 
     @Override
@@ -44,9 +47,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * A guest token dies when its guest identity dies: after a login-merge the users row is
+     * marked merged_into_user_id and the token must stop authenticating everywhere, not just
+     * on cart endpoints.
+     * // ponytail: per-request PK lookup on GUEST tokens only — Redis denylist if guest traffic ever gets hot
+     */
+    private boolean guestIdentityStillActive(UUID guestUserId) {
+        return userRepository.findById(guestUserId)
+                .map(user -> user.getMergedIntoUserId() == null)
+                .orElse(false);
+    }
+
     private boolean authenticate(String token, TokenType type) {
         try {
             TokenClaims claims = tokenValidator.validate(token, type);
+            if (type == TokenType.GUEST && !guestIdentityStillActive(claims.userId())) {
+                return false;
+            }
             AuthenticatedUser principal = new AuthenticatedUser(claims.userId(), claims.deviceId(), claims.roles());
             List<GrantedAuthority> authorities = claims.roles().stream()
                     .map(role -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + role))

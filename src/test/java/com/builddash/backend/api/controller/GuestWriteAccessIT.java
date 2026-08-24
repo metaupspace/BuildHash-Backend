@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class GuestWriteAccessIT extends AbstractIntegrationTest {
@@ -14,40 +14,45 @@ class GuestWriteAccessIT extends AbstractIntegrationTest {
         MvcResult result = mockMvc.perform(post("/auth/guest"))
                 .andExpect(status().isOk())
                 .andReturn();
-        return com.fasterxml.jackson.databind.json.JsonMapper.builder().build()
-                .readTree(result.getResponse().getContentAsString())
-                .get("accessToken").asText();
+        String body = result.getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.read(body, "$.accessToken");
     }
 
     @Test
-    void guestToken_cannotWriteProtectedResources() throws Exception {
+    void threeWayAccessControl_enforcesBoundariesCorrectly() throws Exception {
         String token = guestToken();
 
-        mockMvc.perform(post("/addresses")
+        // 1. Guest-allowed mutation: PUT /cart/items -> 400 Bad Request (missing body), proves it cleared security
+        mockMvc.perform(put("/cart/items")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest());
 
-        mockMvc.perform(post("/cart/items")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isForbidden());
-
+        // 2. Guest-blocked mutation: POST /orders -> 403 Forbidden
         mockMvc.perform(post("/orders")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isForbidden());
+
+        // 3. Public endpoint: POST /auth/guest without token -> 200 OK
+        mockMvc.perform(post("/auth/guest"))
+                .andExpect(status().isOk());
+                
+        // 4. Public endpoint with guest token: POST /auth/refresh -> 400
+        mockMvc.perform(post("/auth/refresh")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     void guestToken_canStillReadPublicCatalog() throws Exception {
         String token = guestToken();
 
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .get("/categories").header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/categories").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
     }
 }

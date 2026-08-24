@@ -42,9 +42,9 @@ public class JwtTokenIssuer implements TokenIssuer {
     }
 
     @Override
-    public IssuedToken issueGuestToken() {
+    public IssuedToken issueGuestToken(UUID userId) {
         long ttlSeconds = properties.getGuestTokenTtlHours() * 60 * 60;
-        return codec.encode(UUID.randomUUID(), ttlSeconds, Map.of(
+        return codec.encode(userId, ttlSeconds, Map.of(
                 CLAIM_TYPE, TokenType.GUEST.name(),
                 CLAIM_ROLES, List.of("GUEST"),
                 CLAIM_SESSION_ID, UUID.randomUUID().toString()));

@@ -69,7 +69,7 @@ class JwtTokenIssuerValidatorTest {
 
     @Test
     void issuesGuestTokenWithGuestRoleAndNoDeviceId() {
-        IssuedToken token = issuer.issueGuestToken();
+        IssuedToken token = issuer.issueGuestToken(java.util.UUID.randomUUID());
         TokenClaims claims = validator.validate(token.token(), TokenType.GUEST);
 
         assertThat(claims.roles()).containsExactly("GUEST");

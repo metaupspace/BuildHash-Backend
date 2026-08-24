@@ -14,9 +14,9 @@ public interface AuthenticationFacade {
 
     OtpSendResult sendOtp(String phone);
 
-    AuthSession verifyOtp(String phone, String otp, String deviceFingerprint, String ip);
+    AuthSession verifyOtp(String phone, String otp, String deviceFingerprint, String ip, String guestToken);
 
-    AuthSession googleSignIn(String idToken, String deviceFingerprint, String ip);
+    AuthSession googleSignIn(String idToken, String deviceFingerprint, String ip, String guestToken);
 
     AuthSession guestSession();
 

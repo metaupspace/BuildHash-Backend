@@ -14,5 +14,5 @@ public interface TokenIssuer {
 
     IssuedToken issueRefreshToken(UUID userId, UUID deviceId);
 
-    IssuedToken issueGuestToken();
+    IssuedToken issueGuestToken(java.util.UUID userId);
 }

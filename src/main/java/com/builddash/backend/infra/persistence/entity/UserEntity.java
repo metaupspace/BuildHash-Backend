@@ -45,6 +45,12 @@ public class UserEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "gstin_status")
     private GstinStatus gstinStatus;
+    
+    @Column(name = "is_guest")
+    private boolean isGuest = false;
+
+    @Column(name = "merged_into_user_id")
+    private UUID mergedIntoUserId;
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

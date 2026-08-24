@@ -20,6 +20,8 @@ public class User {
     private String name;
     private String businessName;
     private String gstNumber;
+    private boolean isGuest = false;
+    private UUID mergedIntoUserId;
     private GstinStatus gstinStatus;
     private Instant createdAt;
     private Instant updatedAt;

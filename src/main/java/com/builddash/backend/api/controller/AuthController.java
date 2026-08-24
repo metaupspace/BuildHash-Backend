@@ -75,8 +75,9 @@ public class AuthController {
                                     + "\"message\":\"Too many incorrect attempts, request a new OTP\"}")))
     })
     public AuthTokensResponse verifyOtp(@Valid @RequestBody OtpVerifyRequest request, HttpServletRequest httpRequest) {
+        String guestToken = extractGuestToken(httpRequest);
         return authMapper.toResponse(authenticationFacade.verifyOtp(
-                request.phone(), request.otp(), request.deviceFingerprint(), clientIp(httpRequest)));
+                request.phone(), request.otp(), request.deviceFingerprint(), clientIp(httpRequest), guestToken));
     }
 
     @PostMapping("/google")
@@ -88,8 +89,9 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = ApiError.class)))
     })
     public AuthTokensResponse googleSignIn(@Valid @RequestBody GoogleSignInRequest request, HttpServletRequest httpRequest) {
+        String guestToken = extractGuestToken(httpRequest);
         return authMapper.toResponse(authenticationFacade.googleSignIn(
-                request.idToken(), request.deviceFingerprint(), clientIp(httpRequest)));
+                request.idToken(), request.deviceFingerprint(), clientIp(httpRequest), guestToken));
     }
 
     @PostMapping("/guest")
@@ -124,5 +126,13 @@ public class AuthController {
             return forwardedFor.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    private String extractGuestToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7);
+        }
+        return null;
     }
 }

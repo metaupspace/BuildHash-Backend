@@ -7,6 +7,7 @@ import com.builddash.backend.application.service.RefreshTokenRotator;
 import com.builddash.backend.application.service.UserAccountService;
 import com.builddash.backend.domain.enums.LoginEventType;
 import com.builddash.backend.domain.enums.TokenType;
+import com.builddash.backend.application.service.CartService;
 import com.builddash.backend.domain.model.AuthSession;
 import com.builddash.backend.domain.model.GoogleUserInfo;
 import com.builddash.backend.domain.model.IssuedToken;
@@ -19,6 +20,7 @@ import com.builddash.backend.domain.port.TokenIssuer;
 import com.builddash.backend.domain.port.TokenValidator;
 import com.builddash.backend.domain.port.OtpConfig;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,6 +31,7 @@ import java.util.UUID;
  * token crypto, device bookkeeping, user lookup, audit logging) is delegated to its own
  * single-purpose collaborator, injected here by interface (DIP).
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthenticationFacade {
@@ -42,6 +45,7 @@ public class AuthServiceImpl implements AuthenticationFacade {
     private final UserAccountService userAccountService;
     private final DeviceRegistry deviceRegistry;
     private final RefreshTokenRotator refreshTokenRotator;
+    private final CartService cartService;
     private final LoginEventRecorder loginEventRecorder;
     private final PhoneExistenceIndex phoneExistenceIndex;
 
@@ -53,25 +57,32 @@ public class AuthServiceImpl implements AuthenticationFacade {
     }
 
     @Override
-    public AuthSession verifyOtp(String phone, String otp, String deviceFingerprint, String ip) {
+    public AuthSession verifyOtp(String phone, String otp, String deviceFingerprint, String ip, String guestToken) {
         otpVerificationService.verify(phone, otp);
         User user = userAccountService.findOrCreateByPhone(phone);
         phoneExistenceIndex.markExists(phone);
+        
+        handleGuestMerge(guestToken, user.getId());
+        
         loginEventRecorder.record(user.getId(), LoginEventType.OTP, ip, deviceFingerprint);
         return issueSession(user.getId(), deviceFingerprint);
     }
 
     @Override
-    public AuthSession googleSignIn(String idToken, String deviceFingerprint, String ip) {
+    public AuthSession googleSignIn(String idToken, String deviceFingerprint, String ip, String guestToken) {
         GoogleUserInfo info = googleIdentityGateway.verify(idToken);
         User user = userAccountService.findOrCreateByGoogle(info.googleId(), info.email(), info.name());
+        
+        handleGuestMerge(guestToken, user.getId());
+        
         loginEventRecorder.record(user.getId(), LoginEventType.GOOGLE, ip, deviceFingerprint);
         return issueSession(user.getId(), deviceFingerprint);
     }
 
     @Override
     public AuthSession guestSession() {
-        IssuedToken guestToken = tokenIssuer.issueGuestToken();
+        User guest = userAccountService.createGuestUser();
+        IssuedToken guestToken = tokenIssuer.issueGuestToken(guest.getId());
         return new AuthSession(guestToken.token(), null, "Bearer", guestToken.expiresInSeconds());
     }
 
@@ -95,6 +106,22 @@ public class AuthServiceImpl implements AuthenticationFacade {
         String fingerprint = deviceRegistry.getFingerprintOrNull(currentDeviceId);
         deviceRegistry.revokeAll(userId);
         return issueSession(userId, fingerprint);
+    }
+
+    
+    private void handleGuestMerge(String guestToken, UUID realUserId) {
+        if (guestToken == null || guestToken.isBlank()) {
+            return;
+        }
+        try {
+            TokenClaims claims = tokenValidator.validate(guestToken, TokenType.GUEST);
+            UUID guestUserId = claims.userId();
+            cartService.mergeGuestCart(guestUserId, realUserId);
+            userAccountService.markGuestMerged(guestUserId, realUserId);
+        } catch (Exception e) {
+            // Login must never fail because a guest cart could not be merged — but never silently
+            log.warn("Guest cart merge failed for real user {}: {}", realUserId, e.getMessage(), e);
+        }
     }
 
     private AuthSession issueSession(UUID userId, String deviceFingerprint) {

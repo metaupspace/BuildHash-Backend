@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -146,5 +147,63 @@ public class CartServiceImpl implements CartService {
                     );
                     return cartRepository.save(newCart);
                 });
+    }
+
+    @Override
+    @Transactional
+    public void mergeGuestCart(UUID guestUserId, UUID realUserId) {
+        // Guest sessions only ever have the PRIMARY cart (project_id = null)
+        Optional<Cart> guestCartOpt = cartRepository.findByUserIdAndProjectId(guestUserId, null);
+        if (guestCartOpt.isEmpty()) {
+            return;
+        }
+        Cart guestCart = guestCartOpt.get();
+
+        Optional<Cart> realCartOpt = cartRepository.findByUserIdAndProjectId(realUserId, null);
+        if (realCartOpt.isEmpty()) {
+            // No account cart yet: straight reassignment keeps cart id, coupon and items
+            Cart reassigned = new Cart(
+                    guestCart.id(),
+                    realUserId,
+                    guestCart.projectId(),
+                    guestCart.type(),
+                    guestCart.appliedCartCoupon(),
+                    guestCart.items()
+            );
+            cartRepository.save(reassigned);
+        } else {
+            Cart realCart = realCartOpt.get();
+            for (CartLineItem guestItem : guestCart.items()) {
+                Optional<CartLineItem> existingOpt = realCart.items().stream()
+                        .filter(i -> i.productId().equals(guestItem.productId()))
+                        .findFirst();
+
+                if (existingOpt.isPresent()) {
+                    // Decided strategy: duplicates sum quantities; the account's coupon wins
+                    CartLineItem existing = existingOpt.get();
+                    CartLineItem updated = new CartLineItem(
+                            existing.id(),
+                            existing.cartId(),
+                            existing.productId(),
+                            existing.quantity() + guestItem.quantity(),
+                            existing.appliedItemCoupon()
+                    );
+                    cartLineItemRepository.save(updated);
+                } else {
+                    CartLineItem newItem = new CartLineItem(
+                            UUID.randomUUID(),
+                            realCart.id(),
+                            guestItem.productId(),
+                            guestItem.quantity(),
+                            guestItem.appliedItemCoupon()
+                    );
+                    cartLineItemRepository.save(newItem);
+                }
+            }
+            // Discard guest cart — cartRepository.delete cascades to line items
+            // (do NOT bulk-delete items first: mixing bulk SQL with the ORM cascade
+            // leaves the session stale and fails commit with an optimistic-lock error)
+            cartRepository.delete(guestCart.id());
+        }
     }
 }

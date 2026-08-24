@@ -21,4 +21,5 @@ public interface CartService {
     PricedCart getCartById(UUID userId, UUID cartId);
 
     PricedCart createReorderCart(UUID userId, java.util.List<com.builddash.backend.domain.model.CartLineItem> items);
+    void mergeGuestCart(UUID guestUserId, UUID realUserId);
 }

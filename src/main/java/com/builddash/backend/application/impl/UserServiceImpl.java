@@ -84,4 +84,18 @@ public class UserServiceImpl implements UserAccountService, UserProfileReader, U
         return userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("USER_NOT_FOUND", "User not found"));
     }
+
+    @Override
+    public User createGuestUser() {
+        User guest = new User();
+        guest.setGuest(true);
+        return userRepository.save(guest);
+    }
+
+    @Override
+    public void markGuestMerged(java.util.UUID guestUserId, java.util.UUID realUserId) {
+        User guest = getUserOrThrow(guestUserId);
+        guest.setMergedIntoUserId(realUserId);
+        userRepository.save(guest);
+    }
 }
