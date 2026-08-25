@@ -36,12 +36,14 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/**",
                                 "/api/webhooks/**",
+                                "/ws/**",
                                 "/actuator/health",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/categories/**", "/products/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/orders/*/status").permitAll()
                         .requestMatchers("/search/**").permitAll()
                         .requestMatchers("/users/**").hasRole("USER")
                         .requestMatchers("/cart/**").hasAnyRole("GUEST", "USER")

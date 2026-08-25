@@ -20,6 +20,9 @@ public interface OrderJpaRepository extends JpaRepository<OrderEntity, UUID> {
     @Query("SELECT o FROM OrderEntity o WHERE o.id = :id")
     Optional<OrderEntity> findByIdForUpdate(@Param("id") UUID id);
 
+    @Query("SELECT o.userId FROM OrderEntity o WHERE o.id = :id")
+    Optional<UUID> findOrderOwnerId(@Param("id") UUID id);
+
     @Query("SELECT o.id FROM OrderEntity o WHERE o.status = :status AND o.deliverySlotLockId IN (SELECT l.id FROM com.builddash.backend.infra.persistence.entity.DeliverySlotLockEntity l WHERE l.expiresAt < :cutoff)")
     List<UUID> findStalePaymentPendingOrderIds(@Param("status") OrderStatus status, @Param("cutoff") Instant cutoff);
 

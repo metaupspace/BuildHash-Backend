@@ -160,4 +160,48 @@ public class DeliverySlotServiceImpl implements DeliverySlotService {
             deliverySlotLockRepository.updateStatus(lockId, DeliverySlotLockStatus.CONSUMED);
         }
     }
+
+    @Override
+    @Transactional
+    public DeliverySlotLock swapConsumedLock(UUID userId, UUID oldLockId, UUID oldSlotId, LocalDate oldSlotDate, UUID newSlotId, LocalDate newSlotDate) {
+        // 1. Lock and check new slot counter
+        DeliverySlotCounter newCounter = deliverySlotCounterRepository.findBySlotIdAndSlotDateForUpdate(newSlotId, newSlotDate)
+                .orElseThrow(() -> new SlotUnavailableException("SLOT_NOT_AVAILABLE", "Delivery slot is not available for requested date"));
+
+        if (!newCounter.hasCapacity()) {
+            throw new SlotUnavailableException("SLOT_CAPACITY_EXCEEDED", "Delivery slot capacity reached");
+        }
+
+        // 2. Decrement old slot counter & release old lock
+        DeliverySlotCounter oldCounter = deliverySlotCounterRepository.findBySlotIdAndSlotDateForUpdate(oldSlotId, oldSlotDate)
+                .orElse(null);
+        if (oldCounter != null) {
+            deliverySlotCounterRepository.save(oldCounter.decrement());
+        }
+        deliverySlotLockRepository.updateStatus(oldLockId, DeliverySlotLockStatus.RELEASED);
+
+        // 3. Increment new counter & create new lock (status CONSUMED)
+        deliverySlotCounterRepository.save(newCounter.increment());
+
+        DeliverySlotLock newLock = new DeliverySlotLock(
+                UUID.randomUUID(),
+                userId,
+                newSlotId,
+                newSlotDate,
+                Instant.now(),
+                DeliverySlotLockStatus.CONSUMED
+        );
+        return deliverySlotLockRepository.save(newLock);
+    }
+
+    @Override
+    @Transactional
+    public void releaseConsumedLock(UUID lockId, UUID slotId, LocalDate slotDate) {
+        DeliverySlotCounter oldCounter = deliverySlotCounterRepository.findBySlotIdAndSlotDateForUpdate(slotId, slotDate)
+                .orElse(null);
+        if (oldCounter != null) {
+            deliverySlotCounterRepository.save(oldCounter.decrement());
+        }
+        deliverySlotLockRepository.updateStatus(lockId, DeliverySlotLockStatus.RELEASED);
+    }
 }

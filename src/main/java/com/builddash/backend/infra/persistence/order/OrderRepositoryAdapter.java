@@ -35,6 +35,11 @@ public class OrderRepositoryAdapter implements OrderRepository {
     }
 
     @Override
+    public Optional<UUID> findOrderOwnerId(UUID id) {
+        return jpaRepository.findOrderOwnerId(id);
+    }
+
+    @Override
     public List<UUID> findStalePaymentPendingOrderIds(Instant cutoff) {
         return jpaRepository.findStalePaymentPendingOrderIds(OrderStatus.PAYMENT_PENDING, cutoff);
     }

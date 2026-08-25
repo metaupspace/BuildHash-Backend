@@ -56,6 +56,10 @@ security:
 payment:
   webhook-secret: ${PAYMENT_WEBHOOK_SECRET}
 
+delivery:
+  webhook-api-key: ${DELIVERY_WEBHOOK_API_KEY:}
+  modification-window-minutes: ${DELIVERY_MODIFICATION_WINDOW_MINUTES:15}
+
 google:
   client-id: ${GOOGLE_CLIENT_ID:}
 

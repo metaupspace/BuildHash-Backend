@@ -1,10 +1,18 @@
 package com.builddash.backend.api.controller.order;
 
 import com.builddash.backend.api.dto.request.CreateOrderRequest;
+import com.builddash.backend.api.dto.request.DeliveryStatusUpdateRequest;
+import com.builddash.backend.api.dto.request.RescheduleOrderRequest;
+import com.builddash.backend.api.dto.response.CallDriverResponse;
 import com.builddash.backend.api.dto.response.OrderResponse;
+import com.builddash.backend.api.dto.response.OrderTrackingResponse;
+import com.builddash.backend.api.dto.response.ReorderResponse;
 import com.builddash.backend.api.mapper.OrderDtoMapper;
-import com.builddash.backend.application.service.OrderService;
+import com.builddash.backend.api.mapper.OrderTrackingDtoMapper;
 import com.builddash.backend.application.service.OrderResult;
+import com.builddash.backend.application.service.OrderService;
+import com.builddash.backend.application.service.OrderTrackingService;
+import com.builddash.backend.application.service.ReorderResult;
 import com.builddash.backend.common.AuthenticatedUser;
 import com.builddash.backend.domain.exception.PaymentGatewayException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,19 +25,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import com.builddash.backend.api.dto.response.ReorderResponse;
-
 import java.time.Instant;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/orders")
@@ -39,7 +48,9 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+    private final OrderTrackingService orderTrackingService;
     private final OrderDtoMapper orderMapper;
+    private final OrderTrackingDtoMapper orderTrackingDtoMapper;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -64,7 +75,7 @@ public class OrderController {
     @ResponseStatus(HttpStatus.OK)
     @Operation(summary = "Retry payment for an existing PAYMENT_PENDING order")
     public OrderResponse retryPayment(
-            @org.springframework.web.bind.annotation.PathVariable("id") java.util.UUID orderId,
+            @PathVariable("id") UUID orderId,
             @AuthenticationPrincipal AuthenticatedUser user) {
 
         OrderResult result = orderService.retryPayment(user.userId(), orderId);
@@ -82,7 +93,7 @@ public class OrderController {
     @GetMapping("/{id}")
     @Operation(summary = "Get specific order details")
     public OrderResponse getOrder(
-            @org.springframework.web.bind.annotation.PathVariable("id") java.util.UUID orderId,
+            @PathVariable("id") UUID orderId,
             @AuthenticationPrincipal AuthenticatedUser user) {
         return orderMapper.toResponse(orderService.getOrder(user.userId(), orderId));
     }
@@ -90,10 +101,64 @@ public class OrderController {
     @PostMapping("/{id}/reorder")
     @Operation(summary = "Add an existing order's items to the cart")
     public ReorderResponse reorder(
-            @org.springframework.web.bind.annotation.PathVariable("id") java.util.UUID orderId,
+            @PathVariable("id") UUID orderId,
             @AuthenticationPrincipal AuthenticatedUser user) {
-        com.builddash.backend.application.service.ReorderResult result = orderService.reorder(user.userId(), orderId);
+        ReorderResult result = orderService.reorder(user.userId(), orderId);
         return new ReorderResponse(result.cartId(), result.message());
+    }
+
+    @GetMapping("/{id}/tracking")
+    @Operation(summary = "Get tracking information for an order")
+    public OrderTrackingResponse getTracking(
+            @PathVariable("id") UUID orderId,
+            @AuthenticationPrincipal AuthenticatedUser user) {
+        return orderTrackingDtoMapper.toResponse(orderTrackingService.getTracking(user.userId(), orderId));
+    }
+
+    @PutMapping("/{id}/status")
+    @Operation(summary = "Delivery partner webhook to update order tracking status")
+    public ResponseEntity<Void> updateDeliveryStatus(
+            @PathVariable("id") UUID orderId,
+            @RequestHeader("X-API-Key") String apiKey,
+            @Valid @RequestBody DeliveryStatusUpdateRequest request) {
+        orderTrackingService.updateDeliveryStatus(
+                orderId,
+                request.status(),
+                request.driverId(),
+                request.driverPhone(),
+                request.latitude(),
+                request.longitude(),
+                apiKey
+        );
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/reschedule")
+    @Operation(summary = "Reschedule a confirmed order within the modification window")
+    public ResponseEntity<Void> rescheduleOrder(
+            @PathVariable("id") UUID orderId,
+            @Valid @RequestBody RescheduleOrderRequest request,
+            @AuthenticationPrincipal AuthenticatedUser user) {
+        orderTrackingService.rescheduleOrder(user.userId(), orderId, request.newSlotId(), request.slotDate());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/cancel")
+    @Operation(summary = "Cancel a confirmed order within the modification window")
+    public ResponseEntity<Void> cancelOrder(
+            @PathVariable("id") UUID orderId,
+            @AuthenticationPrincipal AuthenticatedUser user) {
+        orderTrackingService.cancelOrderWithinWindow(user.userId(), orderId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/call-driver")
+    @Operation(summary = "Initiate a masked call proxy with the delivery driver")
+    public CallDriverResponse callDriver(
+            @PathVariable("id") UUID orderId,
+            @AuthenticationPrincipal AuthenticatedUser user) {
+        orderTrackingService.callDriver(user.userId(), orderId);
+        return new CallDriverResponse("CALL_INITIATED");
     }
 
     @ExceptionHandler(PaymentGatewayException.class)

@@ -22,4 +22,8 @@ public interface DeliverySlotService {
      * (Releasing on success let a capacity-N slot sell more than N deliveries.)
      */
     void consumeLock(UUID lockId, UUID userId);
+
+    DeliverySlotLock swapConsumedLock(UUID userId, UUID oldLockId, UUID oldSlotId, LocalDate oldSlotDate, UUID newSlotId, LocalDate newSlotDate);
+
+    void releaseConsumedLock(UUID lockId, UUID slotId, LocalDate slotDate);
 }

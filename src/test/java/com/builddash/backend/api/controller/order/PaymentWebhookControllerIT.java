@@ -41,7 +41,7 @@ class PaymentWebhookControllerIT extends AbstractIntegrationTest {
         UUID slotId = UUID.fromString("11111111-1111-1111-1111-111111111101");
         jdbcTemplate.update("INSERT INTO users (id) VALUES (?)", userId);
         jdbcTemplate.update("INSERT INTO addresses (id, user_id, type, line1, city, state, zip_code, is_serviceable) VALUES (?, ?, 'HOME', 'A', 'B', 'C', '111', true)", addressId, userId);
-        jdbcTemplate.update("INSERT INTO delivery_slot_counters (id, slot_id, slot_date, capacity, current_count) VALUES (gen_random_uuid(), ?, CURRENT_DATE, 10, 1)", slotId);
+        jdbcTemplate.update("INSERT INTO delivery_slot_counters (id, slot_id, slot_date, capacity, current_count) VALUES (gen_random_uuid(), ?, CURRENT_DATE, 10, 1) ON CONFLICT (slot_id, slot_date) DO UPDATE SET current_count = 1", slotId);
         jdbcTemplate.update("INSERT INTO delivery_slot_locks (id, user_id, slot_id, slot_date, expires_at, status) VALUES (?, ?, ?, CURRENT_DATE, CURRENT_TIMESTAMP, 'ACTIVE')", lockId, userId, slotId);
         jdbcTemplate.update("INSERT INTO orders (id, user_id, address_id, slot_id, slot_date, delivery_slot_lock_id, total_amount, status) VALUES (?, ?, ?, ?, CURRENT_DATE, ?, 100, 'PAYMENT_PENDING')", orderId, userId, addressId, slotId, lockId);
         jdbcTemplate.update("INSERT INTO payments (id, order_id, transaction_id, amount, status, payment_url) VALUES (?, ?, 'tx_123', 100, 'PENDING', 'url')", paymentId, orderId);
@@ -74,7 +74,7 @@ class PaymentWebhookControllerIT extends AbstractIntegrationTest {
 
         jdbcTemplate.update("INSERT INTO users (id) VALUES (?)", userId);
         jdbcTemplate.update("INSERT INTO addresses (id, user_id, type, line1, city, state, zip_code, is_serviceable) VALUES (?, ?, 'HOME', 'A', 'B', 'C', '111', true)", addressId, userId);
-        jdbcTemplate.update("INSERT INTO delivery_slot_counters (id, slot_id, slot_date, capacity, current_count) VALUES (gen_random_uuid(), ?, CURRENT_DATE, 10, 1)", slotId);
+        jdbcTemplate.update("INSERT INTO delivery_slot_counters (id, slot_id, slot_date, capacity, current_count) VALUES (gen_random_uuid(), ?, CURRENT_DATE, 10, 1) ON CONFLICT (slot_id, slot_date) DO UPDATE SET current_count = 1", slotId);
         jdbcTemplate.update("INSERT INTO delivery_slot_locks (id, user_id, slot_id, slot_date, expires_at, status) VALUES (?, ?, ?, CURRENT_DATE, CURRENT_TIMESTAMP, 'ACTIVE')", lockId, userId, slotId);
         jdbcTemplate.update("INSERT INTO orders (id, user_id, address_id, slot_id, slot_date, delivery_slot_lock_id, total_amount, status) VALUES (?, ?, ?, ?, CURRENT_DATE, ?, 100, 'PAYMENT_PENDING')", orderId, userId, addressId, slotId, lockId);
 

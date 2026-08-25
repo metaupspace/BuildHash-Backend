@@ -1,5 +1,75 @@
 # BuildDash Backend — Progress
 
+## Status: Phase 5 (Order Tracking & Delivery Consumption) — COMPLETE, 326/326 tests green
+
+All deliverables across Checkpoints A, B, and C are fully implemented, reviewed, and proven green with 326/326 tests passing.
+
+---
+
+## Status: Phase 5, Checkpoint C (Reschedule, Cancel-within-Window, Call-Driver) — COMPLETE, 326/326 tests green
+
+Per PLAN_PHASE5.md. Full review and hardening of reschedule (`POST /orders/{id}/reschedule`), cancel-within-window (`POST /orders/{id}/cancel`), and call-driver (`POST /orders/{id}/call-driver`).
+
+**1. Scope & Retroactive Review:**
+- Code for reschedule, cancel-within-window, and call-driver originally existed on disk from the untraced build discussed in Checkpoint B's entry. It was explicitly scoped out of B, audited here under strict TDD, and hardened with concurrency proofs and boundary checks before acceptance.
+
+**2. Key Architectural Finding (`acquireOrSwapLock` Blindness):**
+- `DeliverySlotServiceImpl.acquireOrSwapLock` could NOT be directly reused for reschedule as `PLAN_PHASE5.md`'s decision (d) originally called for. `acquireOrSwapLock` is keyed to `findActiveByUserId`, but an already-paid order's delivery slot lock has status `CONSUMED`, not `ACTIVE`. Reusing `acquireOrSwapLock` directly would have failed to find the consumed lock, silently leaking slot capacity by not decrementing the old slot's counter.
+- **Resolution**: Added two dedicated sibling methods to `DeliverySlotServiceImpl` — `swapConsumedLock` and `releaseConsumedLock` — centralizing the exact same race-safe `SELECT ... FOR UPDATE` counter discipline without polluting or breaking the contract of `acquireOrSwapLock`. This stands as a necessary architectural revision based on runtime lock lifecycle state, not a compromise of design.
+
+**3. Reschedule Fixes:**
+- Switched from hand-rolled inline repository calls to `deliverySlotService.swapConsumedLock`.
+- Applied pessimistic row-locking (`orderRepository.findByIdForUpdate`) with a post-lock status recheck to guard against lost updates and race conditions.
+- Confirmed single `@Transactional` boundary across order update and slot swap, ensuring both commit or roll back atomically together.
+- Removed an invented, hardcoded 30-day lock TTL after auditing the entire codebase and confirming zero queries or jobs inspect `expiresAt` on `CONSUMED` locks.
+
+**4. Cancel-within-Window Fixes:**
+- Switched to `deliverySlotService.releaseConsumedLock`; applied row-locking (`findByIdForUpdate`) with post-lock status rechecks.
+- **Guard Scope Kept `CONFIRMED`-Only**: Rejection of widening customer self-cancel to `PACKED`. Once `PACKED`, cancellation is strictly a warehouse-side action via the delivery partner webhook's `cancelFromDelivery()`. Widening customer cancel to `PACKED` would create duplicate cancel paths with conflicting side effects (releasing vs not releasing slot capacity).
+- Confirmed via full-repo audit: zero refund logic exists in this path, correctly deferred to Phase 6.
+
+**5. Call-Driver Fixes:**
+- `DummyCallProxyGatewayAdapter` was missing `@Profile("!prod")` (a violation of the project's dev-stub hardening convention seen in `DummyPaymentGatewayAdapter`, `SmsOtpSender`, etc.). Added `@Profile("!prod")`.
+- Added missing order-not-found and non-owner 404 test coverage (`callDriver_whenNotOwner_returnsNotFound`, `callDriver_whenOrderNotFound_returnsNotFound`), aligning with `cancel` and `getOrder` error semantics.
+
+**6. New Concurrency Proofs (`DeliverySlotLockingJpaIT`):**
+- `concurrentSwapConsumedLock_enforcesTargetCapacityUnderRace`: Proves 10 concurrent threads racing to swap into a capacity-2 target slot results in exactly 2 successes and 8 `SlotUnavailableException` rejections, with the old slot counter decremented by exactly 2 (10 -> 8).
+- `concurrentReleaseConsumedLock_atomicCounterDecrementUnderRace`: Proves 5 concurrent releases against the same counter row decrement atomically to 0 without lost updates or double-decrements.
+- Confirmed `swapConsumedLock` and `releaseConsumedLock` use default `REQUIRED` transaction propagation (joining the caller's transaction); `REQUIRES_NEW` was explicitly verified absent to preserve cross-entity atomicity.
+
+**7. Test Count:**
+- 320 (end of Checkpoint B fixes) → 326 (after Checkpoint C fixes, race tests, and edge case coverage). All 326/326 tests green with 0 failures, 0 errors, 0 skipped.
+- Original `DeliverySlotLockingJpaIT` guarantees confirmed unaffected throughout.
+
+### Next Phase
+Phase 6 — Returns, Refunds & Invoicing, per `docs/builddash-backend-phase-plan.md`.
+
+---
+
+## Status: Phase 5, Checkpoint B (Delivery Status, Webhook Ingestion, WebSocket Broadcast) — COMPLETE (reviewed scope), 320/320 tests green. Checkpoint C OPEN.
+
+Per PLAN_PHASE5.md. Checkpoint B's reviewed, approved scope is complete; Checkpoint C is explicitly open and inherits pre-existing-but-unreviewed code (details below).
+- `driverId`/`driverPhone` added to Order as plain nullable fields.
+- `GET /orders`, `GET /orders/{id}` built — non-owner returns 404 (not 403), matching the `DeviceController` precedent.
+
+**Reorder design (`POST /orders/{id}/reorder`):**
+- Final design bypasses the persistent cart entirely. Builds an in-memory-then-persisted `REORDER_SCRATCH` cart (own `cart_type`, not a repurposed `project_id`), re-prices via `CartPricingCalculator`, returns a real `cartId` the client hands to `POST /checkout/intent`.
+- Two earlier wrong designs rejected: 1) Overwrite-the-primary-cart (rejected because it destroys user's current WIP cart). 2) `project_id`-as-isolation-key (rejected because `project_id` isn't meant for cart lifecycle isolation). Useful context for future maintainers.
+
+**Tracking & refactoring:**
+- `DeliveryTrackingEvent` (schema/domain/port/adapter only, no producer yet — that's Checkpoint B).
+- Self-invocation `@Transactional` audit: zero live bugs found. `retryPayment`'s sequential `transactionTemplate.execute()` -> gateway-call-after-commit pattern explicitly traced and confirmed safe (not `registerSynchronization(afterCommit)` as originally assumed — noted this correction).
+- `CartPricingCalculatorImpl.calculate()` refactored from cognitive complexity 30 to ~6. Extracted `priceItem`, `evaluateCouponRules`, `computeDiscountAmount` as plain (non-transactional) private methods.
+
+**Guest-cart fixes:**
+- Guest-cart FK bug: `guestSession()` previously issued tokens with no backing `users` row, making any guest cart write fail with a FK violation. Fixed by persisting a real (flagged) `users` row on guest-session creation, plus a full merge-on-login flow (merge line items into an existing cart, or reassign if none exists; guest token invalidated post-merge) triggered via OTP verify.
+- Guest-write security regression: an interim `SecurityConfig` change blocked ALL guest mutations, contradicting the documented guest-cart-mutation-allowed/order-placement-blocked design. Fixed with an explicit `/cart/**` carve-out above the general lockdown.
+
+### Next
+~~Phase 5 Checkpoint B~~ — completed above (see Checkpoint B entry).
+
+---
+
 ## Status: Phase 3 (Checkout Intent) — Checkpoint C COMPLETE, 141/141 tests green
 
 The `product_base_prices` write-path gap flagged at the end of Checkpoint C is closed: your

@@ -9,6 +9,7 @@ import com.builddash.backend.domain.exception.ForbiddenException;
 import com.builddash.backend.domain.exception.GstRateUnresolvedException;
 import com.builddash.backend.domain.exception.InvalidOrderStateException;
 import com.builddash.backend.domain.exception.LockedException;
+import com.builddash.backend.domain.exception.ModificationWindowExpiredException;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.exception.PaymentRetryInProgressException;
 import com.builddash.backend.domain.exception.ProductNotPricedException;
@@ -50,6 +51,7 @@ public class GlobalExceptionHandler {
             Map.entry(ProductNotPricedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             Map.entry(GstRateUnresolvedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             Map.entry(InvalidOrderStateException.class, HttpStatus.CONFLICT),
+            Map.entry(ModificationWindowExpiredException.class, HttpStatus.CONFLICT),
             Map.entry(PaymentRetryInProgressException.class, HttpStatus.CONFLICT)
     );
 
