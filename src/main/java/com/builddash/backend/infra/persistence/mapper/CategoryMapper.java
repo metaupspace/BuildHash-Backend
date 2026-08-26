@@ -15,6 +15,7 @@ public final class CategoryMapper {
         category.setSlug(entity.getSlug());
         category.setParentId(entity.getParentId());
         category.setAttributeSchema(entity.getAttributeSchema());
+        category.setReturnWindowDays(entity.getReturnWindowDays() != null ? entity.getReturnWindowDays() : 7);
         return category;
     }
 
@@ -25,6 +26,7 @@ public final class CategoryMapper {
         entity.setSlug(category.getSlug());
         entity.setParentId(category.getParentId());
         entity.setAttributeSchema(category.getAttributeSchema());
+        entity.setReturnWindowDays(category.getReturnWindowDays() != null ? category.getReturnWindowDays() : 7);
         return entity;
     }
 }

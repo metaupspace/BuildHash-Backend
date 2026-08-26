@@ -41,6 +41,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
     implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
     implementation 'com.google.guava:guava:33.1.0-jre'
+    implementation 'com.github.librepdf:openpdf:2.0.3'
+    implementation 'software.amazon.awssdk:s3:2.25.16'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -52,6 +54,7 @@ dependencies {
     testImplementation 'com.github.fppt:jedis-mock:1.1.9'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:minio:1.20.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

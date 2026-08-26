@@ -18,4 +18,5 @@ public class Category {
     private String slug;
     private UUID parentId;
     private List<CategoryAttribute> attributeSchema = new ArrayList<>();
+    private Integer returnWindowDays = 7;
 }

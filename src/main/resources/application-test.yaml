@@ -29,3 +29,13 @@ management:
 
 payment:
   webhook-secret: test-only-webhook-secret-0123456789abcdef
+
+storage:
+  s3:
+    bucket: test-bucket
+    region: ap-south-1
+    endpoint: http://localhost:9000
+    access-key: test-access-key
+    secret-key: test-secret-key
+    path-style-access: true
+

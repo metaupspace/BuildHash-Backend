@@ -38,6 +38,7 @@ class PaymentWebhookServiceImplTest {
     private OrderRepository orderRepository;
     private PaymentRepository paymentRepository;
     private DeliverySlotService deliverySlotService;
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
     private PaymentWebhookServiceImpl webhookService;
 
     @BeforeEach
@@ -45,8 +46,9 @@ class PaymentWebhookServiceImplTest {
         orderRepository = mock(OrderRepository.class);
         paymentRepository = mock(PaymentRepository.class);
         deliverySlotService = mock(DeliverySlotService.class);
+        eventPublisher = mock(org.springframework.context.ApplicationEventPublisher.class);
         webhookService = new PaymentWebhookServiceImpl(
-                orderRepository, paymentRepository, deliverySlotService, () -> SECRET);
+                orderRepository, paymentRepository, deliverySlotService, () -> SECRET, eventPublisher);
     }
 
     private static String sign(UUID orderId, String status) {

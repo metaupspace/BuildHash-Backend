@@ -36,4 +36,7 @@ public class CategoryEntity {
     @Column(name = "attribute_schema")
     @JdbcTypeCode(SqlTypes.JSON)
     private List<CategoryAttribute> attributeSchema = new ArrayList<>();
+
+    @Column(name = "return_window_days")
+    private Integer returnWindowDays = 7;
 }

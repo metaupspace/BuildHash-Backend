@@ -167,7 +167,8 @@ class OrderTrackingControllerIT extends AbstractIntegrationTest {
     @Test
     void rescheduleOrder_whenNotOwner_returnsNotFound() throws Exception {
         UUID otherUserId = UUID.randomUUID();
-        jdbcTemplate.update("INSERT INTO users (id, phone) VALUES (?, '+919999999992') ON CONFLICT DO NOTHING", otherUserId);
+        jdbcTemplate.update("INSERT INTO users (id, phone, created_at, updated_at) VALUES (?, ?, now(), now()) ON CONFLICT DO NOTHING",
+                otherUserId, "+919" + String.format("%07d", Math.abs(otherUserId.getLeastSignificantBits() % 10000000L)));
         Order order = createSavedOrder(otherUserId, OrderStatus.CONFIRMED);
 
         String payload = objectMapper.writeValueAsString(Map.of(
@@ -227,7 +228,8 @@ class OrderTrackingControllerIT extends AbstractIntegrationTest {
     @Test
     void cancelOrder_whenNotOwner_returnsNotFound() throws Exception {
         UUID otherUserId = UUID.randomUUID();
-        jdbcTemplate.update("INSERT INTO users (id, phone) VALUES (?, '+919999999993') ON CONFLICT DO NOTHING", otherUserId);
+        jdbcTemplate.update("INSERT INTO users (id, phone, created_at, updated_at) VALUES (?, ?, now(), now()) ON CONFLICT DO NOTHING",
+                otherUserId, "+919" + String.format("%07d", Math.abs(otherUserId.getLeastSignificantBits() % 10000000L)));
         Order order = createSavedOrder(otherUserId, OrderStatus.CONFIRMED);
 
         mockMvc.perform(post("/orders/{id}/cancel", order.id())
@@ -260,7 +262,8 @@ class OrderTrackingControllerIT extends AbstractIntegrationTest {
     @Test
     void callDriver_whenNotOwner_returnsNotFound() throws Exception {
         UUID otherUserId = UUID.randomUUID();
-        jdbcTemplate.update("INSERT INTO users (id, phone) VALUES (?, '+919999999994') ON CONFLICT DO NOTHING", otherUserId);
+        jdbcTemplate.update("INSERT INTO users (id, phone, created_at, updated_at) VALUES (?, ?, now(), now()) ON CONFLICT DO NOTHING",
+                otherUserId, "+919" + String.format("%07d", Math.abs(otherUserId.getLeastSignificantBits() % 10000000L)));
         Order order = createSavedOrder(otherUserId, OrderStatus.DISPATCHED);
         order = order.updateDriver("driver-99", "+919876543211");
         orderRepository.save(order);

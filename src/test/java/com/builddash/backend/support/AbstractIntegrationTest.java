@@ -12,6 +12,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ public abstract class AbstractIntegrationTest {
 
     private static final RedisServer REDIS_SERVER;
     private static final PostgreSQLContainer<?> POSTGRES;
+    private static final MinIOContainer MINIO;
 
     static {
         try {
@@ -45,6 +47,9 @@ public abstract class AbstractIntegrationTest {
 
         POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
         POSTGRES.start();
+
+        MINIO = new MinIOContainer("minio/minio:RELEASE.2024-01-16T16-07-38Z");
+        MINIO.start();
     }
 
     @DynamicPropertySource
@@ -58,6 +63,16 @@ public abstract class AbstractIntegrationTest {
     static void redisProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.redis.host", () -> "localhost");
         registry.add("spring.data.redis.port", REDIS_SERVER::getBindPort);
+    }
+
+    @DynamicPropertySource
+    static void minioProperties(DynamicPropertyRegistry registry) {
+        registry.add("storage.s3.endpoint", MINIO::getS3URL);
+        registry.add("storage.s3.access-key", MINIO::getUserName);
+        registry.add("storage.s3.secret-key", MINIO::getPassword);
+        registry.add("storage.s3.bucket", () -> "test-bucket");
+        registry.add("storage.s3.region", () -> "ap-south-1");
+        registry.add("storage.s3.path-style-access", () -> "true");
     }
 
     @Autowired

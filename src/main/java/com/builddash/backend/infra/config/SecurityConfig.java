@@ -47,6 +47,10 @@ public class SecurityConfig {
                         .requestMatchers("/search/**").permitAll()
                         .requestMatchers("/users/**").hasRole("USER")
                         .requestMatchers("/cart/**").hasAnyRole("GUEST", "USER")
+                        .requestMatchers(HttpMethod.POST, "/orders/*/return").hasRole("USER")
+                        .requestMatchers(HttpMethod.GET, "/orders/*/invoice").hasRole("USER")
+                        .requestMatchers(HttpMethod.GET, "/returns/*").hasAnyRole("USER", "VENDOR", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/returns/*/reject", "/returns/*/qc-pass").hasAnyRole("VENDOR", "ADMIN")
                         // Guest tokens may browse (GET) but never write
                         .requestMatchers(HttpMethod.POST, "/**").hasRole("USER")
                         .requestMatchers(HttpMethod.PUT, "/**").hasRole("USER")

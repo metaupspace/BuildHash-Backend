@@ -1,5 +1,6 @@
 package com.builddash.backend.application.impl;
 
+import com.builddash.backend.application.event.OrderConfirmedEvent;
 import com.builddash.backend.application.service.DeliverySlotService;
 import com.builddash.backend.application.service.PaymentWebhookService;
 import com.builddash.backend.domain.enums.OrderStatus;
@@ -11,6 +12,7 @@ import com.builddash.backend.domain.port.PaymentRepository;
 import com.builddash.backend.domain.port.PaymentWebhookConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
     private final PaymentRepository paymentRepository;
     private final DeliverySlotService deliverySlotService;
     private final PaymentWebhookConfig webhookConfig;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -48,6 +51,7 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
         if ("SUCCESS".equalsIgnoreCase(status)) {
             Order confirmed = order.confirm();
             orderRepository.save(confirmed);
+            eventPublisher.publishEvent(new OrderConfirmedEvent(orderId));
             updatePaymentStatus(orderId, PaymentStatus.SUCCESS);
             // Consume, not release: the confirmed order still occupies delivery capacity
             deliverySlotService.consumeLock(confirmed.deliverySlotLockId(), confirmed.userId());

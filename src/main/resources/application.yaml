@@ -70,6 +70,15 @@ otp:
   send-cooldown-seconds: ${OTP_SEND_COOLDOWN_SECONDS:60}
   rate-limit-per-hour: ${OTP_RATE_LIMIT_PER_HOUR:5}
 
+storage:
+  s3:
+    bucket: ${S3_BUCKET:builddash-invoices}
+    region: ${AWS_REGION:ap-south-1}
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    access-key: ${AWS_ACCESS_KEY_ID:minioadmin}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:minioadminpassword}
+    path-style-access: ${S3_PATH_STYLE_ACCESS:true}
+
 management:
   endpoints:
     web:

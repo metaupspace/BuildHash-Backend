@@ -2,13 +2,13 @@
 
 ## Status: Phase 5 (Order Tracking & Delivery Consumption) — COMPLETE, 326/326 tests green
 
-All deliverables across Checkpoints A, B, and C are fully implemented, reviewed, and proven green with 326/326 tests passing.
+All deliverables across Checkpoints A, B, and C are fully implemented, reviewed, and proven green with 326/326 tests passing. Process note: Checkpoints B and C were reviewed via a dedicated post-hoc audit pass (full-repo sweep, retroactive gap audit, fresh verification runs) rather than checkpoint-by-checkpoint as usual — a deviation worth knowing when reading the entries below.
 
 ---
 
 ## Status: Phase 5, Checkpoint C (Reschedule, Cancel-within-Window, Call-Driver) — COMPLETE, 326/326 tests green
 
-Per PLAN_PHASE5.md. Full review and hardening of reschedule (`POST /orders/{id}/reschedule`), cancel-within-window (`POST /orders/{id}/cancel`), and call-driver (`POST /orders/{id}/call-driver`).
+Per PLAN_PHASE5.md. Full review and hardening of reschedule (`POST /orders/{id}/reschedule`), cancel-within-window (`POST /orders/{id}/cancel`), and call-driver (`POST /orders/{id}/call-driver`). Review provenance: this checkpoint was accepted via a post-hoc audit pass (the code predated its review), not the usual review-before-merge checkpoint flow.
 
 **1. Scope & Retroactive Review:**
 - Code for reschedule, cancel-within-window, and call-driver originally existed on disk from the untraced build discussed in Checkpoint B's entry. It was explicitly scoped out of B, audited here under strict TDD, and hardened with concurrency proofs and boundary checks before acceptance.
@@ -41,6 +41,9 @@ Per PLAN_PHASE5.md. Full review and hardening of reschedule (`POST /orders/{id}/
 - 320 (end of Checkpoint B fixes) → 326 (after Checkpoint C fixes, race tests, and edge case coverage). All 326/326 tests green with 0 failures, 0 errors, 0 skipped.
 - Original `DeliverySlotLockingJpaIT` guarantees confirmed unaffected throughout.
 
+**8. Known, deliberate gap — WebSocket broker is in-memory, not the RabbitMQ relay:**
+- `WebSocketConfig` currently uses `enableSimpleBroker("/topic")` — an in-memory, per-instance broker — instead of `enableStompBrokerRelay` over RabbitMQ. Fine for a single running instance, but WebSocket broadcasts will NOT reach subscribers connected to a different instance once this service runs horizontally scaled: each instance's simple broker only knows its own local subscriptions, so a tracking update published on instance 1 never reaches a client subscribed on instance 2. Explicitly deferred, not fixed, in this pass — revisit (switch to the STOMP relay, rabbitmq_stomp on port 61613) before any horizontal scaling of this service.
+
 ### Next Phase
 Phase 6 — Returns, Refunds & Invoicing, per `docs/builddash-backend-phase-plan.md`.
 
@@ -66,7 +69,7 @@ Per PLAN_PHASE5.md. Checkpoint B's reviewed, approved scope is complete; Checkpo
 - Guest-write security regression: an interim `SecurityConfig` change blocked ALL guest mutations, contradicting the documented guest-cart-mutation-allowed/order-placement-blocked design. Fixed with an explicit `/cart/**` carve-out above the general lockdown.
 
 ### Next
-~~Phase 5 Checkpoint B~~ — completed above (see Checkpoint B entry).
+~~Phase 5 Checkpoint B~~ — completed above (see Checkpoint B entry). (Checkpoint C, marked OPEN above, was subsequently completed and audited — see the Checkpoint C entry earlier in this file.)
 
 ---
 
