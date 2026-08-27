@@ -1,5 +1,6 @@
 package com.builddash.backend.application.impl;
 
+import com.builddash.backend.application.event.InvoiceReadyEvent;
 import com.builddash.backend.application.service.GstSequenceService;
 import com.builddash.backend.application.service.InvoiceCommitService;
 import com.builddash.backend.domain.enums.GstSequenceType;
@@ -9,6 +10,7 @@ import com.builddash.backend.domain.model.Invoice;
 import com.builddash.backend.domain.port.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,7 @@ public class InvoiceCommitServiceImpl implements InvoiceCommitService {
 
     private final InvoiceRepository invoiceRepository;
     private final GstSequenceService gstSequenceService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -36,6 +39,7 @@ public class InvoiceCommitServiceImpl implements InvoiceCommitService {
         String invoiceNumber = gstSequenceService.nextNumber(GstSequenceType.INVOICE);
         Invoice ready = invoice.markReady(invoiceNumber, storageKey);
         Invoice saved = invoiceRepository.save(ready);
+        eventPublisher.publishEvent(new InvoiceReadyEvent(invoice.orderId()));
 
         log.info("Committed invoice {} with number {} (status READY)", invoiceId, invoiceNumber);
         return saved;

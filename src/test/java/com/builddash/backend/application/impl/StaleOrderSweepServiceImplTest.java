@@ -25,6 +25,7 @@ class StaleOrderSweepServiceImplTest {
     private DeliverySlotService deliverySlotService;
     private com.builddash.backend.domain.port.DeliverySlotLockRepository deliverySlotLockRepository;
     private com.builddash.backend.domain.port.DeliverySlotCounterRepository deliverySlotCounterRepository;
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
     private StaleOrderSweepServiceImpl sweepService;
 
     @BeforeEach
@@ -33,8 +34,9 @@ class StaleOrderSweepServiceImplTest {
         deliverySlotService = mock(DeliverySlotService.class);
         deliverySlotLockRepository = mock(com.builddash.backend.domain.port.DeliverySlotLockRepository.class);
         deliverySlotCounterRepository = mock(com.builddash.backend.domain.port.DeliverySlotCounterRepository.class);
+        eventPublisher = mock(org.springframework.context.ApplicationEventPublisher.class);
         sweepService = new StaleOrderSweepServiceImpl(orderRepository, deliverySlotService,
-                deliverySlotLockRepository, deliverySlotCounterRepository);
+                deliverySlotLockRepository, deliverySlotCounterRepository, eventPublisher);
         // Self-injection is a Spring field injection; wire it manually for the unit test
         try {
             java.lang.reflect.Field selfField = StaleOrderSweepServiceImpl.class.getDeclaredField("self");
@@ -58,6 +60,24 @@ class StaleOrderSweepServiceImplTest {
 
         verify(orderRepository).save(any(Order.class));
         verify(deliverySlotService).releaseLock(lockId, userId);
+    }
+
+    @Test
+    void sweepOrder_cancelPathPublishesNoEvents() {
+        // Permanent invariant: a stale PAYMENT_PENDING cancel was never a confirmed, paid order, so
+        // it must never emit a notification event. verifyNoInteractions trips the day someone adds
+        // a publishEvent call to this path.
+        UUID orderId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID lockId = UUID.randomUUID();
+
+        Order order = new Order(orderId, userId, UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), BigDecimal.TEN, OrderStatus.PAYMENT_PENDING, lockId, java.time.Instant.now(), null, null, List.of());
+        when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
+
+        sweepService.sweepOrder(orderId);
+
+        verify(orderRepository).save(any(Order.class));
+        org.mockito.Mockito.verifyNoInteractions(eventPublisher);
     }
 
     @Test

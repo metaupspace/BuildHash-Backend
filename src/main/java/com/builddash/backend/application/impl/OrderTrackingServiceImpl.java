@@ -1,5 +1,9 @@
 package com.builddash.backend.application.impl;
 
+import com.builddash.backend.application.event.OrderCancelledEvent;
+import com.builddash.backend.application.event.OrderDeliveredEvent;
+import com.builddash.backend.application.event.OrderDispatchedEvent;
+import com.builddash.backend.application.event.OrderPackedEvent;
 import com.builddash.backend.application.service.DeliverySlotService;
 import com.builddash.backend.application.service.OrderTrackingBroadcaster;
 import com.builddash.backend.application.service.OrderTrackingService;
@@ -19,6 +23,7 @@ import com.builddash.backend.domain.port.OrderRepository;
 import com.builddash.backend.infra.config.DeliveryProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +44,7 @@ public class OrderTrackingServiceImpl implements OrderTrackingService {
     private final CallProxyGateway callProxyGateway;
     private final DeliveryProperties deliveryProperties;
     private final OrderTrackingBroadcaster broadcaster;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -110,6 +116,16 @@ public class OrderTrackingServiceImpl implements OrderTrackingService {
             orderRepository.save(order);
             trackingEventRepository.save(new DeliveryTrackingEvent(
                     UUID.randomUUID(), orderId, status, latitude, longitude, Instant.now()));
+
+            // Phase 7 notification triggers — publish-only addition, no transition-behavior change
+            switch (status) {
+                case PACKED -> eventPublisher.publishEvent(new OrderPackedEvent(orderId));
+                case DISPATCHED -> eventPublisher.publishEvent(new OrderDispatchedEvent(orderId));
+                case DELIVERED -> eventPublisher.publishEvent(new OrderDeliveredEvent(orderId));
+                case CANCELLED -> eventPublisher.publishEvent(new OrderCancelledEvent(
+                        orderId, OrderCancelledEvent.OrderCancellationOrigin.DELIVERY_WEBHOOK));
+                default -> { /* no notification event for other statuses */ }
+            }
         }
 
         Optional<DeliveryTrackingEvent> latestEvent = trackingEventRepository.findLatestByOrderId(orderId);
@@ -200,6 +216,8 @@ public class OrderTrackingServiceImpl implements OrderTrackingService {
 
         Order updated = order.cancelConfirmed();
         orderRepository.save(updated);
+        eventPublisher.publishEvent(new OrderCancelledEvent(
+                orderId, OrderCancelledEvent.OrderCancellationOrigin.CUSTOMER_WINDOW));
     }
 
     @Override

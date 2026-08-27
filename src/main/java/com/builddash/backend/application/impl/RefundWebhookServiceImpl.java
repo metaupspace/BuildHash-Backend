@@ -1,5 +1,7 @@
 package com.builddash.backend.application.impl;
 
+import com.builddash.backend.application.event.RefundCompletedEvent;
+import com.builddash.backend.application.event.ReturnStatusChangedEvent;
 import com.builddash.backend.application.service.GstSequenceService;
 import com.builddash.backend.application.service.RefundWebhookService;
 import com.builddash.backend.domain.enums.GstNoteType;
@@ -16,6 +18,7 @@ import com.builddash.backend.domain.port.RefundRepository;
 import com.builddash.backend.domain.port.ReturnRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +43,7 @@ public class RefundWebhookServiceImpl implements RefundWebhookService {
     private final GstNoteRepository gstNoteRepository;
     private final GstSequenceService gstSequenceService;
     private final PaymentWebhookConfig webhookConfig;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -73,6 +77,7 @@ public class RefundWebhookServiceImpl implements RefundWebhookService {
                         if (ret.status() == ReturnStatus.REFUND_INITIATED) {
                             Return completed = ret.completeRefund();
                             returnRepository.save(completed);
+                            eventPublisher.publishEvent(new ReturnStatusChangedEvent(actualReturnId, ReturnStatus.REFUND_INITIATED, ReturnStatus.REFUND_COMPLETED));
                             log.info("Return {} transitioned to REFUND_COMPLETED", actualReturnId);
 
                             if (gstNoteRepository.findByReturnId(actualReturnId).isEmpty()) {
@@ -95,6 +100,7 @@ public class RefundWebhookServiceImpl implements RefundWebhookService {
                     });
                 }
                 log.info("Refund {} marked SUCCESS", refund.id());
+                eventPublisher.publishEvent(new RefundCompletedEvent(successRefund.returnId(), successRefund.id()));
             } else if ("FAILED".equalsIgnoreCase(status)) {
                 Refund failedRefund = refund.markFailed(gatewayRefundId);
                 refundRepository.save(failedRefund);

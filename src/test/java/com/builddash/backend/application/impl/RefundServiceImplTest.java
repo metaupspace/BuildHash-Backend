@@ -50,11 +50,14 @@ class RefundServiceImplTest {
     @Mock
     private RefundRepository refundRepository;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private RefundServiceImpl refundService;
 
     @BeforeEach
     void setUp() {
-        refundService = new RefundServiceImpl(returnRepository, paymentRepository, paymentGateway, refundRepository);
+        refundService = new RefundServiceImpl(returnRepository, paymentRepository, paymentGateway, refundRepository, eventPublisher);
     }
 
     private Return createQcPassedReturn(UUID returnId, UUID orderId) {

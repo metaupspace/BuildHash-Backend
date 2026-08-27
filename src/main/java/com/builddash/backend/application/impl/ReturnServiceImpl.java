@@ -1,6 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.api.dto.request.ReturnLineItemRequest;
+import com.builddash.backend.application.event.ReturnStatusChangedEvent;
 import com.builddash.backend.application.service.RefundService;
 import com.builddash.backend.application.service.ReturnService;
 import com.builddash.backend.domain.enums.OrderStatus;
@@ -25,6 +26,7 @@ import com.builddash.backend.domain.port.ReturnRepository;
 import com.builddash.backend.domain.service.ReturnRefundCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -59,6 +61,7 @@ public class ReturnServiceImpl implements ReturnService {
     private final CategoryRepository categoryRepository;
     private final ObjectStorage objectStorage;
     private final RefundService refundService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -187,7 +190,9 @@ public class ReturnServiceImpl implements ReturnService {
         Return returnObj = returnRepository.findById(returnId)
                 .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
         Return approved = returnObj.approve();
-        return returnRepository.save(approved);
+        Return saved = returnRepository.save(approved);
+        eventPublisher.publishEvent(new ReturnStatusChangedEvent(returnId, returnObj.status(), ReturnStatus.APPROVED));
+        return saved;
     }
 
     @Override
@@ -196,7 +201,9 @@ public class ReturnServiceImpl implements ReturnService {
         Return returnObj = returnRepository.findById(returnId)
                 .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
         Return scheduled = returnObj.schedulePickup();
-        return returnRepository.save(scheduled);
+        Return saved = returnRepository.save(scheduled);
+        eventPublisher.publishEvent(new ReturnStatusChangedEvent(returnId, returnObj.status(), ReturnStatus.PICKUP_SCHEDULED));
+        return saved;
     }
 
     @Override
@@ -205,7 +212,9 @@ public class ReturnServiceImpl implements ReturnService {
         Return returnObj = returnRepository.findById(returnId)
                 .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
         Return pickedUp = returnObj.pickUp();
-        return returnRepository.save(pickedUp);
+        Return saved = returnRepository.save(pickedUp);
+        eventPublisher.publishEvent(new ReturnStatusChangedEvent(returnId, returnObj.status(), ReturnStatus.PICKED_UP));
+        return saved;
     }
 
     @Override
@@ -216,6 +225,7 @@ public class ReturnServiceImpl implements ReturnService {
 
         Return inQc = returnObj.passQc();
         returnRepository.save(inQc);
+        eventPublisher.publishEvent(new ReturnStatusChangedEvent(returnId, returnObj.status(), ReturnStatus.QC));
 
         refundService.initiateRefund(returnId);
 
@@ -229,6 +239,8 @@ public class ReturnServiceImpl implements ReturnService {
         Return returnObj = returnRepository.findById(returnId)
                 .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
         Return rejected = returnObj.reject();
-        return returnRepository.save(rejected);
+        Return saved = returnRepository.save(rejected);
+        eventPublisher.publishEvent(new ReturnStatusChangedEvent(returnId, returnObj.status(), ReturnStatus.REJECTED));
+        return saved;
     }
 }

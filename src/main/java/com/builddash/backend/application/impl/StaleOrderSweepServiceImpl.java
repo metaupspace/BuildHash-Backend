@@ -7,6 +7,7 @@ import com.builddash.backend.domain.model.Order;
 import com.builddash.backend.domain.port.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,12 @@ public class StaleOrderSweepServiceImpl implements StaleOrderSweepService {
     private final DeliverySlotService deliverySlotService;
     private final com.builddash.backend.domain.port.DeliverySlotLockRepository deliverySlotLockRepository;
     private final com.builddash.backend.domain.port.DeliverySlotCounterRepository deliverySlotCounterRepository;
+    /**
+     * Invariant seam only — never called by this service. A stale PAYMENT_PENDING cancel is not a
+     * customer-facing transition (the order was never confirmed or paid), so it must publish no
+     * events; StaleOrderSweepServiceImplTest.verifyNoInteractions keeps that permanent.
+     */
+    private final ApplicationEventPublisher eventPublisher;
     private @org.springframework.context.annotation.Lazy @org.springframework.beans.factory.annotation.Autowired StaleOrderSweepServiceImpl self; // Self-injection for REQUIRED_NEW transaction boundary
 
     @Override

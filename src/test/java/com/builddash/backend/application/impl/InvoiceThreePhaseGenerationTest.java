@@ -51,6 +51,9 @@ class InvoiceThreePhaseGenerationTest {
     @Mock
     private GstSequenceService gstSequenceService;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private InvoiceClaimService claimService;
     private InvoiceCommitService commitService;
     private InvoiceGenerationServiceImpl generationService;
@@ -61,7 +64,7 @@ class InvoiceThreePhaseGenerationTest {
     @BeforeEach
     void setUp() {
         claimService = new InvoiceClaimServiceImpl(invoiceRepository);
-        commitService = new InvoiceCommitServiceImpl(invoiceRepository, gstSequenceService);
+        commitService = new InvoiceCommitServiceImpl(invoiceRepository, gstSequenceService, eventPublisher);
         generationService = new InvoiceGenerationServiceImpl(
                 claimService,
                 snapshotBuilder,

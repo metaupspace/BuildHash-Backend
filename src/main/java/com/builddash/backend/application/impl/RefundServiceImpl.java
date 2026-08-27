@@ -1,7 +1,9 @@
 package com.builddash.backend.application.impl;
 
+import com.builddash.backend.application.event.ReturnStatusChangedEvent;
 import com.builddash.backend.application.service.RefundService;
 import com.builddash.backend.domain.enums.RefundStatus;
+import com.builddash.backend.domain.enums.ReturnStatus;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.model.Payment;
 import com.builddash.backend.domain.model.Refund;
@@ -14,6 +16,7 @@ import com.builddash.backend.domain.port.ReturnRepository;
 import com.builddash.backend.domain.service.ReturnRefundCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +33,7 @@ public class RefundServiceImpl implements RefundService {
     private final PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway;
     private final RefundRepository refundRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -48,6 +52,7 @@ public class RefundServiceImpl implements RefundService {
 
         Return initiated = returnObj.initiateRefund();
         returnRepository.save(initiated);
+        eventPublisher.publishEvent(new ReturnStatusChangedEvent(returnId, ReturnStatus.QC, ReturnStatus.REFUND_INITIATED));
 
         Refund refund = new Refund(
                 UUID.randomUUID(),

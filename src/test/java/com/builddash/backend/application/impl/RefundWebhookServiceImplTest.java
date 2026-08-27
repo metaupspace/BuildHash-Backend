@@ -60,6 +60,9 @@ class RefundWebhookServiceImplTest {
     @Mock
     private PaymentWebhookConfig webhookConfig;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private RefundWebhookServiceImpl webhookService;
 
     @BeforeEach
@@ -69,7 +72,8 @@ class RefundWebhookServiceImplTest {
                 refundRepository,
                 gstNoteRepository,
                 gstSequenceService,
-                webhookConfig
+                webhookConfig,
+                eventPublisher
         );
     }
 
