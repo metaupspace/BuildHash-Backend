@@ -47,6 +47,13 @@ public class SecurityConfig {
                         .requestMatchers("/search/**").permitAll()
                         .requestMatchers("/users/**").hasRole("USER")
                         .requestMatchers("/cart/**").hasAnyRole("GUEST", "USER")
+                        // Support: customers own their tickets; VENDOR/ADMIN reach any ticket by id.
+                        // Agents are the same Phase 6 role stub returns-approvers are (OQ-6).
+                        .requestMatchers(HttpMethod.POST, "/support/tickets", "/support/chat").hasRole("USER")
+                        .requestMatchers(HttpMethod.GET, "/support/tickets").hasRole("USER")
+                        .requestMatchers(HttpMethod.GET, "/support/tickets/*").hasAnyRole("USER", "VENDOR", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/support/tickets/*/messages").hasAnyRole("USER", "VENDOR", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/support/tickets/*/escalate").hasAnyRole("VENDOR", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/orders/*/return").hasRole("USER")
                         .requestMatchers(HttpMethod.GET, "/orders/*/invoice").hasRole("USER")
                         .requestMatchers(HttpMethod.GET, "/returns/*").hasAnyRole("USER", "VENDOR", "ADMIN")
