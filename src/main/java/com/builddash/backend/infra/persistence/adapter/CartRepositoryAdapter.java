@@ -10,6 +10,7 @@ import com.builddash.backend.infra.persistence.repository.CartLineItemJpaReposit
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +33,13 @@ class CartRepositoryAdapter implements CartRepository {
     public Optional<Cart> findById(UUID id) {
         return jpaRepository.findByIdWithItems(id)
                 .map(this::toDomain);
+    }
+
+    @Override
+    public List<Cart> findStalePrimaryCarts(Instant cutoff) {
+        return jpaRepository.findStalePrimaryCarts(cutoff).stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     private Cart toDomain(CartEntity entity) {

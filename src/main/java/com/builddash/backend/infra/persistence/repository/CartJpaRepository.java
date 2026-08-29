@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,4 +17,7 @@ public interface CartJpaRepository extends JpaRepository<CartEntity, UUID> {
 
     @Query("SELECT c FROM CartEntity c LEFT JOIN FETCH c.items WHERE c.id = :id")
     Optional<CartEntity> findByIdWithItems(@Param("id") UUID id);
+
+    @Query("SELECT c FROM CartEntity c LEFT JOIN FETCH c.items WHERE c.type = com.builddash.backend.domain.enums.CartType.PRIMARY AND c.updatedAt < :cutoff AND SIZE(c.items) > 0")
+    List<CartEntity> findStalePrimaryCarts(@Param("cutoff") Instant cutoff);
 }
