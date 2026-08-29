@@ -10,6 +10,7 @@ import com.builddash.backend.domain.enums.ReturnStatus;
 import com.builddash.backend.domain.exception.BadRequestException;
 import com.builddash.backend.domain.exception.InvalidOrderStateException;
 import com.builddash.backend.domain.exception.NotFoundException;
+import com.builddash.backend.domain.exception.ReturnAlreadyExistsException;
 import com.builddash.backend.domain.model.Category;
 import com.builddash.backend.domain.model.Order;
 import com.builddash.backend.domain.model.OrderLineItem;
@@ -93,6 +94,16 @@ public class ReturnServiceImpl implements ReturnService {
         if (order.status() != OrderStatus.DELIVERED) {
             throw new InvalidOrderStateException(order.status().name(), "RETURN_REQUESTED");
         }
+
+        // Client-retry guard: one ACTIVE return per order. No returned-quantity tracking
+        // exists (PLAN_PHASE6 Section 1), so a second return would re-return the same items
+        // and trigger a second refund. REJECTED is the one re-entry door — rejection is
+        // terminal and pre-refund, so a corrected re-submission stays legitimate.
+        returnRepository.findByOrderId(orderId)
+                .filter(existing -> existing.status() != ReturnStatus.REJECTED)
+                .ifPresent(existing -> {
+                    throw new ReturnAlreadyExistsException(orderId);
+                });
 
         Map<UUID, OrderLineItem> orderItemMap = order.lineItems().stream()
                 .collect(Collectors.toMap(OrderLineItem::productId, Function.identity()));

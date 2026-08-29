@@ -174,6 +174,29 @@ class ReturnControllerIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void createReturn_secondSubmissionForSameOrder_returns409ReturnAlreadyExists() throws Exception {
+        Order order = createSampleOrder(userId, OrderStatus.DELIVERED, Instant.now());
+        CreateReturnRequest request = new CreateReturnRequest(
+                ReturnReason.DAMAGED, List.of(new ReturnLineItemRequest(productId, 2)));
+        MockMultipartFile jsonPart = new MockMultipartFile("request", "", MediaType.APPLICATION_JSON_VALUE,
+                objectMapper.writeValueAsBytes(request));
+        MockMultipartFile photoPart = new MockMultipartFile("photos", "damage.jpg", "image/jpeg", new byte[]{1});
+
+        mockMvc.perform(multipart("/orders/{id}/return", order.id())
+                        .file(jsonPart).file(photoPart)
+                        .header(HttpHeaders.AUTHORIZATION, userToken))
+                .andExpect(status().isCreated());
+
+        // Client retry / double-tap: same intent, second POST — must 409, not create a
+        // second Return with its own refund calculation.
+        mockMvc.perform(multipart("/orders/{id}/return", order.id())
+                        .file(jsonPart).file(photoPart)
+                        .header(HttpHeaders.AUTHORIZATION, userToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("RETURN_ALREADY_EXISTS"));
+    }
+
+    @Test
     void createReturn_zeroPhotos_returnsPhotosRequired400() throws Exception {
         Order order = createSampleOrder(userId, OrderStatus.DELIVERED, Instant.now());
 

@@ -15,6 +15,7 @@ import com.builddash.backend.domain.exception.ModificationWindowExpiredException
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.exception.PaymentRetryInProgressException;
 import com.builddash.backend.domain.exception.ProductNotPricedException;
+import com.builddash.backend.domain.exception.ReturnAlreadyExistsException;
 import com.builddash.backend.domain.exception.SlotUnavailableException;
 import com.builddash.backend.domain.exception.TooManyRequestsException;
 import com.builddash.backend.domain.exception.UnauthorizedException;
@@ -54,6 +55,7 @@ public class GlobalExceptionHandler {
             Map.entry(GstRateUnresolvedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             Map.entry(InvalidOrderStateException.class, HttpStatus.CONFLICT),
             Map.entry(InvalidReturnStateException.class, HttpStatus.CONFLICT),
+            Map.entry(ReturnAlreadyExistsException.class, HttpStatus.CONFLICT),
             Map.entry(InvalidSupportTicketStateException.class, HttpStatus.CONFLICT),
             Map.entry(ModificationWindowExpiredException.class, HttpStatus.CONFLICT),
             Map.entry(PaymentRetryInProgressException.class, HttpStatus.CONFLICT)

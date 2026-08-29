@@ -37,6 +37,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 /**
@@ -195,5 +196,82 @@ class ReturnServiceEventPublishTest {
                 List.of(new ReturnLineItemRequest(productId, 2)), List.of(photo));
 
         verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    // --- Return double-submit guard (one ACTIVE return per order) ---
+
+    private Order deliveredOrder(UUID userId, UUID orderId) {
+        return new Order(orderId, userId, UUID.randomUUID(), UUID.randomUUID(), null,
+                BigDecimal.TEN, OrderStatus.DELIVERED, UUID.randomUUID(), Instant.now(), null, null,
+                List.of(new OrderLineItem(UUID.randomUUID(), UUID.randomUUID(), 5,
+                        new BigDecimal("100.00"), new BigDecimal("18.00"), new BigDecimal("590.00"))));
+    }
+
+    private MultipartFile validPhoto() throws Exception {
+        MultipartFile photo = mock(MultipartFile.class);
+        lenient().when(photo.isEmpty()).thenReturn(false);
+        lenient().when(photo.getContentType()).thenReturn("image/jpeg");
+        lenient().when(photo.getBytes()).thenReturn(new byte[]{1});
+        return photo;
+    }
+
+    @Test
+    void createReturn_existingReturnInRefundCompletedStatus_isBlocked() throws Exception {
+        // Dedicated case, not incidentally covered: a completed refund must never be
+        // re-returnable — a second return would double-refund.
+        UUID userId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(deliveredOrder(userId, orderId)));
+        when(returnRepository.findByOrderId(orderId))
+                .thenReturn(Optional.of(returnIn(ReturnStatus.REFUND_COMPLETED)));
+
+        assertThatThrownBy(() -> service.createReturn(userId, orderId, ReturnReason.DAMAGED,
+                List.of(new ReturnLineItemRequest(UUID.randomUUID(), 2)), List.of(validPhoto())))
+                .isInstanceOf(com.builddash.backend.domain.exception.ReturnAlreadyExistsException.class);
+
+        verify(returnRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = ReturnStatus.class, names = {
+            "REQUESTED", "APPROVED", "PICKUP_SCHEDULED", "PICKED_UP", "QC", "REFUND_INITIATED"})
+    void createReturn_existingReturnInAnyActiveStatus_isBlocked(ReturnStatus existingStatus) throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(deliveredOrder(userId, orderId)));
+        when(returnRepository.findByOrderId(orderId)).thenReturn(Optional.of(returnIn(existingStatus)));
+
+        assertThatThrownBy(() -> service.createReturn(userId, orderId, ReturnReason.DAMAGED,
+                List.of(new ReturnLineItemRequest(UUID.randomUUID(), 2)), List.of(validPhoto())))
+                .isInstanceOf(com.builddash.backend.domain.exception.ReturnAlreadyExistsException.class);
+
+        verify(returnRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void createReturn_existingRejectedReturn_allowsResubmission() throws Exception {
+        // REJECTED is the one re-entry door: terminal, pre-refund, corrected re-submission legit.
+        UUID userId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Order order = new Order(orderId, userId, UUID.randomUUID(), UUID.randomUUID(), null,
+                BigDecimal.TEN, OrderStatus.DELIVERED, UUID.randomUUID(), Instant.now(), null, null,
+                List.of(new OrderLineItem(UUID.randomUUID(), productId, 5,
+                        new BigDecimal("100.00"), new BigDecimal("18.00"), new BigDecimal("590.00"))));
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(returnRepository.findByOrderId(orderId)).thenReturn(Optional.of(returnIn(ReturnStatus.REJECTED)));
+        lenient().when(returnRepository.save(any(Return.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        MultipartFile photo = mock(MultipartFile.class);
+        lenient().when(photo.isEmpty()).thenReturn(false);
+        lenient().when(photo.getContentType()).thenReturn("image/jpeg");
+        lenient().when(photo.getBytes()).thenReturn(new byte[]{1});
+
+        service.createReturn(userId, orderId, ReturnReason.DAMAGED,
+                List.of(new ReturnLineItemRequest(productId, 2)), List.of(photo));
+
+        verify(returnRepository).save(any(Return.class));
     }
 }
