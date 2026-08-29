@@ -27,6 +27,11 @@ class NotificationLogRepositoryAdapter implements NotificationLogRepository {
     }
 
     @Override
+    public java.util.Optional<NotificationLog> findById(UUID id) {
+        return jpaRepository.findById(id).map(NotificationLogMapper::toDomain);
+    }
+
+    @Override
     public boolean existsByEventTypeAndReferenceId(NotificationEventType eventType, UUID referenceId) {
         return jpaRepository.existsByEventTypeAndReferenceId(eventType, referenceId);
     }

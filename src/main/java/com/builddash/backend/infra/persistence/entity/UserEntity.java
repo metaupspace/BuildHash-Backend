@@ -2,6 +2,7 @@ package com.builddash.backend.infra.persistence.entity;
 
 import com.builddash.backend.domain.enums.GstinStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -28,19 +29,36 @@ public class UserEntity {
     @UuidGenerator
     private UUID id;
 
+    @Convert(converter = com.builddash.backend.infra.persistence.converter.UserPiiStringConverter.class)
     private String phone;
+
+    @Convert(converter = com.builddash.backend.infra.persistence.converter.UserPiiStringConverter.class)
     private String email;
 
     @Column(name = "google_id")
+    @Convert(converter = com.builddash.backend.infra.persistence.converter.UserPiiStringConverter.class)
     private String googleId;
 
+    @Convert(converter = com.builddash.backend.infra.persistence.converter.UserPiiStringConverter.class)
     private String name;
 
     @Column(name = "business_name")
+    @Convert(converter = com.builddash.backend.infra.persistence.converter.UserPiiStringConverter.class)
     private String businessName;
 
     @Column(name = "gst_number")
+    @Convert(converter = com.builddash.backend.infra.persistence.converter.UserPiiStringConverter.class)
     private String gstNumber;
+
+    /** HMAC-SHA256 blind indexes — populated by UserRepositoryAdapter on save, never by domain code. */
+    @Column(name = "phone_idx")
+    private String phoneIdx;
+
+    @Column(name = "email_idx")
+    private String emailIdx;
+
+    @Column(name = "google_id_idx")
+    private String googleIdIdx;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "gstin_status")

@@ -1,6 +1,7 @@
 package com.builddash.backend.infra.persistence.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
@@ -30,8 +31,10 @@ public class AddressEntity {
     private String type;
 
     @Column(nullable = false)
+    @Convert(converter = com.builddash.backend.infra.persistence.converter.AddressPiiStringConverter.class)
     private String line1;
 
+    @Convert(converter = com.builddash.backend.infra.persistence.converter.AddressPiiStringConverter.class)
     private String line2;
 
     @Column(nullable = false)
@@ -43,8 +46,10 @@ public class AddressEntity {
     @Column(name = "zip_code", nullable = false)
     private String zipCode;
 
+    @Convert(converter = com.builddash.backend.infra.persistence.converter.AddressPiiDoubleConverter.class)
     private Double lat;
 
+    @Convert(converter = com.builddash.backend.infra.persistence.converter.AddressPiiDoubleConverter.class)
     private Double lng;
 
     @Column(name = "is_serviceable", nullable = false)

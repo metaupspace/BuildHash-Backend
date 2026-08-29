@@ -10,11 +10,12 @@ import java.util.UUID;
 
 public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
 
-    Optional<UserEntity> findByPhone(String phone);
+    /** Blind-index lookups (PLAN_PHASE8 decision 3): callers pass the HMAC idx value, never plaintext. */
+    Optional<UserEntity> findByPhoneIdx(String phoneIdx);
 
-    Optional<UserEntity> findByEmail(String email);
+    Optional<UserEntity> findByEmailIdx(String emailIdx);
 
-    Optional<UserEntity> findByGoogleId(String googleId);
+    Optional<UserEntity> findByGoogleIdIdx(String googleIdIdx);
 
     @Query("select u.phone from UserEntity u where u.phone is not null")
     List<String> findAllPhones();

@@ -4,6 +4,7 @@ import com.builddash.backend.domain.enums.NotificationChannel;
 import com.builddash.backend.domain.enums.NotificationEventType;
 import com.builddash.backend.domain.enums.NotificationStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -34,6 +35,7 @@ public class NotificationLogEntity {
     private UUID userId;
 
     @Column(name = "recipient_phone")
+    @Convert(converter = com.builddash.backend.infra.persistence.converter.NotificationLogPiiStringConverter.class)
     private String recipientPhone;
 
     @Enumerated(EnumType.STRING)

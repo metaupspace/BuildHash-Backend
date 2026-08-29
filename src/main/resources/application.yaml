@@ -52,6 +52,9 @@ security:
     access-token-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}
     refresh-token-ttl-days: ${JWT_REFRESH_TTL_DAYS:30}
     guest-token-ttl-hours: ${GUEST_TOKEN_TTL_HOURS:24}
+  pii:
+    # FAIL CLOSED, NO DEFAULT (PLAN_PHASE8 decision 2): unset PII_MASTER_KEY refuses boot.
+    master-key: ${PII_MASTER_KEY}
 
 payment:
   webhook-secret: ${PAYMENT_WEBHOOK_SECRET}

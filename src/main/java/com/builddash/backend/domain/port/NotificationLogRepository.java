@@ -11,6 +11,9 @@ public interface NotificationLogRepository {
 
     NotificationLog save(NotificationLog log);
 
+    /** For the PII backfill sweep's load-then-re-save; not used by dispatch paths. */
+    java.util.Optional<NotificationLog> findById(UUID id);
+
     /** The idempotency guard — same (eventType, referenceId) shape as OrderConfirmedInvoiceListener's findByOrderId check. */
     boolean existsByEventTypeAndReferenceId(NotificationEventType eventType, UUID referenceId);
 

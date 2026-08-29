@@ -38,6 +38,11 @@ public abstract class AbstractIntegrationTest {
     private static final MinIOContainer MINIO;
 
     static {
+        // Test-only PII master key: the production yaml has NO default by design (fail
+        // closed, PLAN_PHASE8 decision 2), so every IT context must supply one explicitly.
+        System.setProperty("security.pii.master-key",
+                java.util.Base64.getEncoder().encodeToString(new byte[32]));
+
         try {
             REDIS_SERVER = RedisServer.newRedisServer();
             REDIS_SERVER.start();

@@ -62,6 +62,9 @@ class OrderTrackingDeliveryScopeIT extends AbstractIntegrationTest {
     @Autowired
     private com.builddash.backend.domain.port.OrderRepository orderRepository;
 
+    @Autowired
+    private com.builddash.backend.domain.port.UserRepository userRepository;
+
     @LocalServerPort
     private int port;
 
@@ -149,8 +152,13 @@ class OrderTrackingDeliveryScopeIT extends AbstractIntegrationTest {
     }
 
     private UUID seedConfirmedOrder(String phone) {
-        UUID userId = UUID.randomUUID();
-        jdbcTemplate.update("INSERT INTO users (id, phone) VALUES (?, ?) ON CONFLICT DO NOTHING", userId, phone);
+        // Repository save (not raw SQL): the adapter populates phone_idx, which the OTP
+        // login in connectAsOwner resolves via findByPhoneIdx — raw rows have NULL idx and
+        // would cause the login to mint a second, different user (the Phase 8 fixture trap).
+        // @UuidGenerator discards the preset id, so the generated id is read back.
+        com.builddash.backend.domain.model.User user = new com.builddash.backend.domain.model.User();
+        user.setPhone(phone);
+        UUID userId = userRepository.save(user).getId();
         jdbcTemplate.update(
                 "INSERT INTO addresses (id, user_id, type, line1, city, state, zip_code, is_serviceable) VALUES (?, ?, 'HOME', 'A', 'B', 'C', '111', true)",
                 UUID.randomUUID(), userId);
