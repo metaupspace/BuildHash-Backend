@@ -107,7 +107,14 @@ class JwtTokenIssuerValidatorTest {
     @Test
     void rejectsTamperedSignature() {
         IssuedToken token = issuer.issueAccessToken(UUID.randomUUID(), UUID.randomUUID(), List.of("USER"));
-        String tampered = token.token().substring(0, token.token().length() - 1) + "x";
+        // Tamper the FIRST signature char, never the last: base64url's final character carries
+        // only 2 significant bits, so some substitutions decode to identical bytes and the token
+        // would stay valid. Any non-final character is fully significant, and picking a
+        // replacement different from the original guarantees the decoded signature changes.
+        String jwt = token.token();
+        int signatureStart = jwt.lastIndexOf('.') + 1;
+        char replacement = jwt.charAt(signatureStart) == 'A' ? 'B' : 'A';
+        String tampered = jwt.substring(0, signatureStart) + replacement + jwt.substring(signatureStart + 1);
 
         assertThatThrownBy(() -> validator.validate(tampered, TokenType.ACCESS))
                 .isInstanceOf(UnauthorizedException.class);
