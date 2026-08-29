@@ -7,28 +7,34 @@ import com.builddash.backend.application.event.OrderDispatchedEvent;
 import com.builddash.backend.application.event.OrderPackedEvent;
 import com.builddash.backend.application.event.RefundCompletedEvent;
 import com.builddash.backend.application.event.ReturnStatusChangedEvent;
-import com.builddash.backend.domain.port.NotificationReceiptRecorder;
+import com.builddash.backend.application.service.NotificationService;
+import com.builddash.backend.domain.enums.NotificationEventType;
+import com.builddash.backend.domain.port.OrderRepository;
+import com.builddash.backend.domain.port.ReturnRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.util.UUID;
+
 /**
  * Phase 7 notification trigger surface — one AFTER_COMMIT handler per event, exactly the
- * OrderConfirmedInvoiceListener discipline: fires only after the publishing transaction commits,
- * runs in its own transaction, and guards null payloads. Checkpoint A forwards each event to the
- * NotificationReceiptRecorder seam; Checkpoint B replaces the forwarding with notification
- * dispatch (idempotency guard + log row + queue publish).
+ * OrderConfirmedInvoiceListener discipline. Each handler resolves the recipient off the
+ * parent aggregate (ids-only payloads, OQ-2), maps the moment to its NotificationEventType,
+ * and hands off to NotificationService, which owns the guard + PENDING log row + enqueue.
  */
 @Component
+@RequiredArgsConstructor
+@Slf4j
 public class NotificationTriggerListener {
 
-    private final NotificationReceiptRecorder recorder;
-
-    public NotificationTriggerListener(NotificationReceiptRecorder recorder) {
-        this.recorder = recorder;
-    }
+    private final OrderRepository orderRepository;
+    private final ReturnRepository returnRepository;
+    private final NotificationService notificationService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -36,7 +42,7 @@ public class NotificationTriggerListener {
         if (event == null) {
             return;
         }
-        recorder.record(event);
+        notifyOrder(event.orderId(), NotificationEventType.ORDER_PACKED);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -45,7 +51,7 @@ public class NotificationTriggerListener {
         if (event == null) {
             return;
         }
-        recorder.record(event);
+        notifyOrder(event.orderId(), NotificationEventType.ORDER_DISPATCHED);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -54,7 +60,7 @@ public class NotificationTriggerListener {
         if (event == null) {
             return;
         }
-        recorder.record(event);
+        notifyOrder(event.orderId(), NotificationEventType.ORDER_DELIVERED);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -63,7 +69,9 @@ public class NotificationTriggerListener {
         if (event == null) {
             return;
         }
-        recorder.record(event);
+        // Both origins (CUSTOMER_WINDOW, DELIVERY_WEBHOOK) collapse to one moment — an
+        // order cancels once, so the (eventType, referenceId) guard holds either way.
+        notifyOrder(event.orderId(), NotificationEventType.ORDER_CANCELLED);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -72,7 +80,15 @@ public class NotificationTriggerListener {
         if (event == null) {
             return;
         }
-        recorder.record(event);
+        NotificationEventType eventType = NotificationEventType.fromReturnStatus(event.to());
+        if (eventType == null) {
+            // REQUESTED is never published and REFUND_COMPLETED is owned by onRefundCompleted.
+            return;
+        }
+        returnRepository.findById(event.returnId())
+                .ifPresentOrElse(
+                        ret -> notificationService.notify(ret.userId(), eventType, ret.id()),
+                        () -> log.warn("Return {} not found for {}, skipping notification", event.returnId(), eventType));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -81,7 +97,10 @@ public class NotificationTriggerListener {
         if (event == null) {
             return;
         }
-        recorder.record(event);
+        returnRepository.findById(event.returnId())
+                .ifPresentOrElse(
+                        ret -> notificationService.notify(ret.userId(), NotificationEventType.REFUND_COMPLETED, ret.id()),
+                        () -> log.warn("Return {} not found for REFUND_COMPLETED, skipping notification", event.returnId()));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -90,6 +109,13 @@ public class NotificationTriggerListener {
         if (event == null) {
             return;
         }
-        recorder.record(event);
+        notifyOrder(event.orderId(), NotificationEventType.INVOICE_READY);
+    }
+
+    private void notifyOrder(UUID orderId, NotificationEventType eventType) {
+        orderRepository.findById(orderId)
+                .ifPresentOrElse(
+                        order -> notificationService.notify(order.userId(), eventType, order.id()),
+                        () -> log.warn("Order {} not found for {}, skipping notification", orderId, eventType));
     }
 }
