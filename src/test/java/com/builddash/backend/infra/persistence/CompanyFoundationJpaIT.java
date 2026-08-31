@@ -2,9 +2,8 @@ package com.builddash.backend.infra.persistence;
 
 import com.builddash.backend.application.service.CompanyMembershipService;
 import com.builddash.backend.domain.enums.CompanyRole;
-import com.builddash.backend.domain.exception.LastAdminProtectedException;
+import com.builddash.backend.domain.exception.LastOwnerProtectedException;
 import com.builddash.backend.domain.exception.MemberAlreadyExistsException;
-import com.builddash.backend.domain.model.B2bMembership;
 import com.builddash.backend.domain.model.CompanyMember;
 import com.builddash.backend.domain.port.CompanyMemberRepository;
 import com.builddash.backend.domain.port.CompanySiteAssignmentRepository;
@@ -19,17 +18,15 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Real-Postgres proof of the V25 membership constraints and the last-admin lock
- * protocol (ReturnConcurrencyJpaIT pattern): duplicate membership races resolve to
- * exactly one winner; concurrent removals of the last two admins leave exactly one
- * standing; owner transfer keeps an OWNER present at every commit point.
+ * Real-Postgres proof of the membership constraints and the last-OWNER lock protocol
+ * (ReturnConcurrencyJpaIT pattern): duplicate membership races resolve to exactly one
+ * winner; concurrent removals of the last two OWNERs leave exactly one standing;
+ * ownership transfer keeps an OWNER present at every commit point and demotes the old
+ * OWNER to PROCUREMENT_MANAGER.
  */
 class CompanyFoundationJpaIT extends AbstractIntegrationTest {
 
@@ -65,44 +62,40 @@ class CompanyFoundationJpaIT extends AbstractIntegrationTest {
         return userId;
     }
 
-    private List<B2bMembership> claim(CompanyRole role) {
-        return List.of(new B2bMembership(companyId, role, List.of()));
-    }
-
     @Test
     void concurrentDuplicateAddMember_exactlyOneRowCommits_loserGetsConflict() throws Exception {
         UUID memberUser = newUser();
         int threads = 8;
         ExecutorService pool = Executors.newFixedThreadPool(threads);
         CountDownLatch gate = new CountDownLatch(1);
-        AtomicInteger wins = new AtomicInteger();
-        AtomicInteger conflicts = new AtomicInteger();
+        int[] wins = {0};
+        int[] conflicts = {0};
 
         try {
-            List<Future<Void>> futures = new java.util.ArrayList<>();
+            List<java.util.concurrent.Future<Void>> futures = new java.util.ArrayList<>();
             for (int i = 0; i < threads; i++) {
                 futures.add(pool.submit(() -> {
                     gate.await();
                     try {
-                        membershipService.addMember(companyId, ownerUserId, claim(CompanyRole.OWNER),
-                                memberUser, CompanyRole.BUYER, List.of());
-                        wins.incrementAndGet();
+                        membershipService.addMember(companyId, ownerUserId, memberUser,
+                                CompanyRole.VIEWER, List.of());
+                        wins[0]++;
                     } catch (MemberAlreadyExistsException e) {
-                        conflicts.incrementAndGet();
+                        conflicts[0]++;
                     }
                     return null;
                 }));
             }
             gate.countDown();
-            for (Future<Void> future : futures) {
-                future.get(30, TimeUnit.SECONDS);
+            for (java.util.concurrent.Future<Void> future : futures) {
+                future.get(30, java.util.concurrent.TimeUnit.SECONDS);
             }
         } finally {
             pool.shutdownNow();
         }
 
-        assertThat(wins.get()).isEqualTo(1);
-        assertThat(conflicts.get()).isEqualTo(threads - 1);
+        assertThat(wins[0]).isEqualTo(1);
+        assertThat(conflicts[0]).isEqualTo(threads - 1);
         Integer rows = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM company_members WHERE company_id = ? AND user_id = ?",
                 Integer.class, companyId, memberUser);
@@ -110,72 +103,118 @@ class CompanyFoundationJpaIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void concurrentRemovalOfLastTwoAdmins_exactlyOneSucceeds_companyNeverStranded() throws Exception {
-        UUID adminAUser = newUser();
-        UUID adminBUser = newUser();
-        UUID adminA = membershipService.addMember(companyId, ownerUserId, claim(CompanyRole.OWNER),
-                adminAUser, CompanyRole.ADMIN, List.of()).id();
-        UUID adminB = membershipService.addMember(companyId, ownerUserId, claim(CompanyRole.OWNER),
-                adminBUser, CompanyRole.ADMIN, List.of()).id();
+    void concurrentRemovalOfLastTwoOwners_exactlyOneSucceeds_companyNeverStranded() throws Exception {
+        UUID ownerAUser = newUser();
+        UUID ownerBUser = newUser();
+        UUID ownerA = membershipService.addMember(companyId, ownerUserId, ownerAUser,
+                CompanyRole.OWNER, List.of()).id();
+        UUID ownerB = membershipService.addMember(companyId, ownerUserId, ownerBUser,
+                CompanyRole.OWNER, List.of()).id();
 
-        // Owner leaves first: two admins remain, allowed
-        membershipService.removeMember(companyId, ownerUserId, claim(CompanyRole.OWNER), ownerId);
-        List<B2bMembership> ownerClaim = claim(CompanyRole.ADMIN);
+        // Founding owner leaves first: two OWNERs remain, allowed
+        membershipService.removeMember(companyId, ownerUserId, ownerId);
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         CountDownLatch gate = new CountDownLatch(1);
-        AtomicInteger successes = new AtomicInteger();
-        AtomicInteger protectedRejections = new AtomicInteger();
+        int[] successes = {0};
+        int[] protectedRejections = {0};
 
         try {
-            List<Future<Void>> futures = List.of(
+            List<java.util.concurrent.Future<Void>> futures = List.of(
                     pool.submit(() -> {
                         gate.await();
                         try {
-                            membershipService.removeMember(companyId, adminAUser, ownerClaim, adminA);
-                            successes.incrementAndGet();
-                        } catch (LastAdminProtectedException e) {
-                            protectedRejections.incrementAndGet();
+                            membershipService.removeMember(companyId, ownerAUser, ownerA);
+                            successes[0]++;
+                        } catch (LastOwnerProtectedException e) {
+                            protectedRejections[0]++;
                         }
                         return null;
                     }),
                     pool.submit(() -> {
                         gate.await();
                         try {
-                            membershipService.removeMember(companyId, adminBUser, ownerClaim, adminB);
-                            successes.incrementAndGet();
-                        } catch (LastAdminProtectedException e) {
-                            protectedRejections.incrementAndGet();
+                            membershipService.removeMember(companyId, ownerBUser, ownerB);
+                            successes[0]++;
+                        } catch (LastOwnerProtectedException e) {
+                            protectedRejections[0]++;
                         }
                         return null;
                     }));
             gate.countDown();
-            for (Future<Void> future : futures) {
-                future.get(30, TimeUnit.SECONDS);
+            for (java.util.concurrent.Future<Void> future : futures) {
+                future.get(30, java.util.concurrent.TimeUnit.SECONDS);
             }
         } finally {
             pool.shutdownNow();
         }
 
-        assertThat(successes.get()).isEqualTo(1);
-        assertThat(protectedRejections.get()).isEqualTo(1);
-        Integer admins = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM company_members WHERE company_id = ? AND role IN ('OWNER','ADMIN')",
+        assertThat(successes[0]).isEqualTo(1);
+        assertThat(protectedRejections[0]).isEqualTo(1);
+        Integer owners = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM company_members WHERE company_id = ? AND role = 'OWNER'",
                 Integer.class, companyId);
-        assertThat(admins).isEqualTo(1); // exactly one admin survives
+        assertThat(owners).isEqualTo(1);
     }
 
     @Test
-    void transferOwnership_oldOwnerBecomesAdmin_targetBecomesOwner() {
+    void concurrentTransferAndRemoval_serializeWithoutCorruption() throws Exception {
         UUID targetUser = newUser();
-        UUID targetId = membershipService.addMember(companyId, ownerUserId, claim(CompanyRole.OWNER),
-                targetUser, CompanyRole.APPROVER, List.of()).id();
+        UUID targetId = membershipService.addMember(companyId, ownerUserId, targetUser,
+                CompanyRole.SITE_SUPERVISOR, List.of()).id();
 
-        membershipService.transferOwnership(companyId, ownerUserId, claim(CompanyRole.OWNER), targetId);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        CountDownLatch gate = new CountDownLatch(1);
+        final String[] outcome = {null, null};
+
+        try {
+            List<java.util.concurrent.Future<Void>> futures = List.of(
+                    pool.submit(() -> {
+                        gate.await();
+                        try {
+                            membershipService.transferOwnership(companyId, ownerUserId, targetId);
+                            outcome[0] = "transferred";
+                        } catch (Exception e) {
+                            outcome[0] = "failed:" + e.getClass().getSimpleName();
+                        }
+                        return null;
+                    }),
+                    pool.submit(() -> {
+                        gate.await();
+                        try {
+                            membershipService.removeMember(companyId, ownerUserId, targetId);
+                            outcome[1] = "removed";
+                        } catch (Exception e) {
+                            outcome[1] = "failed:" + e.getClass().getSimpleName();
+                        }
+                        return null;
+                    }));
+            gate.countDown();
+            for (java.util.concurrent.Future<Void> future : futures) {
+                future.get(30, java.util.concurrent.TimeUnit.SECONDS);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        // Whichever wins, the invariant holds: exactly one OWNER remains
+        Integer owners = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM company_members WHERE company_id = ? AND role = 'OWNER'",
+                Integer.class, companyId);
+        assertThat(owners).isEqualTo(1);
+    }
+
+    @Test
+    void transferOwnership_oldOwnerBecomesProcurementManager_targetBecomesOwner() {
+        UUID targetUser = newUser();
+        UUID targetId = membershipService.addMember(companyId, ownerUserId, targetUser,
+                CompanyRole.ACCOUNTANT, List.of()).id();
+
+        membershipService.transferOwnership(companyId, ownerUserId, targetId);
 
         CompanyMember oldOwner = memberRepository.findById(ownerId).orElseThrow();
         CompanyMember newOwner = memberRepository.findById(targetId).orElseThrow();
-        assertThat(oldOwner.role()).isEqualTo(CompanyRole.ADMIN);
+        assertThat(oldOwner.role()).isEqualTo(CompanyRole.PROCUREMENT_MANAGER);
         assertThat(newOwner.role()).isEqualTo(CompanyRole.OWNER);
     }
 
@@ -190,18 +229,15 @@ class CompanyFoundationJpaIT extends AbstractIntegrationTest {
         }
 
         UUID memberUser = newUser();
-        UUID memberId = membershipService.addMember(companyId, ownerUserId, claim(CompanyRole.OWNER),
-                memberUser, CompanyRole.APPROVER, List.of(site1, site2)).id();
+        UUID memberId = membershipService.addMember(companyId, ownerUserId, memberUser,
+                CompanyRole.SITE_SUPERVISOR, List.of(site1, site2)).id();
         assertThat(assignmentRepository.findSiteIdsByMemberId(memberId))
                 .containsExactlyInAnyOrder(site1, site2);
 
-        // Replace: site1 out, site3 in
-        membershipService.updateMember(companyId, ownerUserId, claim(CompanyRole.OWNER),
-                memberId, null, List.of(site2, site3));
+        membershipService.updateMember(companyId, ownerUserId, memberId, null, List.of(site2, site3));
         assertThat(assignmentRepository.findSiteIdsByMemberId(memberId))
                 .containsExactlyInAnyOrder(site2, site3);
 
-        // Member delete cascades assignments away (V25 ON DELETE CASCADE)
         jdbcTemplate.update("DELETE FROM company_members WHERE id = ?", memberId);
         assertThat(assignmentRepository.findSiteIdsByMemberId(memberId)).isEmpty();
     }

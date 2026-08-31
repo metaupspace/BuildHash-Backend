@@ -1,25 +1,22 @@
 package com.builddash.backend.application.service;
 
 import com.builddash.backend.domain.enums.CompanyStatus;
-import com.builddash.backend.domain.model.B2bMembership;
 import com.builddash.backend.domain.model.Company;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface CompanyService {
 
-    /** Creates the company and the creator's OWNER membership in one transaction. */
+    /** Creates the company, the creator's OWNER membership, and default permission profiles in one transaction. */
     Company create(UUID creatorUserId, String name, String gstNumber, String statementEmail, String businessTimezone);
 
-    /** Member-only read (any company role); non-members get COMPANY_NOT_FOUND (404 convention). */
-    Company get(UUID companyId, List<B2bMembership> callerMemberships);
+    /** COMPANY_VIEW. */
+    Company get(UUID companyId, UUID userId);
 
-    /** ADMIN+ (rank check). Updates identity/contact fields. */
-    Company update(UUID companyId, UUID actorUserId, List<B2bMembership> callerMemberships,
-                   String name, String gstNumber, String statementEmail, String businessTimezone);
+    /** COMPANY_UPDATE (critical). */
+    Company update(UUID companyId, UUID actorUserId, String name, String gstNumber,
+                   String statementEmail, String businessTimezone);
 
-    /** ADMIN+; status transition ACTIVE <-> SUSPENDED. */
-    Company updateStatus(UUID companyId, UUID actorUserId, List<B2bMembership> callerMemberships,
-                         CompanyStatus status);
+    /** COMPANY_UPDATE (critical). */
+    Company updateStatus(UUID companyId, UUID actorUserId, CompanyStatus status);
 }

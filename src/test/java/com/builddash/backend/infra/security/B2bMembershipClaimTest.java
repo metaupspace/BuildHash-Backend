@@ -73,12 +73,12 @@ class B2bMembershipClaimTest {
         UUID company = UUID.randomUUID();
         UUID site = UUID.randomUUID();
         IssuedToken token = issuer.issueAccessToken(USER, DEVICE, List.of("USER"),
-                List.of(new B2bMembership(company, CompanyRole.ADMIN, List.of(site))));
+                List.of(new B2bMembership(company, CompanyRole.SITE_SUPERVISOR, List.of(site))));
 
         List<B2bMembership> parsed = parse(token);
         assertThat(parsed).hasSize(1);
         assertThat(parsed.get(0).companyId()).isEqualTo(company);
-        assertThat(parsed.get(0).role()).isEqualTo(CompanyRole.ADMIN);
+        assertThat(parsed.get(0).role()).isEqualTo(CompanyRole.SITE_SUPERVISOR);
         assertThat(parsed.get(0).siteIds()).containsExactly(site);
     }
 
@@ -97,25 +97,30 @@ class B2bMembershipClaimTest {
     @Test
     void malformedB2bClaim_nonMapEntriesAreSkipped() {
         Object claim = List.of("junk-string", 7,
-                java.util.Map.of("cid", UUID.randomUUID().toString(), "role", "BUYER"));
+                java.util.Map.of("cid", UUID.randomUUID().toString(), "role", "VIEWER"));
         assertThat(parse(tokenWithRawB2bClaim(claim))).hasSize(1);
     }
 
     @Test
-    void unknownRoleValue_entrySkipped() {
+    void unknownRoleValue_entrySkipped_includingOldVocabulary() {
+        // "SUPERUSER" never existed; "ADMIN"/"BUYER"/"APPROVER" existed in 9-A tokens —
+        // after the 9-A.1 correction they are unknown values and must skip safely,
+        // so a stale token gains no membership context.
         Object claim = List.of(
                 java.util.Map.of("cid", UUID.randomUUID().toString(), "role", "SUPERUSER"),
-                java.util.Map.of("cid", UUID.randomUUID().toString(), "role", "BUYER"));
+                java.util.Map.of("cid", UUID.randomUUID().toString(), "role", "ADMIN"),
+                java.util.Map.of("cid", UUID.randomUUID().toString(), "role", "BUYER"),
+                java.util.Map.of("cid", UUID.randomUUID().toString(), "role", "VIEWER"));
         List<B2bMembership> parsed = parse(tokenWithRawB2bClaim(claim));
         assertThat(parsed).hasSize(1);
-        assertThat(parsed.get(0).role()).isEqualTo(CompanyRole.BUYER);
+        assertThat(parsed.get(0).role()).isEqualTo(CompanyRole.VIEWER);
     }
 
     @Test
     void malformedCompanyUuid_entrySkipped() {
         Object claim = List.of(
-                java.util.Map.of("cid", "not-a-uuid", "role", "ADMIN"),
-                java.util.Map.of("cid", UUID.randomUUID().toString(), "role", "BUYER"));
+                java.util.Map.of("cid", "not-a-uuid", "role", "ACCOUNTANT"),
+                java.util.Map.of("cid", UUID.randomUUID().toString(), "role", "VIEWER"));
         assertThat(parse(tokenWithRawB2bClaim(claim))).hasSize(1);
     }
 
@@ -124,7 +129,7 @@ class B2bMembershipClaimTest {
         UUID company = UUID.randomUUID();
         UUID goodSite = UUID.randomUUID();
         Object claim = List.of(java.util.Map.of(
-                "cid", company.toString(), "role", "APPROVER",
+                "cid", company.toString(), "role", "PROCUREMENT_MANAGER",
                 "sites", List.of("bad-site-id", goodSite.toString(), 5)));
         List<B2bMembership> parsed = parse(tokenWithRawB2bClaim(claim));
         assertThat(parsed).hasSize(1);
@@ -137,7 +142,7 @@ class B2bMembershipClaimTest {
         // the critical-operation re-check, not by the parser.
         UUID unknownSite = UUID.randomUUID();
         IssuedToken token = issuer.issueAccessToken(USER, DEVICE, List.of("USER"),
-                List.of(new B2bMembership(UUID.randomUUID(), CompanyRole.BUYER, List.of(unknownSite))));
+                List.of(new B2bMembership(UUID.randomUUID(), CompanyRole.VIEWER, List.of(unknownSite))));
         assertThat(parse(token).get(0).siteIds()).containsExactly(unknownSite);
     }
 
@@ -147,7 +152,7 @@ class B2bMembershipClaimTest {
         UUID c2 = UUID.randomUUID();
         IssuedToken token = issuer.issueAccessToken(USER, DEVICE, List.of("USER"),
                 List.of(new B2bMembership(c1, CompanyRole.OWNER, List.of()),
-                        new B2bMembership(c2, CompanyRole.BUYER, List.of())));
+                        new B2bMembership(c2, CompanyRole.VIEWER, List.of())));
 
         List<B2bMembership> parsed = parse(token);
         assertThat(parsed).hasSize(2);

@@ -1,9 +1,7 @@
 package com.builddash.backend.infra.persistence;
 
 import com.builddash.backend.application.service.CompanySiteService;
-import com.builddash.backend.domain.enums.CompanyRole;
 import com.builddash.backend.domain.exception.SiteInUseException;
-import com.builddash.backend.domain.model.B2bMembership;
 import com.builddash.backend.domain.model.CompanySite;
 import com.builddash.backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Real-Postgres proof of the site deactivation guard: a non-CANCELLED order referencing
  * the site blocks deactivation (409); no active orders (or only CANCELLED ones) permits
  * it. The row-lock serialization with 9-B/9-C association flows shares this lock point
- * and is documented on CompanySiteJpaRepository#findByIdForUpdate.
+ * (CompanySiteJpaRepository#findByIdForUpdate).
  */
 class CompanySiteDeactivationJpaIT extends AbstractIntegrationTest {
 
@@ -32,24 +29,20 @@ class CompanySiteDeactivationJpaIT extends AbstractIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     private UUID companyId;
-    private UUID adminUserId;
+    private UUID ownerUserId;
     private UUID siteId;
 
     @BeforeEach
     void setUp() {
         companyId = UUID.randomUUID();
-        adminUserId = UUID.randomUUID();
+        ownerUserId = UUID.randomUUID();
         siteId = UUID.randomUUID();
         jdbcTemplate.update("INSERT INTO companies (id, name) VALUES (?, 'Acme')", companyId);
-        jdbcTemplate.update("INSERT INTO users (id, created_at, updated_at) VALUES (?, now(), now())", adminUserId);
-        jdbcTemplate.update("INSERT INTO company_members (id, company_id, user_id, role) VALUES (?, ?, ?, 'ADMIN')",
-                UUID.randomUUID(), companyId, adminUserId);
+        jdbcTemplate.update("INSERT INTO users (id, created_at, updated_at) VALUES (?, now(), now())", ownerUserId);
+        jdbcTemplate.update("INSERT INTO company_members (id, company_id, user_id, role) VALUES (?, ?, ?, 'OWNER')",
+                UUID.randomUUID(), companyId, ownerUserId);
         jdbcTemplate.update("INSERT INTO company_sites (id, company_id, name) VALUES (?, ?, 'HQ')",
                 siteId, companyId);
-    }
-
-    private List<B2bMembership> claim() {
-        return List.of(new B2bMembership(companyId, CompanyRole.ADMIN, List.of()));
     }
 
     /** Minimal order row referencing the site with the given status (V11 NOT NULLs satisfied). */
@@ -71,8 +64,7 @@ class CompanySiteDeactivationJpaIT extends AbstractIntegrationTest {
     void activeOrderReferencingSite_blocksDeactivation() {
         orderReferencingSite("CONFIRMED");
 
-        assertThatThrownBy(() -> siteService.update(companyId, siteId, adminUserId, claim(),
-                null, null, false))
+        assertThatThrownBy(() -> siteService.update(companyId, siteId, ownerUserId, null, null, false))
                 .isInstanceOf(SiteInUseException.class);
     }
 
@@ -80,19 +72,16 @@ class CompanySiteDeactivationJpaIT extends AbstractIntegrationTest {
     void cancelledOrderReferencingSite_doesNotBlockDeactivation() {
         orderReferencingSite("CANCELLED");
 
-        CompanySite updated = siteService.update(companyId, siteId, adminUserId, claim(),
-                null, null, false);
+        CompanySite updated = siteService.update(companyId, siteId, ownerUserId, null, null, false);
         assertThat(updated.active()).isFalse();
     }
 
     @Test
     void siteWithoutOrders_deactivates_andReactivates() {
-        CompanySite deactivated = siteService.update(companyId, siteId, adminUserId, claim(),
-                null, null, false);
+        CompanySite deactivated = siteService.update(companyId, siteId, ownerUserId, null, null, false);
         assertThat(deactivated.active()).isFalse();
 
-        CompanySite reactivated = siteService.update(companyId, siteId, adminUserId, claim(),
-                null, null, true);
+        CompanySite reactivated = siteService.update(companyId, siteId, ownerUserId, null, null, true);
         assertThat(reactivated.active()).isTrue();
     }
 }

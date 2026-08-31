@@ -1,13 +1,15 @@
 package com.builddash.backend.application.impl;
 
+import com.builddash.backend.application.service.B2bAuthorizer;
 import com.builddash.backend.application.service.CompanyMembershipService;
+import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.CompanyRole;
 import com.builddash.backend.domain.exception.ForbiddenException;
-import com.builddash.backend.domain.exception.LastAdminProtectedException;
+import com.builddash.backend.domain.exception.LastOwnerProtectedException;
 import com.builddash.backend.domain.exception.MemberAlreadyExistsException;
 import com.builddash.backend.domain.exception.NotFoundException;
-import com.builddash.backend.domain.model.B2bMembership;
 import com.builddash.backend.domain.model.CompanyMember;
+import com.builddash.backend.domain.model.CompanySite;
 import com.builddash.backend.domain.port.CompanyMemberRepository;
 import com.builddash.backend.domain.port.CompanyRepository;
 import com.builddash.backend.domain.port.CompanySiteAssignmentRepository;
@@ -21,22 +23,24 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Membership lifecycle. Every mutation is a critical B2B operation (decision 4): the
- * actor's role is re-checked against the current database row, never the token claim.
+ * Membership lifecycle. All mutations are critical: B2bAuthorizer takes the
+ * company-row lock, then membership/permission state is resolved from the database —
+ * never the JWT.
  *
- * Last-admin invariant protocol (identical lock order everywhere, no advisory locks):
- *   1. lock the company row        — CompanyRepository.findByIdForUpdate
- *   2. lock ALL member rows        — CompanyMemberRepository.findByCompanyIdForUpdate (ORDER BY id)
- *   3. evaluate invariant under lock
+ * Last-OWNER invariant protocol (deterministic lock order, no advisory locks):
+ *   1. B2bAuthorizer (critical) locks the company row
+ *   2. findByCompanyIdForUpdate locks ALL member rows (ORDER BY id)
+ *   3. invariant "at least one OWNER remains" evaluated under lock
  *   4. mutate + commit
- * Concurrent invariant-touching mutations serialize at step 1, so the loser of the
- * race re-reads the post-commit member set and sees the violation instead of
- * interleaving. Transfer-owner runs the same protocol with both writes in one tx.
+ *
+ * Ownership transfer: any OWNER may transfer; the old OWNER becomes
+ * PROCUREMENT_MANAGER and the target becomes OWNER in the same transaction.
  */
 @Service
 @RequiredArgsConstructor
 public class CompanyMembershipServiceImpl implements CompanyMembershipService {
 
+    private final B2bAuthorizer authorizer;
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanySiteRepository companySiteRepository;
@@ -44,10 +48,9 @@ public class CompanyMembershipServiceImpl implements CompanyMembershipService {
 
     @Override
     @Transactional
-    public CompanyMember addMember(UUID companyId, UUID actorUserId, List<B2bMembership> callerMemberships,
-                                   UUID memberUserId, CompanyRole role, List<UUID> siteIds) {
-        requireAdmin(companyId, actorUserId, callerMemberships);
-        requireCompany(companyId);
+    public CompanyMember addMember(UUID companyId, UUID actorUserId, UUID memberUserId,
+                                   CompanyRole role, List<UUID> siteIds) {
+        authorizer.authorize(actorUserId, companyId, CompanyPermission.MEMBER_MANAGE, null, true);
         validateSitesBelongToCompany(companyId, siteIds);
 
         CompanyMember member = new CompanyMember(
@@ -57,16 +60,16 @@ public class CompanyMembershipServiceImpl implements CompanyMembershipService {
             companySiteAssignmentRepository.replaceForMember(saved.id(), siteIds);
             return saved;
         } catch (DataIntegrityViolationException e) {
-            // UNIQUE(company_id, user_id) — either a lost race or a plain duplicate add
+            // UNIQUE(company_id, user_id): a lost race or a plain duplicate add
             throw new MemberAlreadyExistsException(companyId, memberUserId);
         }
     }
 
     @Override
     @Transactional
-    public CompanyMember updateMember(UUID companyId, UUID actorUserId, List<B2bMembership> callerMemberships,
-                                      UUID memberId, CompanyRole role, List<UUID> siteIds) {
-        CompanyMember target = requireAdmin(companyId, actorUserId, callerMemberships);
+    public CompanyMember updateMember(UUID companyId, UUID actorUserId, UUID memberId,
+                                      CompanyRole role, List<UUID> siteIds) {
+        authorizer.authorize(actorUserId, companyId, CompanyPermission.MEMBER_MANAGE, null, true);
         CompanyMember member = companyMemberRepository.findById(memberId)
                 .filter(m -> m.companyId().equals(companyId))
                 .orElseThrow(() -> new NotFoundException("MEMBER_NOT_FOUND", "Member not found: " + memberId));
@@ -74,17 +77,10 @@ public class CompanyMembershipServiceImpl implements CompanyMembershipService {
             validateSitesBelongToCompany(companyId, siteIds);
         }
 
-        boolean invariantTouching = role != null
-                && member.role().atLeast(CompanyRole.ADMIN)
-                && !role.atLeast(CompanyRole.ADMIN);
-
-        final CompanyMember mutating = member;
-        if (invariantTouching) {
-            // Demotion out of OWNER/ADMIN: evaluate the invariant over the POST-change
-            // member set (this member's new role no longer counts).
-            runInvariantProtocol(companyId, member, currentMembers -> currentMembers.stream()
-                    .filter(m -> !m.id().equals(mutating.id()))
-                    .anyMatch(m -> m.role().atLeast(CompanyRole.ADMIN)));
+        boolean demotesOwner = member.role() == CompanyRole.OWNER
+                && role != null && role != CompanyRole.OWNER;
+        if (demotesOwner) {
+            runOwnerInvariantProtocol(companyId, member);
         }
         if (role != null) {
             member = companyMemberRepository.save(member.withRole(role));
@@ -97,50 +93,45 @@ public class CompanyMembershipServiceImpl implements CompanyMembershipService {
 
     @Override
     @Transactional
-    public void removeMember(UUID companyId, UUID actorUserId, List<B2bMembership> callerMemberships,
-                             UUID memberId) {
-        requireAdmin(companyId, actorUserId, callerMemberships);
+    public void removeMember(UUID companyId, UUID actorUserId, UUID memberId) {
+        authorizer.authorize(actorUserId, companyId, CompanyPermission.MEMBER_MANAGE, null, true);
         CompanyMember member = companyMemberRepository.findById(memberId)
                 .filter(m -> m.companyId().equals(companyId))
                 .orElseThrow(() -> new NotFoundException("MEMBER_NOT_FOUND", "Member not found: " + memberId));
 
-        if (member.role().atLeast(CompanyRole.ADMIN)) {
-            runInvariantProtocol(companyId, member,
-                    currentMembers -> currentMembers.stream()
-                            .filter(m -> !m.id().equals(member.id()))
-                            .anyMatch(m -> m.role().atLeast(CompanyRole.ADMIN)));
+        if (member.role() == CompanyRole.OWNER) {
+            runOwnerInvariantProtocol(companyId, member);
         }
         companyMemberRepository.deleteById(member.id());
-        // assignments cascade via ON DELETE CASCADE; explicit replace not needed
+        // assignments cascade via ON DELETE CASCADE
     }
 
     @Override
     @Transactional
-    public void transferOwnership(UUID companyId, UUID actorUserId, List<B2bMembership> callerMemberships,
-                                  UUID targetMemberId) {
-        requireMember(companyId, callerMemberships);
+    public void transferOwnership(UUID companyId, UUID actorUserId, UUID targetMemberId) {
+        authorizer.authorize(actorUserId, companyId, CompanyPermission.MEMBER_MANAGE, null, true);
+        // Structural rule on top of the permission: the ownership crown moves only by
+        // an OWNER's hand — MEMBER_MANAGE may be granted to other roles for everyday
+        // member administration, but never for transfer.
         CompanyMember actor = companyMemberRepository.findByCompanyIdAndUserId(companyId, actorUserId)
                 .orElseThrow(() -> new NotFoundException("COMPANY_NOT_FOUND", "Company not found: " + companyId));
         if (actor.role() != CompanyRole.OWNER) {
-            // Ownership transfer is the one strictly-OWNER operation (the invariant's
-            // crown moves only by its holder's hand).
-            throw new ForbiddenException("FORBIDDEN", "Only the company OWNER can transfer ownership");
+            throw new ForbiddenException("FORBIDDEN", "Only a company OWNER can transfer ownership");
         }
         CompanyMember target = companyMemberRepository.findById(targetMemberId)
                 .filter(m -> m.companyId().equals(companyId))
                 .orElseThrow(() -> new NotFoundException("MEMBER_NOT_FOUND", "Member not found: " + targetMemberId));
 
-        // Same lock protocol: company row, then all member rows, then both writes in
-        // this tx — no commit point exists without an OWNER/ADMIN present.
-        runInvariantProtocol(companyId, target, currentMembers -> true);
-        companyMemberRepository.save(actor.withRole(CompanyRole.ADMIN));
+        // Same protocol: no commit point without an OWNER present
+        runOwnerInvariantProtocol(companyId, target);
+        companyMemberRepository.save(actor.withRole(CompanyRole.PROCUREMENT_MANAGER));
         companyMemberRepository.save(target.withRole(CompanyRole.OWNER));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<CompanyMember> listMembers(UUID companyId, List<B2bMembership> callerMemberships) {
-        requireMember(companyId, callerMemberships);
+    public List<CompanyMember> listMembers(UUID companyId, UUID userId) {
+        authorizer.authorize(userId, companyId, CompanyPermission.MEMBER_VIEW, null, false);
         return companyMemberRepository.findByCompanyId(companyId);
     }
 
@@ -151,41 +142,22 @@ public class CompanyMembershipServiceImpl implements CompanyMembershipService {
     }
 
     /**
-     * Steps 1-3 of the protocol: locks the company row and the full member set, then
-     * evaluates {@code invariantHolds} over the locked state. Throws 422 (rolling the
-     * whole tx back, releasing the locks) when the mutation would strand the company.
+     * Locks all member rows (company row already locked by the authorizer) and
+     * verifies at least one OTHER OWNER remains after the mutation. Throws 422 —
+     * rolling the whole transaction back — when the company would be stranded.
+     *
+     * transferOwnership also routes through here for the lock: at check time the
+     * transferring actor is still an OWNER row, so a transfer can never trip the
+     * invariant — only demotion/removal can.
      */
-    private void runInvariantProtocol(UUID companyId, CompanyMember mutatingMember,
-                                      java.util.function.Predicate<List<CompanyMember>> invariantHolds) {
-        companyRepository.findByIdForUpdate(companyId);
+    private void runOwnerInvariantProtocol(UUID companyId, CompanyMember mutatingOwner) {
         List<CompanyMember> members = companyMemberRepository.findByCompanyIdForUpdate(companyId);
-        if (!invariantHolds.test(members)) {
-            throw new LastAdminProtectedException(companyId);
+        boolean anotherOwnerRemains = members.stream()
+                .filter(m -> !m.id().equals(mutatingOwner.id()))
+                .anyMatch(m -> m.role() == CompanyRole.OWNER);
+        if (!anotherOwnerRemains) {
+            throw new LastOwnerProtectedException(companyId);
         }
-    }
-
-    private void requireMember(UUID companyId, List<B2bMembership> callerMemberships) {
-        boolean member = callerMemberships.stream()
-                .anyMatch(m -> m.companyId().equals(companyId));
-        if (!member) {
-            throw new NotFoundException("COMPANY_NOT_FOUND", "Company not found: " + companyId);
-        }
-    }
-
-    /** Critical-operation role re-check: current DB row, not the (possibly stale) claim. */
-    private CompanyMember requireAdmin(UUID companyId, UUID actorUserId, List<B2bMembership> callerMemberships) {
-        requireMember(companyId, callerMemberships);
-        CompanyMember db = companyMemberRepository.findByCompanyIdAndUserId(companyId, actorUserId)
-                .orElseThrow(() -> new NotFoundException("COMPANY_NOT_FOUND", "Company not found: " + companyId));
-        if (!db.role().atLeast(CompanyRole.ADMIN)) {
-            throw new ForbiddenException("FORBIDDEN", "Company admin role required");
-        }
-        return db;
-    }
-
-    private void requireCompany(UUID companyId) {
-        companyRepository.findById(companyId)
-                .orElseThrow(() -> new NotFoundException("COMPANY_NOT_FOUND", "Company not found: " + companyId));
     }
 
     private void validateSitesBelongToCompany(UUID companyId, List<UUID> siteIds) {
@@ -193,7 +165,7 @@ public class CompanyMembershipServiceImpl implements CompanyMembershipService {
             return;
         }
         List<UUID> companySites = companySiteRepository.findByCompanyId(companyId).stream()
-                .map(com.builddash.backend.domain.model.CompanySite::id)
+                .map(CompanySite::id)
                 .toList();
         for (UUID siteId : siteIds) {
             if (!companySites.contains(siteId)) {

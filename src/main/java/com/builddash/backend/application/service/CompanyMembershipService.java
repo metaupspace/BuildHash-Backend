@@ -1,7 +1,6 @@
 package com.builddash.backend.application.service;
 
 import com.builddash.backend.domain.enums.CompanyRole;
-import com.builddash.backend.domain.model.B2bMembership;
 import com.builddash.backend.domain.model.CompanyMember;
 
 import java.util.List;
@@ -9,26 +8,22 @@ import java.util.UUID;
 
 public interface CompanyMembershipService {
 
-    /** ADMIN+; DB re-checked. Duplicate (company,user) surfaces as the existing 409 style. */
-    CompanyMember addMember(UUID companyId, UUID actorUserId, List<B2bMembership> callerMemberships,
-                            UUID memberUserId, CompanyRole role, List<UUID> siteIds);
+    /** MEMBER_MANAGE (critical). Duplicate (company,user) surfaces as 409. */
+    CompanyMember addMember(UUID companyId, UUID actorUserId, UUID memberUserId,
+                            CompanyRole role, List<UUID> siteIds);
 
-    /**
-     * ADMIN+; DB re-checked. Demotions/removals that would strand the company without
-     * an OWNER/ADMIN run the pessimistic-lock invariant protocol and throw
-     * LastAdminProtectedException (422).
-     */
-    CompanyMember updateMember(UUID companyId, UUID actorUserId, List<B2bMembership> callerMemberships,
-                               UUID memberId, CompanyRole role, List<UUID> siteIds);
+    /** MEMBER_MANAGE (critical); last-owner invariant protected. */
+    CompanyMember updateMember(UUID companyId, UUID actorUserId, UUID memberId,
+                               CompanyRole role, List<UUID> siteIds);
 
-    /** ADMIN+; DB re-checked; same invariant protocol. */
-    void removeMember(UUID companyId, UUID actorUserId, List<B2bMembership> callerMemberships, UUID memberId);
+    /** MEMBER_MANAGE (critical); last-owner invariant protected. */
+    void removeMember(UUID companyId, UUID actorUserId, UUID memberId);
 
-    /** OWNER-only; DB re-checked; old OWNER becomes ADMIN, target becomes OWNER, one transaction. */
-    void transferOwnership(UUID companyId, UUID actorUserId, List<B2bMembership> callerMemberships, UUID targetMemberId);
+    /** OWNER-only (structural, on top of MEMBER_MANAGE); old OWNER becomes PROCUREMENT_MANAGER. */
+    void transferOwnership(UUID companyId, UUID actorUserId, UUID targetMemberId);
 
-    /** Member-only read (any company role). */
-    List<CompanyMember> listMembers(UUID companyId, List<B2bMembership> callerMemberships);
+    /** MEMBER_VIEW. */
+    List<CompanyMember> listMembers(UUID companyId, UUID userId);
 
     /** Site scope of one membership row (empty = unscoped/all sites). */
     List<UUID> siteIdsFor(UUID memberId);

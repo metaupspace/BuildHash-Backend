@@ -1,5 +1,6 @@
 package com.builddash.backend.api;
 
+import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.CompanyRole;
 import com.builddash.backend.domain.model.B2bMembership;
 import com.builddash.backend.domain.port.TokenIssuer;
@@ -21,10 +22,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Authorization matrix for the 9-A company surface (SearchImageAuthIT model):
- * anonymous 401; authenticated non-member 404 (existence hidden); BUYER/APPROVER read
- * but cannot mutate admin-scoped resources (403); ADMIN/OWNER mutate; cross-company
- * access is 404. Money-path style DB re-checks are covered by the service unit tests.
+ * Permission-based authorization matrix for the company surface (SearchImageAuthIT
+ * model): anonymous 401; non-member 404 (existence hidden); access follows the
+ * company's live permission rows, not role names; cross-company 404; app ADMIN gains
+ * nothing without membership. Permission grant/revoke live-effect coverage lives in
+ * CompanyPermissionMatrixIT.
  */
 class CompanyAuthorizationMatrixIT extends AbstractIntegrationTest {
 
@@ -35,40 +37,41 @@ class CompanyAuthorizationMatrixIT extends AbstractIntegrationTest {
     private TokenIssuer tokenIssuer;
 
     @Autowired
+    private com.builddash.backend.application.service.CompanyService companyService;
+
+    @Autowired
+    private com.builddash.backend.application.service.CompanyMembershipService membershipService;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     private UUID companyId;
-    private UUID otherCompanyId;
-    private UUID buyerUserId;
-    private UUID approverUserId;
-    private UUID adminUserId;
     private UUID ownerUserId;
+    private UUID pmUserId;
+    private UUID supervisorUserId;
+    private UUID accountantUserId;
+    private UUID viewerUserId;
 
     @BeforeEach
     void setUp() {
-        companyId = UUID.randomUUID();
-        otherCompanyId = UUID.randomUUID();
-        jdbcTemplate.update("INSERT INTO companies (id, name) VALUES (?, 'Acme')", companyId);
-        jdbcTemplate.update("INSERT INTO companies (id, name) VALUES (?, 'Other')", otherCompanyId);
+        // Real creation flow: company + OWNER + all default permission profiles seeded
+        ownerUserId = newTargetUser();
+        companyId = companyService.create(ownerUserId, "Acme", null, null, null).id();
 
-        buyerUserId = insertUserWithMembership(CompanyRole.BUYER);
-        approverUserId = insertUserWithMembership(CompanyRole.APPROVER);
-        adminUserId = insertUserWithMembership(CompanyRole.ADMIN);
-        ownerUserId = insertUserWithMembership(CompanyRole.OWNER);
+        pmUserId = insertUserWithMembership(CompanyRole.PROCUREMENT_MANAGER);
+        supervisorUserId = insertUserWithMembership(CompanyRole.SITE_SUPERVISOR);
+        accountantUserId = insertUserWithMembership(CompanyRole.ACCOUNTANT);
+        viewerUserId = insertUserWithMembership(CompanyRole.VIEWER);
     }
 
     private UUID insertUserWithMembership(CompanyRole role) {
-        UUID userId = UUID.randomUUID();
-        jdbcTemplate.update("INSERT INTO users (id, created_at, updated_at) VALUES (?, now(), now())", userId);
-        jdbcTemplate.update("INSERT INTO company_members (id, company_id, user_id, role) VALUES (?, ?, ?, ?)",
-                UUID.randomUUID(), companyId, userId, role.name());
+        UUID userId = newTargetUser();
+        membershipService.addMember(companyId, ownerUserId, userId, role, List.of());
         return userId;
     }
 
-    private String token(UUID userId, CompanyRole role) {
-        return "Bearer " + tokenIssuer.issueAccessToken(userId, UUID.randomUUID(),
-                List.of("USER"),
-                List.of(new B2bMembership(companyId, role, List.of()))).token();
+    private String token(UUID userId) {
+        return "Bearer " + tokenIssuer.issueAccessToken(userId, UUID.randomUUID(), List.of("USER")).token();
     }
 
     private UUID newTargetUser() {
@@ -77,139 +80,127 @@ class CompanyAuthorizationMatrixIT extends AbstractIntegrationTest {
         return userId;
     }
 
-    // --- company read: member-only, non-member 404 ---
-
     @Test
-    void getCompany_anonymous401() throws Exception {
+    void getCompany_anonymous401_nonMember404_everyDefaultProfile200() throws Exception {
         mockMvc.perform(get("/companies/{id}", companyId)).andExpect(status().isUnauthorized());
-    }
 
-    @Test
-    void getCompany_authenticatedNonMember404() throws Exception {
         UUID outsider = newTargetUser();
         mockMvc.perform(get("/companies/{id}", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenIssuer
-                                .issueAccessToken(outsider, UUID.randomUUID(), List.of("USER")).token()))
+                        .header(HttpHeaders.AUTHORIZATION, token(outsider)))
                 .andExpect(status().isNotFound());
+
+        // COMPANY_VIEW is in every default profile + implicit for OWNER
+        for (UUID member : List.of(ownerUserId, pmUserId, supervisorUserId, accountantUserId, viewerUserId)) {
+            mockMvc.perform(get("/companies/{id}", companyId)
+                            .header(HttpHeaders.AUTHORIZATION, token(member)))
+                    .andExpect(status().isOk());
+        }
     }
 
     @Test
-    void getCompany_buyer200() throws Exception {
+    void getCompany_revokedPermission403_reGrantMakesIt200_withoutTokenRefresh() throws Exception {
+        // Revoke VIEWER's COMPANY_VIEW — the SAME token immediately stops working
+        jdbcTemplate.update("DELETE FROM company_role_permissions WHERE company_id = ? AND role = 'VIEWER' AND permission = 'COMPANY_VIEW'",
+                companyId);
         mockMvc.perform(get("/companies/{id}", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, token(buyerUserId, CompanyRole.BUYER)))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void patchCompany_buyer403_admin200() throws Exception {
-        String body = "{\"name\": \"Acme Renamed\", \"gstNumber\": null, \"statementEmail\": null, \"businessTimezone\": null}";
-        mockMvc.perform(patch("/companies/{id}", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, token(buyerUserId, CompanyRole.BUYER))
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                        .header(HttpHeaders.AUTHORIZATION, token(viewerUserId)))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(patch("/companies/{id}", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, token(adminUserId, CompanyRole.ADMIN))
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
+        jdbcTemplate.update("INSERT INTO company_role_permissions (company_id, role, permission) VALUES (?, ?, ?)",
+                companyId, "VIEWER", "COMPANY_VIEW");
+        mockMvc.perform(get("/companies/{id}", companyId)
+                        .header(HttpHeaders.AUTHORIZATION, token(viewerUserId)))
                 .andExpect(status().isOk());
     }
 
-    // --- cross-company: same-user token of ANOTHER company gets 404 ---
+    @Test
+    void patchCompany_permissionNotRoleDecides() throws Exception {
+        String body = "{\"name\": \"Acme Renamed\", \"gstNumber\": null, \"statementEmail\": null, \"businessTimezone\": null}";
+
+        // OWNER implicit COMPANY_UPDATE
+        mockMvc.perform(patch("/companies/{id}", companyId)
+                        .header(HttpHeaders.AUTHORIZATION, token(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk());
+
+        // PROCUREMENT_MANAGER lacks COMPANY_UPDATE
+        mockMvc.perform(patch("/companies/{id}", companyId)
+                        .header(HttpHeaders.AUTHORIZATION, token(pmUserId))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+    }
 
     @Test
-    void getCompany_memberOfOtherCompanyOnly_gets404() throws Exception {
+    void crossCompany_memberOfOtherCompanyOnly_gets404() throws Exception {
+        UUID otherCompanyId = UUID.randomUUID();
+        jdbcTemplate.update("INSERT INTO companies (id, name) VALUES (?, 'Other')", otherCompanyId);
         UUID outsider = newTargetUser();
         jdbcTemplate.update("INSERT INTO company_members (id, company_id, user_id, role) VALUES (?, ?, ?, 'OWNER')",
                 UUID.randomUUID(), otherCompanyId, outsider);
-        String otherCompanyToken = "Bearer " + tokenIssuer.issueAccessToken(outsider, UUID.randomUUID(),
-                List.of("USER"),
-                List.of(new B2bMembership(otherCompanyId, CompanyRole.OWNER, List.of()))).token();
 
         mockMvc.perform(get("/companies/{id}", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, otherCompanyToken))
+                        .header(HttpHeaders.AUTHORIZATION, token(outsider)))
                 .andExpect(status().isNotFound());
     }
 
-    // --- members: ADMIN+ to mutate, any member to read ---
-
     @Test
-    void addMember_approver403_admin201() throws Exception {
+    void members_administration_requiresPermission_ownerImplicit() throws Exception {
         UUID target = newTargetUser();
-        String body = "{\"memberUserId\": \"" + target + "\", \"role\": \"BUYER\", \"siteIds\": []}";
+        String body = "{\"memberUserId\": \"" + target + "\", \"role\": \"VIEWER\", \"siteIds\": []}";
 
         mockMvc.perform(post("/companies/{id}/members", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, token(approverUserId, CompanyRole.APPROVER))
+                        .header(HttpHeaders.AUTHORIZATION, token(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+
+        // SITE_SUPERVISOR: no MEMBER_MANAGE
+        mockMvc.perform(post("/companies/{id}/members", companyId)
+                        .header(HttpHeaders.AUTHORIZATION, token(supervisorUserId))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void sites_viewAllowedByDefault_manageRequiresPermission() throws Exception {
+        mockMvc.perform(get("/companies/{id}/sites", companyId)
+                        .header(HttpHeaders.AUTHORIZATION, token(supervisorUserId)))
+                .andExpect(status().isOk());
+
+        String body = "{\"name\": \"Warehouse\", \"addressId\": null, \"active\": null}";
+        mockMvc.perform(post("/companies/{id}/sites", companyId)
+                        .header(HttpHeaders.AUTHORIZATION, token(accountantUserId))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(post("/companies/{id}/members", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, token(adminUserId, CompanyRole.ADMIN))
+        mockMvc.perform(post("/companies/{id}/sites", companyId)
+                        .header(HttpHeaders.AUTHORIZATION, token(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated());
     }
 
     @Test
-    void addMember_duplicate409() throws Exception {
-        String body = "{\"memberUserId\": \"" + buyerUserId + "\", \"role\": \"BUYER\", \"siteIds\": []}";
-        mockMvc.perform(post("/companies/{id}/members", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, token(adminUserId, CompanyRole.ADMIN))
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isConflict());
-    }
-
-    @Test
-    void listMembers_buyer200_nonMember404() throws Exception {
-        mockMvc.perform(get("/companies/{id}/members", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, token(buyerUserId, CompanyRole.BUYER)))
-                .andExpect(status().isOk());
-
-        UUID outsider = newTargetUser();
-        mockMvc.perform(get("/companies/{id}/members", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenIssuer
-                                .issueAccessToken(outsider, UUID.randomUUID(), List.of("USER")).token()))
+    void applicationAdminWithoutMembership_gets404_notCompanyPowers() throws Exception {
+        // Application ADMIN is a separate authority domain: no membership, no access
+        String adminToken = "Bearer " + tokenIssuer
+                .issueAccessToken(newTargetUser(), UUID.randomUUID(), List.of("ADMIN")).token();
+        mockMvc.perform(get("/companies/{id}", companyId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken))
                 .andExpect(status().isNotFound());
     }
 
-    // --- sites ---
-
     @Test
-    void createSite_admin201_buyer403() throws Exception {
-        String body = "{\"name\": \"Warehouse\", \"addressId\": null, \"active\": null}";
+    void staleRoleInToken_authorizationUsesDatabase() throws Exception {
+        // Token claims VIEWER (mismatched on purpose): membership in DB is what counts.
+        // The DB says OWNER, so the operation succeeds — proving the claim is not the
+        // authorization source (and symmetric case in CompanyPermissionMatrixIT).
+        String mismatchedToken = "Bearer " + tokenIssuer.issueAccessToken(ownerUserId, UUID.randomUUID(),
+                List.of("USER"),
+                List.of(new B2bMembership(companyId, CompanyRole.VIEWER, List.of()))).token();
 
-        mockMvc.perform(post("/companies/{id}/sites", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, token(buyerUserId, CompanyRole.BUYER))
+        String body = "{\"name\": \"Claim Mismatch\", \"gstNumber\": null, \"statementEmail\": null, \"businessTimezone\": null}";
+        mockMvc.perform(patch("/companies/{id}", companyId)
+                        .header(HttpHeaders.AUTHORIZATION, mismatchedToken)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isForbidden());
-
-        mockMvc.perform(post("/companies/{id}/sites", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, token(adminUserId, CompanyRole.ADMIN))
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isCreated());
-    }
-
-    @Test
-    void listSites_member200_nonMember404() throws Exception {
-        mockMvc.perform(get("/companies/{id}/sites", companyId)
-                        .header(HttpHeaders.AUTHORIZATION, token(approverUserId, CompanyRole.APPROVER)))
                 .andExpect(status().isOk());
-    }
-
-    @Test
-    void createCompany_anyAuthenticatedUser201_creatorBecomesOwner() throws Exception {
-        UUID creator = newTargetUser();
-        String body = "{\"name\": \"Newco\", \"gstNumber\": null, \"statementEmail\": null, \"businessTimezone\": null}";
-        String response = mockMvc.perform(post("/companies")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenIssuer
-                                .issueAccessToken(creator, UUID.randomUUID(), List.of("USER")).token())
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-
-        String id = new com.fasterxml.jackson.databind.ObjectMapper()
-                .readTree(response).get("id").asText();
-        Integer ownerRows = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM company_members WHERE company_id = ? AND user_id = ? AND role = 'OWNER'",
-                Integer.class, UUID.fromString(id), creator);
-        org.assertj.core.api.Assertions.assertThat(ownerRows).isEqualTo(1);
     }
 }

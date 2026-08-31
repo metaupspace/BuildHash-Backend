@@ -64,7 +64,7 @@ class CompanyMemberRepositoryAdapter implements CompanyMemberRepository {
 
     private CompanyMember toDomain(CompanyMemberEntity entity) {
         return new CompanyMember(entity.getId(), entity.getCompanyId(), entity.getUserId(),
-                entity.getRole() != null ? entity.getRole() : CompanyRole.BUYER,
+                entity.getRole() != null ? entity.getRole() : CompanyRole.VIEWER,
                 entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }

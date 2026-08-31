@@ -34,30 +34,30 @@ public class CompanySiteController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create a site (company ADMIN+)")
+    @Operation(summary = "Create a site (SITE_MANAGE)")
     public CompanySiteResponse create(@PathVariable UUID companyId,
                                       @Valid @RequestBody CompanySiteRequest request,
                                       @AuthenticationPrincipal AuthenticatedUser user) {
         return CompanySiteResponse.from(siteService.create(companyId, user.userId(),
-                user.b2bMemberships(), request.name(), request.addressId()));
+                request.name(), request.addressId()));
     }
 
     @GetMapping
-    @Operation(summary = "List sites (any company role)")
+    @Operation(summary = "List sites (SITE_VIEW)")
     public List<CompanySiteResponse> list(@PathVariable UUID companyId,
                                           @AuthenticationPrincipal AuthenticatedUser user) {
-        return siteService.listSites(companyId, user.b2bMemberships()).stream()
+        return siteService.listSites(companyId, user.userId()).stream()
                 .map(CompanySiteResponse::from)
                 .toList();
     }
 
     @PatchMapping("/{siteId}")
-    @Operation(summary = "Update a site; deactivation blocked while active orders reference it (company ADMIN+)")
+    @Operation(summary = "Update a site; deactivation blocked while active orders reference it (SITE_MANAGE)")
     public CompanySiteResponse update(@PathVariable UUID companyId,
                                       @PathVariable UUID siteId,
                                       @Valid @RequestBody CompanySiteRequest request,
                                       @AuthenticationPrincipal AuthenticatedUser user) {
         return CompanySiteResponse.from(siteService.update(companyId, siteId, user.userId(),
-                user.b2bMemberships(), request.name(), request.addressId(), request.active()));
+                request.name(), request.addressId(), request.active()));
     }
 }

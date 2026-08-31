@@ -11,7 +11,7 @@ import com.builddash.backend.domain.exception.GstRateUnresolvedException;
 import com.builddash.backend.domain.exception.InvalidOrderStateException;
 import com.builddash.backend.domain.exception.InvalidReturnStateException;
 import com.builddash.backend.domain.exception.InvalidSupportTicketStateException;
-import com.builddash.backend.domain.exception.LastAdminProtectedException;
+import com.builddash.backend.domain.exception.LastOwnerProtectedException;
 import com.builddash.backend.domain.exception.LockedException;
 import com.builddash.backend.domain.exception.MemberAlreadyExistsException;
 import com.builddash.backend.domain.exception.ModificationWindowExpiredException;
@@ -22,6 +22,8 @@ import com.builddash.backend.domain.exception.ReturnAlreadyExistsException;
 import com.builddash.backend.domain.exception.SlotUnavailableException;
 import com.builddash.backend.domain.exception.SiteInUseException;
 import com.builddash.backend.domain.exception.SiteNameTakenException;
+import com.builddash.backend.domain.exception.OwnerPermissionsImmutableException;
+import com.builddash.backend.domain.exception.PermissionEscalationGuardException;
 import com.builddash.backend.domain.exception.TooManyRequestsException;
 import com.builddash.backend.domain.exception.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -65,11 +67,13 @@ public class GlobalExceptionHandler {
             Map.entry(InvalidSupportTicketStateException.class, HttpStatus.CONFLICT),
             Map.entry(ModificationWindowExpiredException.class, HttpStatus.CONFLICT),
             Map.entry(PaymentRetryInProgressException.class, HttpStatus.CONFLICT),
-            // Phase 9-A: company foundation
+            // Phase 9-A: company foundation / 9-A.1: permission model
             Map.entry(MemberAlreadyExistsException.class, HttpStatus.CONFLICT),
             Map.entry(SiteInUseException.class, HttpStatus.CONFLICT),
             Map.entry(SiteNameTakenException.class, HttpStatus.CONFLICT),
-            Map.entry(LastAdminProtectedException.class, HttpStatus.UNPROCESSABLE_ENTITY)
+            Map.entry(LastOwnerProtectedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(OwnerPermissionsImmutableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(PermissionEscalationGuardException.class, HttpStatus.UNPROCESSABLE_ENTITY)
     );
 
     @ExceptionHandler(DomainException.class)
