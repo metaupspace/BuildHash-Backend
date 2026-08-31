@@ -61,6 +61,8 @@ class PricingCalculatorImplTest {
     @Mock
     private ContractPriceRepository contractPriceRepository;
     @Mock
+    private com.builddash.backend.domain.port.CompanyContractPriceRepository companyContractPriceRepository;
+    @Mock
     private CouponRepository couponRepository;
     @Mock
     private CouponRedemptionRepository couponRedemptionRepository;
@@ -73,7 +75,7 @@ class PricingCalculatorImplTest {
     void setUp() {
         calculator = new PricingCalculatorImpl(productRepository, categoryRepository, hsnGstRateRepository,
                 productBasePriceRepository, bulkPricingTierRepository, contractPriceRepository,
-                couponRepository, couponRedemptionRepository, marginRuleRepository);
+                companyContractPriceRepository, couponRepository, couponRedemptionRepository, marginRuleRepository);
 
         Product product = new Product();
         product.setId(PRODUCT_ID);

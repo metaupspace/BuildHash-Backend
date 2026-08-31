@@ -84,7 +84,10 @@ public class OrderServiceImpl implements OrderService {
                     java.time.Instant.now(),
                     null,
                     null,
-                    lineItems
+                    lineItems,
+                    intent.pricedCart().companyId(),
+                    null,
+                    null
             );
 
             Order saved = orderRepository.save(newOrder);

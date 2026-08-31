@@ -76,7 +76,8 @@ public class CartServiceImpl implements CartService {
                 cart.projectId(),
                 cart.type(),
                 couponCode,
-                cart.items()
+                cart.items(),
+                cart.companyId()
         );
         cartRepository.save(updated);
         Cart refreshed = cartRepository.findById(cart.id()).orElseThrow();
@@ -94,7 +95,7 @@ public class CartServiceImpl implements CartService {
     public void clearCart(UUID userId, UUID projectId) {
         Cart cart = getOrCreateCart(userId, projectId);
         cartLineItemRepository.deleteByCartId(cart.id());
-        Cart updated = new Cart(cart.id(), cart.userId(), cart.projectId(), cart.type(), null, List.of());
+        Cart updated = new Cart(cart.id(), cart.userId(), cart.projectId(), cart.type(), null, List.of(), cart.companyId());
         cartRepository.save(updated);
     }
 
@@ -113,7 +114,7 @@ public class CartServiceImpl implements CartService {
         // ponytail: projectId remains null for reorder carts to avoid collision with Phase 9 company accounts
         // Cleanup story: REORDER_SCRATCH carts are meant to be short-lived. A scheduled job (similar to
         // expired delivery slot locks) should sweep carts of type REORDER_SCRATCH older than 24h.
-        Cart cart = new Cart(UUID.randomUUID(), userId, null, com.builddash.backend.domain.enums.CartType.REORDER_SCRATCH, null, List.of());
+        Cart cart = new Cart(UUID.randomUUID(), userId, null, com.builddash.backend.domain.enums.CartType.REORDER_SCRATCH, null, List.of(), null);
         cartRepository.save(cart);
 
         for (CartLineItem inputItem : items) {
@@ -143,7 +144,8 @@ public class CartServiceImpl implements CartService {
                             projectId,
                             com.builddash.backend.domain.enums.CartType.PRIMARY,
                             null,
-                            new ArrayList<>()
+                            new ArrayList<>(),
+                            null
                     );
                     return cartRepository.save(newCart);
                 });
@@ -168,7 +170,8 @@ public class CartServiceImpl implements CartService {
                     guestCart.projectId(),
                     guestCart.type(),
                     guestCart.appliedCartCoupon(),
-                    guestCart.items()
+                    guestCart.items(),
+                    guestCart.companyId()
             );
             cartRepository.save(reassigned);
         } else {

@@ -16,6 +16,7 @@ import com.builddash.backend.domain.model.TokenClaims;
 import com.builddash.backend.domain.model.User;
 import com.builddash.backend.domain.port.GoogleIdentityGateway;
 import com.builddash.backend.domain.port.PhoneExistenceIndex;
+import com.builddash.backend.domain.port.CompanyMembershipResolver;
 import com.builddash.backend.domain.port.TokenIssuer;
 import com.builddash.backend.domain.port.TokenValidator;
 import com.builddash.backend.domain.port.OtpConfig;
@@ -48,6 +49,7 @@ public class AuthServiceImpl implements AuthenticationFacade {
     private final CartService cartService;
     private final LoginEventRecorder loginEventRecorder;
     private final PhoneExistenceIndex phoneExistenceIndex;
+    private final CompanyMembershipResolver companyMembershipResolver;
 
 
     @Override
@@ -94,7 +96,11 @@ public class AuthServiceImpl implements AuthenticationFacade {
 
         refreshTokenRotator.validateForRefresh(deviceId, userId, refreshToken);
 
-        IssuedToken access = tokenIssuer.issueAccessToken(userId, deviceId, List.of("USER"));
+        // B2B context is re-resolved on every refresh so membership changes take effect
+        // for fresh access tokens without a new login (decision 4: ordinary checks read
+        // the claim, money paths re-check the database).
+        IssuedToken access = tokenIssuer.issueAccessToken(
+                userId, deviceId, List.of("USER"), companyMembershipResolver.resolveByUserId(userId));
         IssuedToken newRefresh = tokenIssuer.issueRefreshToken(userId, deviceId);
         refreshTokenRotator.rotateHash(deviceId, newRefresh.token());
 
@@ -126,7 +132,8 @@ public class AuthServiceImpl implements AuthenticationFacade {
 
     private AuthSession issueSession(UUID userId, String deviceFingerprint) {
         UUID deviceId = UUID.randomUUID();
-        IssuedToken access = tokenIssuer.issueAccessToken(userId, deviceId, List.of("USER"));
+        IssuedToken access = tokenIssuer.issueAccessToken(
+                userId, deviceId, List.of("USER"), companyMembershipResolver.resolveByUserId(userId));
         IssuedToken refresh = tokenIssuer.issueRefreshToken(userId, deviceId);
         deviceRegistry.create(deviceId, userId, refresh.token(), deviceFingerprint);
         return new AuthSession(access.token(), refresh.token(), "Bearer", access.expiresInSeconds());

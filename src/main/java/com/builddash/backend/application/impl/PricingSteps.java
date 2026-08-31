@@ -43,15 +43,15 @@ class PricingSteps {
     }
 
     static PriceCalculationResult applyContractOverride(PriceCalculationResult running, PricingContext ctx) {
-        if (ctx.activeContractPrice() == null) {
+        if (ctx.activeContract() == null) {
             return copy(running).contractAdjustedTotal(running.tierAdjustedTotal()).build();
         }
 
-        BigDecimal contractAdjustedTotal = ctx.activeContractPrice().getUnitPrice()
+        BigDecimal contractAdjustedTotal = ctx.activeContract().unitPrice()
                 .multiply(BigDecimal.valueOf(running.quantity()));
         return copy(running)
-                .appliedContractId(ctx.activeContractPrice().getId())
-                .contractUnitPrice(ctx.activeContractPrice().getUnitPrice())
+                .appliedContractId(ctx.activeContract().id())
+                .contractUnitPrice(ctx.activeContract().unitPrice())
                 .contractAdjustedTotal(contractAdjustedTotal)
                 .build();
     }

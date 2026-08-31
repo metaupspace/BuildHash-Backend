@@ -36,6 +36,9 @@ public class CartEntity {
     @Column(name = "project_id")
     private UUID projectId;
 
+    @Column(name = "company_id")
+    private UUID companyId;
+
     @Column(name = "applied_cart_coupon")
     private String appliedCartCoupon;
 

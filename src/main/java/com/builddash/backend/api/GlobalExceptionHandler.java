@@ -11,13 +11,17 @@ import com.builddash.backend.domain.exception.GstRateUnresolvedException;
 import com.builddash.backend.domain.exception.InvalidOrderStateException;
 import com.builddash.backend.domain.exception.InvalidReturnStateException;
 import com.builddash.backend.domain.exception.InvalidSupportTicketStateException;
+import com.builddash.backend.domain.exception.LastAdminProtectedException;
 import com.builddash.backend.domain.exception.LockedException;
+import com.builddash.backend.domain.exception.MemberAlreadyExistsException;
 import com.builddash.backend.domain.exception.ModificationWindowExpiredException;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.exception.PaymentRetryInProgressException;
 import com.builddash.backend.domain.exception.ProductNotPricedException;
 import com.builddash.backend.domain.exception.ReturnAlreadyExistsException;
 import com.builddash.backend.domain.exception.SlotUnavailableException;
+import com.builddash.backend.domain.exception.SiteInUseException;
+import com.builddash.backend.domain.exception.SiteNameTakenException;
 import com.builddash.backend.domain.exception.TooManyRequestsException;
 import com.builddash.backend.domain.exception.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -60,7 +64,12 @@ public class GlobalExceptionHandler {
             Map.entry(DeleteRequestPendingException.class, HttpStatus.CONFLICT),
             Map.entry(InvalidSupportTicketStateException.class, HttpStatus.CONFLICT),
             Map.entry(ModificationWindowExpiredException.class, HttpStatus.CONFLICT),
-            Map.entry(PaymentRetryInProgressException.class, HttpStatus.CONFLICT)
+            Map.entry(PaymentRetryInProgressException.class, HttpStatus.CONFLICT),
+            // Phase 9-A: company foundation
+            Map.entry(MemberAlreadyExistsException.class, HttpStatus.CONFLICT),
+            Map.entry(SiteInUseException.class, HttpStatus.CONFLICT),
+            Map.entry(SiteNameTakenException.class, HttpStatus.CONFLICT),
+            Map.entry(LastAdminProtectedException.class, HttpStatus.UNPROCESSABLE_ENTITY)
     );
 
     @ExceptionHandler(DomainException.class)

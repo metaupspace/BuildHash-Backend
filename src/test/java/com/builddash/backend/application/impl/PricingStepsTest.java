@@ -11,6 +11,7 @@ import com.builddash.backend.domain.model.MarginRule;
 import com.builddash.backend.domain.model.PriceCalculationResult;
 import com.builddash.backend.domain.model.Product;
 import com.builddash.backend.domain.model.PricingRequest;
+import com.builddash.backend.domain.model.ResolvedContract;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -404,7 +405,9 @@ class PricingStepsTest {
         }
 
         PricingContext build() {
-            return new PricingContext(product(), null, tiers, contractPrice, couponCode, coupon,
+            ResolvedContract resolved = contractPrice == null ? null
+                    : new ResolvedContract(contractPrice.getId(), contractPrice.getUnitPrice());
+            return new PricingContext(product(), null, tiers, resolved, couponCode, coupon,
                     redemptions, marginRule, gstRatePercent, NOW);
         }
     }

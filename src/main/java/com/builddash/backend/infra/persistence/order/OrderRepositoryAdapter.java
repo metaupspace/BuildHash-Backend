@@ -55,4 +55,9 @@ public class OrderRepositoryAdapter implements OrderRepository {
                 .map(mapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public long countActiveOrdersForSite(UUID siteId) {
+        return jpaRepository.countActiveOrdersForSite(siteId, OrderStatus.CANCELLED);
+    }
 }

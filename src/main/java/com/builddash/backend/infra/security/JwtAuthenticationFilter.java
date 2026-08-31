@@ -65,7 +65,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (type == TokenType.GUEST && !guestIdentityStillActive(claims.userId())) {
                 return false;
             }
-            AuthenticatedUser principal = new AuthenticatedUser(claims.userId(), claims.deviceId(), claims.roles());
+            AuthenticatedUser principal = new AuthenticatedUser(
+                    claims.userId(), claims.deviceId(), claims.roles(), claims.b2bMemberships());
+            // Authorities derive from application roles ONLY — B2B company roles never
+            // become Spring authorities (decision 4); they ride on the principal for
+            // service-level ordinary checks and DB re-checks on money paths.
             List<GrantedAuthority> authorities = claims.roles().stream()
                     .map(role -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + role))
                     .toList();

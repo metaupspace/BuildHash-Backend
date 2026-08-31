@@ -44,7 +44,7 @@ class CartRepositoryAdapter implements CartRepository {
 
     private Cart toDomain(CartEntity entity) {
         return new Cart(entity.getId(), entity.getUserId(), entity.getProjectId(), entity.getType(), entity.getAppliedCartCoupon(),
-                entity.getItems().stream().map(CartMapper::toDomain).toList());
+                entity.getItems().stream().map(CartMapper::toDomain).toList(), entity.getCompanyId());
     }
 
     @Override
@@ -57,6 +57,7 @@ class CartRepositoryAdapter implements CartRepository {
                 });
         entity.setUserId(cart.userId());
         entity.setProjectId(cart.projectId());
+        entity.setCompanyId(cart.companyId());
         if (cart.type() != null) {
             entity.setType(cart.type());
         }
@@ -64,7 +65,7 @@ class CartRepositoryAdapter implements CartRepository {
         CartEntity saved = jpaRepository.save(entity);
         List<CartLineItemEntity> items = cartLineItemJpaRepository.findByCartId(saved.getId());
         return new Cart(saved.getId(), saved.getUserId(), saved.getProjectId(), saved.getType(), saved.getAppliedCartCoupon(),
-                items.stream().map(CartMapper::toDomain).toList());
+                items.stream().map(CartMapper::toDomain).toList(), saved.getCompanyId());
     }
 
     @Override

@@ -62,6 +62,15 @@ public class OrderEntity {
     @Column(nullable = false)
     private OrderStatus status;
 
+    @Column(name = "company_id")
+    private UUID companyId;
+
+    @Column(name = "site_id")
+    private UUID siteId;
+
+    @Column(name = "confirmed_at")
+    private Instant confirmedAt;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @org.hibernate.annotations.BatchSize(size = 50)
     private List<OrderLineItemEntity> lineItems = new ArrayList<>();

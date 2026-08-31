@@ -5,15 +5,16 @@ import com.builddash.backend.application.service.PricingStep;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.exception.ProductNotPricedException;
 import com.builddash.backend.domain.model.Category;
-import com.builddash.backend.domain.model.ContractPrice;
 import com.builddash.backend.domain.model.Coupon;
 import com.builddash.backend.domain.model.HsnGstRate;
 import com.builddash.backend.domain.model.MarginRule;
 import com.builddash.backend.domain.model.PriceCalculationResult;
 import com.builddash.backend.domain.model.Product;
 import com.builddash.backend.domain.model.PricingRequest;
+import com.builddash.backend.domain.model.ResolvedContract;
 import com.builddash.backend.domain.port.BulkPricingTierRepository;
 import com.builddash.backend.domain.port.CategoryRepository;
+import com.builddash.backend.domain.port.CompanyContractPriceRepository;
 import com.builddash.backend.domain.port.ContractPriceRepository;
 import com.builddash.backend.domain.port.CouponRedemptionRepository;
 import com.builddash.backend.domain.port.CouponRepository;
@@ -47,6 +48,7 @@ public class PricingCalculatorImpl implements PricingCalculator {
     private final ProductBasePriceRepository productBasePriceRepository;
     private final BulkPricingTierRepository bulkPricingTierRepository;
     private final ContractPriceRepository contractPriceRepository;
+    private final CompanyContractPriceRepository companyContractPriceRepository;
     private final CouponRepository couponRepository;
     private final CouponRedemptionRepository couponRedemptionRepository;
     private final MarginRuleRepository marginRuleRepository;
@@ -80,9 +82,21 @@ public class PricingCalculatorImpl implements PricingCalculator {
                 : 0;
 
         Instant asOf = Instant.now();
-        Optional<ContractPrice> activeContract = request.userId() == null
-                ? Optional.empty()
-                : contractPriceRepository.findActive(request.userId(), request.productId(), asOf);
+        // Contract resolution — the ONE place the company->user precedence exists
+        // (decision 7). Steps receive the single winner as a ResolvedContract and stay
+        // ignorant of tiers. companyId == null (every B2C request) skips the company
+        // lookup entirely: identical behavior to pre-9A pricing.
+        Optional<ResolvedContract> resolvedContract = Optional.empty();
+        if (request.companyId() != null) {
+            resolvedContract = companyContractPriceRepository
+                    .findActive(request.companyId(), request.productId(), asOf)
+                    .map(cp -> new ResolvedContract(cp.id(), cp.unitPrice()));
+        }
+        if (resolvedContract.isEmpty() && request.userId() != null) {
+            resolvedContract = contractPriceRepository
+                    .findActive(request.userId(), request.productId(), asOf)
+                    .map(cp -> new ResolvedContract(cp.getId(), cp.getUnitPrice()));
+        }
 
         MarginRule marginRule = marginRuleRepository.findByProductId(request.productId())
                 .or(() -> product.getCategoryId() == null
@@ -98,7 +112,7 @@ public class PricingCalculatorImpl implements PricingCalculator {
                 product,
                 category,
                 bulkPricingTierRepository.findByProductId(request.productId()),
-                activeContract.orElse(null),
+                resolvedContract.orElse(null),
                 request.couponCode(),
                 coupon,
                 redemptionCount,

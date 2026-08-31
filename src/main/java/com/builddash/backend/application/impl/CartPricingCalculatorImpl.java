@@ -43,7 +43,8 @@ public class CartPricingCalculatorImpl implements CartPricingCalculator {
                     item.productId(),
                     item.quantity(),
                     userId,
-                    item.appliedItemCoupon()
+                    item.appliedItemCoupon(),
+                    cart.companyId()
             );
 
             PriceCalculationResult itemResult = pricingCalculator.calculate(request);
@@ -124,7 +125,8 @@ public class CartPricingCalculatorImpl implements CartPricingCalculator {
                 totalGst,
                 finalTotal,
                 cartDiscountTotal.compareTo(BigDecimal.ZERO) > 0 ? appliedCartCoupon : null,
-                couponDroppedReason
+                couponDroppedReason,
+                cart.companyId()
         );
     }
 }

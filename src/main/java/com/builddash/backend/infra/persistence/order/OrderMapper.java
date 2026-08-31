@@ -22,6 +22,9 @@ public class OrderMapper {
         entity.setTotalAmount(domain.totalAmount());
         entity.setStatus(domain.status());
         entity.setPlacedAt(domain.placedAt());
+        entity.setCompanyId(domain.companyId());
+        entity.setSiteId(domain.siteId());
+        entity.setConfirmedAt(domain.confirmedAt());
         
         domain.lineItems().forEach(item -> {
             OrderLineItemEntity lineEntity = new OrderLineItemEntity();
@@ -54,7 +57,10 @@ public class OrderMapper {
                 entity.getPlacedAt(),
                 entity.getDriverId(),
                 entity.getDriverPhone(),
-                items
+                items,
+                entity.getCompanyId(),
+                entity.getSiteId(),
+                entity.getConfirmedAt()
         );
     }
 }
