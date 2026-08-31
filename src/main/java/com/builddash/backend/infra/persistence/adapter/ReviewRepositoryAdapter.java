@@ -29,4 +29,11 @@ class ReviewRepositoryAdapter implements ReviewRepository {
                 .map(ReviewMapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public java.util.List<Review> findAllByUserId(UUID userId) {
+        return jpaRepository.findByUserId(userId).stream()
+                .map(ReviewMapper::toDomain)
+                .toList();
+    }
 }

@@ -19,4 +19,17 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
 
     @Query("select u.phone from UserEntity u where u.phone is not null")
     List<String> findAllPhones();
+
+    /**
+     * DPDP tombstone: single UPDATE nulling identity + idx columns. NULL bypasses the
+     * encryption converters entirely (no null round-trip) and kills the blind indexes in the
+     * same statement. Idempotent — re-running on a tombstoned row is harmless, so the
+     * guest-merged case (already tombstoned by merge) needs no explicit guard.
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("update UserEntity u set u.phone = null, u.email = null, u.name = null, " +
+            "u.businessName = null, u.gstNumber = null, u.googleId = null, " +
+            "u.phoneIdx = null, u.emailIdx = null, u.googleIdIdx = null " +
+            "where u.id = :id")
+    void anonymizeById(@org.springframework.lang.NonNull UUID id);
 }

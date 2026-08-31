@@ -8,4 +8,6 @@ import java.util.UUID;
 @Repository
 public interface PaymentJpaRepository extends JpaRepository<PaymentEntity, UUID> {
     java.util.Optional<PaymentEntity> findFirstByOrderIdOrderByCreatedAtDescIdDesc(UUID orderId);
+
+    java.util.List<PaymentEntity> findByOrderId(UUID orderId);
 }

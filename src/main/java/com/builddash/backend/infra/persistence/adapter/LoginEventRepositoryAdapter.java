@@ -1,5 +1,7 @@
 package com.builddash.backend.infra.persistence.adapter;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import com.builddash.backend.domain.model.LoginEvent;
 import com.builddash.backend.domain.port.LoginEventRepository;
 import com.builddash.backend.infra.persistence.mapper.LoginEventMapper;
@@ -27,5 +29,11 @@ class LoginEventRepositoryAdapter implements LoginEventRepository {
         return jpaRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(LoginEventMapper::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteByUserId(UUID userId) {
+        jpaRepository.deleteByUserId(userId);
     }
 }

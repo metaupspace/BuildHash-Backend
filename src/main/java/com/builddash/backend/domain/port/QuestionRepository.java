@@ -13,4 +13,7 @@ public interface QuestionRepository {
     List<Question> findByProductId(UUID productId);
 
     Optional<Question> findById(UUID id);
+
+    /** DPDP export: every question the user authored. */
+    List<Question> findAllByUserId(UUID userId);
 }

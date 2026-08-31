@@ -1,5 +1,7 @@
 package com.builddash.backend.infra.persistence.adapter;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import com.builddash.backend.domain.model.NotifyMeSubscription;
 import com.builddash.backend.domain.port.NotifyMeSubscriptionRepository;
 import com.builddash.backend.infra.persistence.mapper.NotifyMeSubscriptionMapper;
@@ -25,5 +27,18 @@ class NotifyMeSubscriptionRepositoryAdapter implements NotifyMeSubscriptionRepos
     @Override
     public Optional<NotifyMeSubscription> findByProductIdAndUserId(UUID productId, UUID userId) {
         return jpaRepository.findByProductIdAndUserId(productId, userId).map(NotifyMeSubscriptionMapper::toDomain);
+    }
+
+    @Override
+    public java.util.List<NotifyMeSubscription> findAllByUserId(UUID userId) {
+        return jpaRepository.findByUserId(userId).stream()
+                .map(NotifyMeSubscriptionMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteByUserId(UUID userId) {
+        jpaRepository.deleteByUserId(userId);
     }
 }

@@ -8,4 +8,8 @@ import java.util.UUID;
 public interface CouponRedemptionJpaRepository extends JpaRepository<CouponRedemptionEntity, UUID> {
 
     int countByUserIdAndCouponId(UUID userId, UUID couponId);
+
+    java.util.List<CouponRedemptionEntity> findByUserId(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

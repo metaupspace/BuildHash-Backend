@@ -63,6 +63,13 @@ security:
 payment:
   webhook-secret: ${PAYMENT_WEBHOOK_SECRET}
 
+account:
+  deletion:
+    grace-days: ${ACCOUNT_DELETION_GRACE_DAYS:30}
+    # OQ-9 (product/legal decision): HARD_DELETE is the executable default; flipping to
+    # RETAIN is a one-config change — AccountDeletionSweeper reads this at classification time.
+    support-tickets: ${ACCOUNT_DELETION_SUPPORT_TICKETS:HARD_DELETE}
+
 delivery:
   webhook-api-key: ${DELIVERY_WEBHOOK_API_KEY:}
   modification-window-minutes: ${DELIVERY_MODIFICATION_WINDOW_MINUTES:15}

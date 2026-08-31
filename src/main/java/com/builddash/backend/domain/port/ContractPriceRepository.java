@@ -15,4 +15,7 @@ public interface ContractPriceRepository {
      * existing row for the same user+product — see ContractPriceRepositoryAdapter.
      */
     ContractPrice save(ContractPrice contractPrice);
+
+    /** DPDP export: the user's contract prices (company data, retained on deletion — export still shows it). */
+    java.util.List<ContractPrice> findAllByUserId(UUID userId);
 }

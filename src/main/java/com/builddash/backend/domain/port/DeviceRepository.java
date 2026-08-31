@@ -18,4 +18,10 @@ public interface DeviceRepository {
     List<Device> findByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(UUID userId);
 
     void revokeAllActiveByUserId(UUID userId, Instant now);
+
+    /** DPDP export: every device including revoked ones — the export is the user's full record. */
+    List<Device> findAllByUserId(UUID userId);
+
+    /** DPDP hard-delete (PLAN_PHASE8 5(d)) — revoke is soft, deletion is rows gone. */
+    void deleteByUserId(UUID userId);
 }

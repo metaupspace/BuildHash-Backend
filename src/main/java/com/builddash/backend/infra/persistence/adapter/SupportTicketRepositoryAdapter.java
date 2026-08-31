@@ -1,5 +1,7 @@
 package com.builddash.backend.infra.persistence.adapter;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import com.builddash.backend.domain.model.SupportTicket;
 import com.builddash.backend.domain.port.SupportTicketRepository;
 import com.builddash.backend.infra.persistence.mapper.SupportTicketMapper;
@@ -33,5 +35,11 @@ class SupportTicketRepositoryAdapter implements SupportTicketRepository {
         return jpaRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(SupportTicketMapper::toDomain)
                 .toList();
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteById(UUID id) {
+        jpaRepository.deleteById(id);
     }
 }

@@ -47,4 +47,11 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
                 entity.getPaymentUrl()
         );
     }
+
+    @Override
+    public java.util.List<Payment> findAllByOrderId(UUID orderId) {
+        return jpaRepository.findByOrderId(orderId).stream()
+                .map(this::toDomain)
+                .toList();
+    }
 }

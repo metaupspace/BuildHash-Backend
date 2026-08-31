@@ -1,5 +1,7 @@
 package com.builddash.backend.infra.persistence.adapter;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import com.builddash.backend.domain.model.SupportTicketMessage;
 import com.builddash.backend.domain.port.SupportTicketMessageRepository;
 import com.builddash.backend.infra.persistence.mapper.SupportTicketMessageMapper;
@@ -27,5 +29,11 @@ class SupportTicketMessageRepositoryAdapter implements SupportTicketMessageRepos
         return jpaRepository.findByTicketIdOrderByCreatedAtAsc(ticketId).stream()
                 .map(SupportTicketMessageMapper::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteByTicketId(UUID ticketId) {
+        jpaRepository.deleteByTicketId(ticketId);
     }
 }

@@ -4,6 +4,7 @@ import com.builddash.backend.api.dto.ApiError;
 import com.builddash.backend.domain.exception.BadRequestException;
 import com.builddash.backend.domain.exception.CheckoutValidationException;
 import com.builddash.backend.domain.exception.ContractPriceOverlapException;
+import com.builddash.backend.domain.exception.DeleteRequestPendingException;
 import com.builddash.backend.domain.exception.DomainException;
 import com.builddash.backend.domain.exception.ForbiddenException;
 import com.builddash.backend.domain.exception.GstRateUnresolvedException;
@@ -56,6 +57,7 @@ public class GlobalExceptionHandler {
             Map.entry(InvalidOrderStateException.class, HttpStatus.CONFLICT),
             Map.entry(InvalidReturnStateException.class, HttpStatus.CONFLICT),
             Map.entry(ReturnAlreadyExistsException.class, HttpStatus.CONFLICT),
+            Map.entry(DeleteRequestPendingException.class, HttpStatus.CONFLICT),
             Map.entry(InvalidSupportTicketStateException.class, HttpStatus.CONFLICT),
             Map.entry(ModificationWindowExpiredException.class, HttpStatus.CONFLICT),
             Map.entry(PaymentRetryInProgressException.class, HttpStatus.CONFLICT)

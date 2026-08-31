@@ -15,4 +15,7 @@ public interface CartRepository {
 
     /** The cart-abandonment job's only sanctioned Cart read (PLAN_PHASE7 5(f)): PRIMARY carts not touched since the cutoff, with items. */
     List<Cart> findStalePrimaryCarts(Instant cutoff);
+
+    /** DPDP export: every cart (any type) owned by the user, with items. */
+    List<Cart> findAllByUserId(UUID userId);
 }

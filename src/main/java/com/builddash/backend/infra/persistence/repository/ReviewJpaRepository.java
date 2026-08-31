@@ -10,4 +10,6 @@ import java.util.UUID;
 public interface ReviewJpaRepository extends JpaRepository<ReviewEntity, UUID> {
 
     List<ReviewEntity> findByProductIdAndStatus(UUID productId, ModerationStatus status);
+
+    java.util.List<ReviewEntity> findByUserId(UUID userId);
 }

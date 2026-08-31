@@ -1,5 +1,7 @@
 package com.builddash.backend.infra.persistence.adapter;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import com.builddash.backend.domain.model.Address;
 import com.builddash.backend.domain.port.AddressRepository;
 import com.builddash.backend.infra.persistence.mapper.AddressMapper;
@@ -35,5 +37,17 @@ class AddressRepositoryAdapter implements AddressRepository {
     @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void anonymizeOrderReferencedByUserId(UUID userId) {
+        jpaRepository.anonymizeOrderReferencedByUserId(userId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteUnreferencedByUserId(UUID userId) {
+        jpaRepository.deleteUnreferencedByUserId(userId);
     }
 }

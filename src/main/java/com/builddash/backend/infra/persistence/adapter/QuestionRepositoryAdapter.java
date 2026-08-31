@@ -34,4 +34,11 @@ class QuestionRepositoryAdapter implements QuestionRepository {
     public Optional<Question> findById(UUID id) {
         return jpaRepository.findById(id).map(QuestionMapper::toDomain);
     }
+
+    @Override
+    public java.util.List<Question> findAllByUserId(UUID userId) {
+        return jpaRepository.findByUserId(userId).stream()
+                .map(QuestionMapper::toDomain)
+                .toList();
+    }
 }

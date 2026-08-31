@@ -41,4 +41,10 @@ class WishlistEntryRepositoryAdapter implements WishlistRepository {
     public void deleteByUserIdAndProductId(UUID userId, UUID productId) {
         jpaRepository.deleteByUserIdAndProductId(userId, productId);
     }
+
+    @Override
+    @Transactional
+    public void deleteByUserId(UUID userId) {
+        jpaRepository.deleteByUserId(userId);
+    }
 }

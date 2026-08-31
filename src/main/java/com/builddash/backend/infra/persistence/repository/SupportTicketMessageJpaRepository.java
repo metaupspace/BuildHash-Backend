@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface SupportTicketMessageJpaRepository extends JpaRepository<SupportTicketMessageEntity, UUID> {
 
     List<SupportTicketMessageEntity> findByTicketIdOrderByCreatedAtAsc(UUID ticketId);
+
+    void deleteByTicketId(UUID ticketId);
 }

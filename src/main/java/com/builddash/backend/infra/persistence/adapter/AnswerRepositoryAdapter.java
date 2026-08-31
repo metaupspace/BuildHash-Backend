@@ -28,4 +28,11 @@ class AnswerRepositoryAdapter implements AnswerRepository {
                 .map(AnswerMapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public java.util.List<Answer> findAllByUserId(UUID userId) {
+        return jpaRepository.findByUserId(userId).stream()
+                .map(AnswerMapper::toDomain)
+                .toList();
+    }
 }

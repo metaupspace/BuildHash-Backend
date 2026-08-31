@@ -26,4 +26,8 @@ public interface NotificationLogJpaRepository extends JpaRepository<Notification
     @Modifying
     @Query("update NotificationLogEntity n set n.status = com.builddash.backend.domain.enums.NotificationStatus.FAILED where n.id = :id")
     void markFailed(UUID id);
+
+    java.util.List<NotificationLogEntity> findByUserId(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

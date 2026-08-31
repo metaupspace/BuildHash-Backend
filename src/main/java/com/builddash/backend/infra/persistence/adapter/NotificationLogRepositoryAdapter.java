@@ -59,4 +59,17 @@ class NotificationLogRepositoryAdapter implements NotificationLogRepository {
     public void markFailed(UUID id) {
         jpaRepository.markFailed(id);
     }
+
+    @Override
+    public java.util.List<NotificationLog> findAllByUserId(UUID userId) {
+        return jpaRepository.findByUserId(userId).stream()
+                .map(NotificationLogMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteByUserId(UUID userId) {
+        jpaRepository.deleteByUserId(userId);
+    }
 }

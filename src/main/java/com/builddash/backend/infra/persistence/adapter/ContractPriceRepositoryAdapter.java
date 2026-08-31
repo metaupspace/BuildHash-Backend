@@ -75,4 +75,11 @@ class ContractPriceRepositoryAdapter implements ContractPriceRepository {
                 || candidate.getEffectiveFrom().isBefore(existing.getEffectiveTo());
         return existingStartsBeforeCandidateEnds && candidateStartsBeforeExistingEnds;
     }
+
+    @Override
+    public java.util.List<ContractPrice> findAllByUserId(UUID userId) {
+        return jpaRepository.findByUserId(userId).stream()
+                .map(ContractPriceMapper::toDomain)
+                .toList();
+    }
 }

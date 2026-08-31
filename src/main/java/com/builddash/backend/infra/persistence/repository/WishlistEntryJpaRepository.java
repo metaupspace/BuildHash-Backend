@@ -14,4 +14,6 @@ public interface WishlistEntryJpaRepository extends JpaRepository<WishlistEntryE
     Optional<WishlistEntryEntity> findByUserIdAndProductId(UUID userId, UUID productId);
 
     void deleteByUserIdAndProductId(UUID userId, UUID productId);
+
+    void deleteByUserId(UUID userId);
 }

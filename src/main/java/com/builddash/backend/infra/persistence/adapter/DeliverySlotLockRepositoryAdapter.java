@@ -1,5 +1,7 @@
 package com.builddash.backend.infra.persistence.adapter;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import com.builddash.backend.domain.enums.DeliverySlotLockStatus;
 import com.builddash.backend.domain.model.DeliverySlotLock;
 import com.builddash.backend.domain.port.DeliverySlotLockRepository;
@@ -48,5 +50,11 @@ class DeliverySlotLockRepositoryAdapter implements DeliverySlotLockRepository {
     @Override
     public void updateStatus(UUID lockId, DeliverySlotLockStatus status) {
         jpaRepository.updateStatus(lockId, status);
+    }
+
+    @Override
+    @Transactional
+    public void deleteByUserId(UUID userId) {
+        jpaRepository.deleteByUserId(userId);
     }
 }

@@ -9,4 +9,8 @@ import java.util.UUID;
 public interface NotifyMeSubscriptionJpaRepository extends JpaRepository<NotifyMeSubscriptionEntity, UUID> {
 
     Optional<NotifyMeSubscriptionEntity> findByProductIdAndUserId(UUID productId, UUID userId);
+
+    java.util.List<NotifyMeSubscriptionEntity> findByUserId(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

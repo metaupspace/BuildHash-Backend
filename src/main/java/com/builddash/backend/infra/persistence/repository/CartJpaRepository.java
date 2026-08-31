@@ -20,4 +20,7 @@ public interface CartJpaRepository extends JpaRepository<CartEntity, UUID> {
 
     @Query("SELECT c FROM CartEntity c LEFT JOIN FETCH c.items WHERE c.type = com.builddash.backend.domain.enums.CartType.PRIMARY AND c.updatedAt < :cutoff AND SIZE(c.items) > 0")
     List<CartEntity> findStalePrimaryCarts(@Param("cutoff") Instant cutoff);
+
+    @org.springframework.data.jpa.repository.Query("SELECT c FROM CartEntity c LEFT JOIN FETCH c.items WHERE c.userId = :userId")
+    java.util.List<CartEntity> findAllByUserId(UUID userId);
 }

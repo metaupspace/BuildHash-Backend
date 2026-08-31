@@ -15,4 +15,7 @@ public interface WishlistRepository {
     Optional<WishlistEntry> findByUserIdAndProductId(UUID userId, UUID productId);
 
     void deleteByUserIdAndProductId(UUID userId, UUID productId);
+
+    /** DPDP hard-delete (PLAN_PHASE8 5(d)): all the user's wishlist entries in one statement. */
+    void deleteByUserId(UUID userId);
 }

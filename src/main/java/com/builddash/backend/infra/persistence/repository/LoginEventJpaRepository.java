@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface LoginEventJpaRepository extends JpaRepository<LoginEventEntity, UUID> {
 
     List<LoginEventEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

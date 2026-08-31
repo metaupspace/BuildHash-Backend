@@ -13,4 +13,11 @@ public interface SupportTicketRepository {
     Optional<SupportTicket> findById(UUID id);
 
     List<SupportTicket> findByUserId(UUID userId);
+
+    /**
+     * DPDP hard-delete (PLAN_PHASE8 5(d)) — gated behind account.deletion.support-tickets
+     * (OQ-9: product/legal decision, HARD_DELETE is the executable default, RETAIN is a
+     * one-config flip). Per-ticket, FK-ordered: messages die before their ticket.
+     */
+    void deleteById(UUID id);
 }

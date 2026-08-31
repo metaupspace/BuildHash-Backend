@@ -28,4 +28,10 @@ public interface NotificationLogRepository {
 
     /** Bulk update — set by the DLQ listener after broker retry exhaustion (3 attempts, locked 5(d)). */
     void markFailed(UUID id);
+
+    /** DPDP export: every notification the user was sent. */
+    List<NotificationLog> findAllByUserId(UUID userId);
+
+    /** DPDP hard-delete (PLAN_PHASE8 5(d)). */
+    void deleteByUserId(UUID userId);
 }

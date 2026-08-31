@@ -15,4 +15,7 @@ public interface DeliverySlotLockRepository {
     Optional<DeliverySlotLock> findById(UUID lockId);
     List<DeliverySlotLock> findExpiredActiveLocks(Instant asOf);
     void updateStatus(UUID lockId, DeliverySlotLockStatus status);
+
+    /** DPDP hard-delete (PLAN_PHASE8 5(d)): transient rows, swept with the account anyway. */
+    void deleteByUserId(UUID userId);
 }

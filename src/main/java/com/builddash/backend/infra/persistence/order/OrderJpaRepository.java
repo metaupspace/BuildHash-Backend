@@ -26,6 +26,7 @@ public interface OrderJpaRepository extends JpaRepository<OrderEntity, UUID> {
     @Query("SELECT o.id FROM OrderEntity o WHERE o.status = :status AND o.deliverySlotLockId IN (SELECT l.id FROM com.builddash.backend.infra.persistence.entity.DeliverySlotLockEntity l WHERE l.expiresAt < :cutoff)")
     List<UUID> findStalePaymentPendingOrderIds(@Param("status") OrderStatus status, @Param("cutoff") Instant cutoff);
 
+    @org.springframework.data.jpa.repository.Query("SELECT o FROM OrderEntity o LEFT JOIN FETCH o.lineItems WHERE o.userId = :userId ORDER BY o.placedAt DESC")
     List<OrderEntity> findAllByUserIdOrderByPlacedAtDesc(UUID userId);
     boolean existsByAddressId(UUID addressId);
 }

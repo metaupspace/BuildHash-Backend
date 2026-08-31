@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface ContractPriceJpaRepository extends JpaRepository<ContractPriceEntity, UUID> {
 
     List<ContractPriceEntity> findByUserIdAndProductId(UUID userId, UUID productId);
+
+    java.util.List<ContractPriceEntity> findByUserId(UUID userId);
 }

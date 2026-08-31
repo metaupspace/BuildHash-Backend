@@ -68,7 +68,15 @@ class CartRepositoryAdapter implements CartRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void delete(UUID id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public java.util.List<Cart> findAllByUserId(UUID userId) {
+        return jpaRepository.findAllByUserId(userId).stream()
+                .map(this::toDomain)
+                .toList();
     }
 }

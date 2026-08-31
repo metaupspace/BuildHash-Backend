@@ -19,4 +19,8 @@ public interface DeviceJpaRepository extends JpaRepository<DeviceEntity, UUID> {
     @Modifying
     @Query("update DeviceEntity d set d.revokedAt = :now where d.userId = :userId and d.revokedAt is null")
     void revokeAllActiveByUserId(UUID userId, Instant now);
+
+    java.util.List<DeviceEntity> findByUserId(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

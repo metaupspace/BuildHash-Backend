@@ -11,4 +11,7 @@ public interface AnswerRepository {
 
     /** Batch fetch across all of a product's questions in one query — never call per-question. */
     List<Answer> findByQuestionIdIn(List<UUID> questionIds);
+
+    /** DPDP export: every answer the user authored. */
+    List<Answer> findAllByUserId(UUID userId);
 }

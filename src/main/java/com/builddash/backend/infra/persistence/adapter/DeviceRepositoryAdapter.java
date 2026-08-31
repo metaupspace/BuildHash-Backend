@@ -1,5 +1,7 @@
 package com.builddash.backend.infra.persistence.adapter;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import com.builddash.backend.domain.model.Device;
 import com.builddash.backend.domain.port.DeviceRepository;
 import com.builddash.backend.infra.persistence.mapper.DeviceMapper;
@@ -44,5 +46,18 @@ class DeviceRepositoryAdapter implements DeviceRepository {
     @Override
     public void revokeAllActiveByUserId(UUID userId, Instant now) {
         jpaRepository.revokeAllActiveByUserId(userId, now);
+    }
+
+    @Override
+    public java.util.List<Device> findAllByUserId(UUID userId) {
+        return jpaRepository.findByUserId(userId).stream()
+                .map(DeviceMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteByUserId(UUID userId) {
+        jpaRepository.deleteByUserId(userId);
     }
 }

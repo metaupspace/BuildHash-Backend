@@ -61,6 +61,12 @@ class UserRepositoryAdapter implements UserRepository {
         return UserMapper.toDomain(jpaRepository.save(entity));
     }
 
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void anonymize(UUID userId) {
+        jpaRepository.anonymizeById(userId);
+    }
+
     private byte[] phoneIndexKey() {
         return keyProvider.derivedKey("pii:users:phone:hmac");
     }

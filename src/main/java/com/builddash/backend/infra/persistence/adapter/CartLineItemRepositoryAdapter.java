@@ -68,6 +68,7 @@ class CartLineItemRepositoryAdapter implements CartLineItemRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void deleteByCartId(UUID cartId) {
         jpaRepository.deleteByCartId(cartId);
     }

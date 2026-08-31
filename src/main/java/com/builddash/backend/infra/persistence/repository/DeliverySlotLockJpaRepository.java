@@ -23,4 +23,6 @@ public interface DeliverySlotLockJpaRepository extends JpaRepository<DeliverySlo
     @Modifying
     @Query("UPDATE DeliverySlotLockEntity l SET l.status = :status, l.updatedAt = CURRENT_TIMESTAMP WHERE l.id = :lockId")
     void updateStatus(@Param("lockId") UUID lockId, @Param("status") DeliverySlotLockStatus status);
+
+    void deleteByUserId(UUID userId);
 }
