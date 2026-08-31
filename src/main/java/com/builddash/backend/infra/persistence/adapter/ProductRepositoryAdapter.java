@@ -28,6 +28,11 @@ class ProductRepositoryAdapter implements ProductRepository {
     }
 
     @Override
+    public List<Product> findBySlug(String slug) {
+        return jpaRepository.findBySlug(slug).stream().map(ProductMapper::toDomain).toList();
+    }
+
+    @Override
     public List<Product> findPage(UUID categoryId, String brand, ProductPageCursor cursor, int limit) {
         Instant cursorCreatedAt = cursor == null ? null : cursor.createdAt();
         UUID cursorId = cursor == null ? null : cursor.id();

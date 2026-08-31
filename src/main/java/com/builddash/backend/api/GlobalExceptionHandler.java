@@ -11,6 +11,7 @@ import com.builddash.backend.domain.exception.ForbiddenException;
 import com.builddash.backend.domain.exception.GstRateUnresolvedException;
 import com.builddash.backend.domain.exception.InvalidOrderStateException;
 import com.builddash.backend.domain.exception.InvalidReturnStateException;
+import com.builddash.backend.domain.exception.InvalidPoStateException;
 import com.builddash.backend.domain.exception.InvalidRfqStateException;
 import com.builddash.backend.domain.exception.InvalidSupportTicketStateException;
 import com.builddash.backend.domain.exception.LastOwnerProtectedException;
@@ -28,6 +29,9 @@ import com.builddash.backend.domain.exception.SiteInUseException;
 import com.builddash.backend.domain.exception.SiteNameTakenException;
 import com.builddash.backend.domain.exception.OwnerPermissionsImmutableException;
 import com.builddash.backend.domain.exception.PermissionEscalationGuardException;
+import com.builddash.backend.domain.exception.PoAttachmentExistsException;
+import com.builddash.backend.domain.exception.PoImportValidationException;
+import com.builddash.backend.domain.exception.PoUploadInProgressException;
 import com.builddash.backend.domain.exception.TooManyRequestsException;
 import com.builddash.backend.domain.exception.UnauthorizedException;
 import com.builddash.backend.domain.exception.VendorNotRoutableException;
@@ -84,7 +88,12 @@ public class GlobalExceptionHandler {
             Map.entry(DuplicateQuoteException.class, HttpStatus.CONFLICT),
             Map.entry(RfqValidationException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             Map.entry(QuoteValidationException.class, HttpStatus.UNPROCESSABLE_ENTITY),
-            Map.entry(VendorNotRoutableException.class, HttpStatus.UNPROCESSABLE_ENTITY)
+            Map.entry(VendorNotRoutableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            // Phase 9-C: PO attachments / bulk import / draft conversion
+            Map.entry(InvalidPoStateException.class, HttpStatus.CONFLICT),
+            Map.entry(PoAttachmentExistsException.class, HttpStatus.CONFLICT),
+            Map.entry(PoUploadInProgressException.class, HttpStatus.CONFLICT),
+            Map.entry(PoImportValidationException.class, HttpStatus.BAD_REQUEST)
     );
 
     @ExceptionHandler(DomainException.class)

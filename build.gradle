@@ -44,6 +44,10 @@ dependencies {
     implementation 'com.github.librepdf:openpdf:2.0.3'
     implementation 'software.amazon.awssdk:s3:2.25.16'
 
+    // PO bulk import (9-C): streaming event/SAX XLSX parsing only — never
+    // XSSFWorkbook full in-memory loads of untrusted files.
+    implementation 'org.apache.poi:poi-ooxml:5.3.0'
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'

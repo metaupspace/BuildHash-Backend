@@ -31,4 +31,6 @@ public interface ProductJpaRepository extends JpaRepository<ProductEntity, UUID>
                                         @Param("cursorCreatedAt") Instant cursorCreatedAt,
                                         @Param("cursorId") UUID cursorId,
                                         Pageable pageable);
+
+    List<ProductEntity> findBySlug(String slug);
 }

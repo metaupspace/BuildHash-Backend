@@ -5,6 +5,14 @@ spring:
   application:
     name: builddash-backend
 
+  # 9-C locked resource limits: PO uploads are XLSX files capped at 2MB (the
+  # business rule is also enforced in the application layer, so these servlet
+  # bounds are the outer fence, not the rule itself).
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 3MB
+
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 

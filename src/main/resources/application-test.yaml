@@ -1,4 +1,9 @@
 spring:
+  # Same PO upload fence as production (9-C).
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 3MB
   rabbitmq:
     listener:
       simple:
