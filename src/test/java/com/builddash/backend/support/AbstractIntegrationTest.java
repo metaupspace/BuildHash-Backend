@@ -43,6 +43,13 @@ public abstract class AbstractIntegrationTest {
         System.setProperty("security.pii.master-key",
                 java.util.Base64.getEncoder().encodeToString(new byte[32]));
 
+        // Test-wide raised rate limits (Checkpoint B): RateLimitFilter fronts EVERY request
+        // and all ITs share 127.0.0.1's budget — without headroom, unrelated /search ITs
+        // would trip 429s. RateLimitIT overrides these via @DynamicPropertySource (higher
+        // precedence, own cached context) to exercise the real configured limits.
+        System.setProperty("security.rate-limit.rules.search.limit", "10000");
+        System.setProperty("security.rate-limit.rules.google.limit", "10000");
+
         try {
             REDIS_SERVER = RedisServer.newRedisServer();
             REDIS_SERVER.start();

@@ -1,6 +1,7 @@
 package com.builddash.backend.api.controller;
 
 import com.builddash.backend.api.dto.request.GoogleSignInRequest;
+import com.builddash.backend.infra.security.ClientIpResolver;
 import com.builddash.backend.api.dto.request.OtpSendRequest;
 import com.builddash.backend.api.dto.request.OtpVerifyRequest;
 import com.builddash.backend.api.dto.request.RefreshRequest;
@@ -77,7 +78,7 @@ public class AuthController {
     public AuthTokensResponse verifyOtp(@Valid @RequestBody OtpVerifyRequest request, HttpServletRequest httpRequest) {
         String guestToken = extractGuestToken(httpRequest);
         return authMapper.toResponse(authenticationFacade.verifyOtp(
-                request.phone(), request.otp(), request.deviceFingerprint(), clientIp(httpRequest), guestToken));
+                request.phone(), request.otp(), request.deviceFingerprint(), ClientIpResolver.resolve(httpRequest), guestToken));
     }
 
     @PostMapping("/google")
@@ -91,7 +92,7 @@ public class AuthController {
     public AuthTokensResponse googleSignIn(@Valid @RequestBody GoogleSignInRequest request, HttpServletRequest httpRequest) {
         String guestToken = extractGuestToken(httpRequest);
         return authMapper.toResponse(authenticationFacade.googleSignIn(
-                request.idToken(), request.deviceFingerprint(), clientIp(httpRequest), guestToken));
+                request.idToken(), request.deviceFingerprint(), ClientIpResolver.resolve(httpRequest), guestToken));
     }
 
     @PostMapping("/guest")
@@ -121,11 +122,9 @@ public class AuthController {
     }
 
     private String clientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+        // Extracted to ClientIpResolver (Checkpoint B) so login_events capture and
+        // RateLimitFilter keying share one implementation and cannot drift apart.
+        return ClientIpResolver.resolve(request);
     }
 
     private String extractGuestToken(HttpServletRequest request) {

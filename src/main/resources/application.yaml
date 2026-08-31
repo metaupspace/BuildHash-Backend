@@ -55,6 +55,10 @@ security:
   pii:
     # FAIL CLOSED, NO DEFAULT (PLAN_PHASE8 decision 2): unset PII_MASTER_KEY refuses boot.
     master-key: ${PII_MASTER_KEY}
+  rate-limit:
+    rules:
+      search:    { path: /search/**,  limit: 30, window: 1m }
+      google:    { path: /auth/google, method: POST, limit: 10, window: 1m }
 
 payment:
   webhook-secret: ${PAYMENT_WEBHOOK_SECRET}
