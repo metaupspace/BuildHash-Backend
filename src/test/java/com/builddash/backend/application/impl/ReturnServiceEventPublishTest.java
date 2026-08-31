@@ -21,6 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -73,12 +75,22 @@ class ReturnServiceEventPublishTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private TransactionTemplate transactionTemplate;
+
     private ReturnServiceImpl service;
 
     @BeforeEach
     void setUp() {
+        // TransactionTemplate pass-through (8.1-A wiring): createReturn now runs its insert
+        // inside the template so the partial-unique violation is catchable at the boundary.
+        lenient().when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(null);
+        });
         service = new ReturnServiceImpl(orderRepository, returnRepository, refundRepository,
-                productRepository, categoryRepository, objectStorage, refundService, eventPublisher);
+                productRepository, categoryRepository, objectStorage, refundService, eventPublisher,
+                transactionTemplate);
     }
 
     private Return returnIn(ReturnStatus status) {

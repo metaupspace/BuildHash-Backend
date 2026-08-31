@@ -28,8 +28,10 @@ import com.builddash.backend.domain.service.ReturnRefundCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -63,9 +65,9 @@ public class ReturnServiceImpl implements ReturnService {
     private final ObjectStorage objectStorage;
     private final RefundService refundService;
     private final ApplicationEventPublisher eventPublisher;
+    private final TransactionTemplate transactionTemplate;
 
     @Override
-    @Transactional
     public Return createReturn(UUID userId, UUID orderId, ReturnReason reason, List<ReturnLineItemRequest> requestedItems, List<MultipartFile> photos) {
         if (photos == null || photos.isEmpty()) {
             throw new BadRequestException("PHOTOS_REQUIRED", "At least one return photo is required");
@@ -84,95 +86,104 @@ public class ReturnServiceImpl implements ReturnService {
             }
         }
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found: " + orderId));
+        try {
+            return transactionTemplate.execute(status -> {
+                Order order = orderRepository.findById(orderId)
+                        .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found: " + orderId));
 
-        if (!order.userId().equals(userId)) {
-            throw new NotFoundException("ORDER_NOT_FOUND", "Order not found: " + orderId);
+                if (!order.userId().equals(userId)) {
+                    throw new NotFoundException("ORDER_NOT_FOUND", "Order not found: " + orderId);
+                }
+
+                if (order.status() != OrderStatus.DELIVERED) {
+                    throw new InvalidOrderStateException(order.status().name(), "RETURN_REQUESTED");
+                }
+
+                // Client-retry guard: one ACTIVE return per order. No returned-quantity tracking
+                // exists (PLAN_PHASE6 Section 1), so a second return would re-return the same items
+                // and trigger a second refund. REJECTED is the one re-entry door — rejection is
+                // terminal and pre-refund, so a corrected re-submission stays legitimate.
+                returnRepository.findByOrderId(orderId)
+                        .filter(existing -> existing.status() != ReturnStatus.REJECTED)
+                        .ifPresent(existing -> {
+                            throw new ReturnAlreadyExistsException(orderId);
+                        });
+
+                Map<UUID, OrderLineItem> orderItemMap = order.lineItems().stream()
+                        .collect(Collectors.toMap(OrderLineItem::productId, Function.identity()));
+
+                UUID returnId = UUID.randomUUID();
+                List<ReturnLineItem> lineItems = new ArrayList<>();
+
+                for (ReturnLineItemRequest reqItem : requestedItems) {
+                    OrderLineItem orderItem = orderItemMap.get(reqItem.productId());
+                    if (orderItem == null) {
+                        throw new BadRequestException("INVALID_PRODUCT", "Product " + reqItem.productId() + " is not part of order " + orderId);
+                    }
+                    if (reqItem.quantity() > orderItem.quantity()) {
+                        throw new BadRequestException("INVALID_QUANTITY", "Requested return quantity exceeds ordered quantity for product " + reqItem.productId());
+                    }
+
+                    Product product = productRepository.findById(reqItem.productId()).orElse(null);
+                    UUID categoryId = product != null ? product.getCategoryId() : null;
+                    int windowDays = 7;
+                    if (categoryId != null) {
+                        windowDays = categoryRepository.findById(categoryId)
+                                .map(Category::getReturnWindowDays)
+                                .filter(w -> w != null && w > 0)
+                                .orElse(7);
+                    }
+
+                    Instant deliveredAt = order.placedAt();
+                    if (deliveredAt != null && Instant.now().isAfter(deliveredAt.plus(Duration.ofDays(windowDays)))) {
+                        throw new BadRequestException("RETURN_WINDOW_EXPIRED", "Return window of " + windowDays + " days has expired for product " + reqItem.productId());
+                    }
+
+                    BigDecimal refundAmount = ReturnRefundCalculator.calculateItemRefund(orderItem, reqItem.quantity());
+                    lineItems.add(new ReturnLineItem(
+                            UUID.randomUUID(),
+                            returnId,
+                            reqItem.productId(),
+                            reqItem.quantity(),
+                            refundAmount
+                    ));
+                }
+
+                List<String> photoKeys = new ArrayList<>();
+                for (MultipartFile photo : validPhotos) {
+                    String contentType = photo.getContentType().toLowerCase();
+                    String ext = ALLOWED_IMAGE_TYPES.get(contentType);
+                    String storageKey = "returns/" + returnId + "/photos/" + UUID.randomUUID() + "." + ext;
+                    try {
+                        objectStorage.store(storageKey, photo.getBytes(), contentType);
+                        photoKeys.add(storageKey);
+                    } catch (IOException e) {
+                        throw new IllegalStateException("Failed to read photo bytes for upload", e);
+                    }
+                }
+
+                Return returnObj = new Return(
+                        returnId,
+                        orderId,
+                        userId,
+                        ReturnStatus.REQUESTED,
+                        reason,
+                        photoKeys,
+                        lineItems,
+                        Instant.now(),
+                        Instant.now()
+                );
+
+                Return saved = returnRepository.save(returnObj);
+                log.info("Created return {} for order {} with {} items", saved.id(), orderId, lineItems.size());
+                return saved;
+            });
+        } catch (DataIntegrityViolationException e) {
+            // uq_returns_one_active_per_order (V24): the concurrent race loser lands here
+            // — caught at the template boundary where commit-time flush violations surface,
+            // translated to the same contract the sequential guard above enforces.
+            throw new ReturnAlreadyExistsException(orderId);
         }
-
-        if (order.status() != OrderStatus.DELIVERED) {
-            throw new InvalidOrderStateException(order.status().name(), "RETURN_REQUESTED");
-        }
-
-        // Client-retry guard: one ACTIVE return per order. No returned-quantity tracking
-        // exists (PLAN_PHASE6 Section 1), so a second return would re-return the same items
-        // and trigger a second refund. REJECTED is the one re-entry door — rejection is
-        // terminal and pre-refund, so a corrected re-submission stays legitimate.
-        returnRepository.findByOrderId(orderId)
-                .filter(existing -> existing.status() != ReturnStatus.REJECTED)
-                .ifPresent(existing -> {
-                    throw new ReturnAlreadyExistsException(orderId);
-                });
-
-        Map<UUID, OrderLineItem> orderItemMap = order.lineItems().stream()
-                .collect(Collectors.toMap(OrderLineItem::productId, Function.identity()));
-
-        UUID returnId = UUID.randomUUID();
-        List<ReturnLineItem> lineItems = new ArrayList<>();
-
-        for (ReturnLineItemRequest reqItem : requestedItems) {
-            OrderLineItem orderItem = orderItemMap.get(reqItem.productId());
-            if (orderItem == null) {
-                throw new BadRequestException("INVALID_PRODUCT", "Product " + reqItem.productId() + " is not part of order " + orderId);
-            }
-            if (reqItem.quantity() > orderItem.quantity()) {
-                throw new BadRequestException("INVALID_QUANTITY", "Requested return quantity exceeds ordered quantity for product " + reqItem.productId());
-            }
-
-            Product product = productRepository.findById(reqItem.productId()).orElse(null);
-            UUID categoryId = product != null ? product.getCategoryId() : null;
-            int windowDays = 7;
-            if (categoryId != null) {
-                windowDays = categoryRepository.findById(categoryId)
-                        .map(Category::getReturnWindowDays)
-                        .filter(w -> w != null && w > 0)
-                        .orElse(7);
-            }
-
-            Instant deliveredAt = order.placedAt();
-            if (deliveredAt != null && Instant.now().isAfter(deliveredAt.plus(Duration.ofDays(windowDays)))) {
-                throw new BadRequestException("RETURN_WINDOW_EXPIRED", "Return window of " + windowDays + " days has expired for product " + reqItem.productId());
-            }
-
-            BigDecimal refundAmount = ReturnRefundCalculator.calculateItemRefund(orderItem, reqItem.quantity());
-            lineItems.add(new ReturnLineItem(
-                    UUID.randomUUID(),
-                    returnId,
-                    reqItem.productId(),
-                    reqItem.quantity(),
-                    refundAmount
-            ));
-        }
-
-        List<String> photoKeys = new ArrayList<>();
-        for (MultipartFile photo : validPhotos) {
-            String contentType = photo.getContentType().toLowerCase();
-            String ext = ALLOWED_IMAGE_TYPES.get(contentType);
-            String storageKey = "returns/" + returnId + "/photos/" + UUID.randomUUID() + "." + ext;
-            try {
-                objectStorage.store(storageKey, photo.getBytes(), contentType);
-                photoKeys.add(storageKey);
-            } catch (IOException e) {
-                throw new IllegalStateException("Failed to read photo bytes for upload", e);
-            }
-        }
-
-        Return returnObj = new Return(
-                returnId,
-                orderId,
-                userId,
-                ReturnStatus.REQUESTED,
-                reason,
-                photoKeys,
-                lineItems,
-                Instant.now(),
-                Instant.now()
-        );
-
-        Return saved = returnRepository.save(returnObj);
-        log.info("Created return {} for order {} with {} items", saved.id(), orderId, lineItems.size());
-        return saved;
     }
 
     @Override
