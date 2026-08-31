@@ -24,4 +24,13 @@ public class IdempotencyKeyEntity {
 
     @Column(name = "order_id", nullable = false)
     private UUID orderId;
+
+    /** DB-populated (DEFAULT now()) — read-only for the rolling-window filter (PLAN_PHASE8 decision 10). */
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private java.time.Instant createdAt;
+
+    public IdempotencyKeyEntity(String key, UUID orderId) {
+        this.key = key;
+        this.orderId = orderId;
+    }
 }

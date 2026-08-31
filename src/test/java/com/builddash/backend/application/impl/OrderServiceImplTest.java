@@ -18,13 +18,17 @@ import com.builddash.backend.domain.port.PaymentGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import com.builddash.backend.infra.config.OrderIdempotencyProperties;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -61,6 +65,10 @@ class OrderServiceImplTest {
     @Mock
     private com.builddash.backend.api.mapper.CartDtoMapper cartDtoMapper;
 
+    /** Real instance (not a mock): the cutoff-derivation test asserts against its window. */
+    @Spy
+    private OrderIdempotencyProperties idempotencyProperties = new OrderIdempotencyProperties();
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
@@ -91,7 +99,7 @@ class OrderServiceImplTest {
         UUID existingOrderId = UUID.randomUUID();
         Order existingOrder = new Order(existingOrderId, userId, addressId, slotId, slotDate, expectedTotal, OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), java.time.Instant.now(), null, null, List.of());
 
-        when(idempotencyKeyRepository.findOrderId(idempotencyKey)).thenReturn(Optional.of(existingOrderId));
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.of(existingOrderId));
         when(orderRepository.findById(existingOrderId)).thenReturn(Optional.of(existingOrder));
         when(paymentGateway.initiate(existingOrderId, expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
 
@@ -111,7 +119,7 @@ class OrderServiceImplTest {
         UUID otherUserId = UUID.randomUUID();
         Order foreignOrder = new Order(existingOrderId, otherUserId, addressId, slotId, slotDate, expectedTotal, OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), java.time.Instant.now(), null, null, List.of());
 
-        when(idempotencyKeyRepository.findOrderId(idempotencyKey)).thenReturn(Optional.of(existingOrderId));
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.of(existingOrderId));
         when(orderRepository.findById(existingOrderId)).thenReturn(Optional.of(foreignOrder));
 
         assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey))
@@ -123,7 +131,7 @@ class OrderServiceImplTest {
 
     @Test
     void create_whenNewIdempotencyKey_createsOrderAndInitiatesPayment() {
-        when(idempotencyKeyRepository.findOrderId(idempotencyKey)).thenReturn(Optional.empty());
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
 
         CheckoutIntent intent = mock(CheckoutIntent.class);
         when(intent.lockedTotal()).thenReturn(expectedTotal);
@@ -147,8 +155,40 @@ class OrderServiceImplTest {
     }
 
     @Test
+    void create_derivesCutoffFromConfiguredWindow_passesItToFindOrderId() {
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
+        stubNewOrderHappyPath();
+
+        orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey);
+
+        // Override: window widening must flow through to the read's cutoff.
+        idempotencyProperties.setIdempotencyWindowHours(48);
+        orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey);
+
+        org.mockito.ArgumentCaptor<Instant> cutoffs = org.mockito.ArgumentCaptor.forClass(Instant.class);
+        verify(idempotencyKeyRepository, times(2)).findOrderId(eq(idempotencyKey), cutoffs.capture());
+        // Default (24h) and override (48h) both derived, not hardcoded.
+        assertThat(Duration.between(cutoffs.getAllValues().get(0), Instant.now()))
+                .isCloseTo(Duration.ofHours(24), Duration.ofSeconds(5));
+        assertThat(Duration.between(cutoffs.getAllValues().get(1), Instant.now()))
+                .isCloseTo(Duration.ofHours(48), Duration.ofSeconds(5));
+    }
+
+    private void stubNewOrderHappyPath() {
+        CheckoutIntent intent = mock(CheckoutIntent.class);
+        when(intent.lockedTotal()).thenReturn(expectedTotal);
+        PricedCart cart = mock(PricedCart.class);
+        when(cart.items()).thenReturn(List.of());
+        when(intent.pricedCart()).thenReturn(cart);
+        when(checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal, null)).thenReturn(intent);
+        Order savedOrder = new Order(UUID.randomUUID(), userId, addressId, slotId, slotDate, expectedTotal, OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), Instant.now(), null, null, List.of());
+        when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
+        when(paymentGateway.initiate(savedOrder.id(), expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
+    }
+
+    @Test
     void create_whenGatewayFails_cartNotCleared() {
-        when(idempotencyKeyRepository.findOrderId(idempotencyKey)).thenReturn(Optional.empty());
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
 
         CheckoutIntent intent = mock(CheckoutIntent.class);
         when(intent.lockedTotal()).thenReturn(expectedTotal);
@@ -171,7 +211,7 @@ class OrderServiceImplTest {
 
     @Test
     void create_whenCouponsApplied_recordsRedemptions() {
-        when(idempotencyKeyRepository.findOrderId(idempotencyKey)).thenReturn(Optional.empty());
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
 
         UUID cartCouponId = UUID.randomUUID();
         UUID itemCouponId = UUID.randomUUID();
@@ -205,7 +245,7 @@ class OrderServiceImplTest {
 
     @Test
     void create_whenNoCouponsApplied_recordsNothing() {
-        when(idempotencyKeyRepository.findOrderId(idempotencyKey)).thenReturn(Optional.empty());
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
 
         PricedCart cart = new PricedCart(UUID.randomUUID(), userId, null, List.of(),
                 BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.TEN, null, null);
@@ -226,7 +266,7 @@ class OrderServiceImplTest {
 
     @Test
     void create_whenPaymentSaveFailsAfterGatewaySuccess_originalExceptionPropagates() {
-        when(idempotencyKeyRepository.findOrderId(idempotencyKey)).thenReturn(Optional.empty());
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
 
         CheckoutIntent intent = mock(CheckoutIntent.class);
         when(intent.lockedTotal()).thenReturn(expectedTotal);
@@ -253,7 +293,7 @@ class OrderServiceImplTest {
         UUID winnerOrderId = UUID.randomUUID();
         Order winnerOrder = new Order(winnerOrderId, userId, addressId, slotId, slotDate, expectedTotal, OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), java.time.Instant.now(), null, null, List.of());
 
-        when(idempotencyKeyRepository.findOrderId(idempotencyKey))
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class)))
                 .thenReturn(Optional.empty())                 // first read: no key yet
                 .thenReturn(Optional.of(winnerOrderId));      // re-read after conflict
         when(orderRepository.findById(winnerOrderId)).thenReturn(Optional.of(winnerOrder));
@@ -277,7 +317,7 @@ class OrderServiceImplTest {
 
     @Test
     void create_whenPaymentGatewayFails_throwsPaymentGatewayException() {
-        when(idempotencyKeyRepository.findOrderId(idempotencyKey)).thenReturn(Optional.empty());
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
 
         CheckoutIntent intent = mock(CheckoutIntent.class);
         when(intent.lockedTotal()).thenReturn(expectedTotal);

@@ -13,11 +13,14 @@ import com.builddash.backend.domain.model.PaymentReference;
 import com.builddash.backend.domain.port.IdempotencyKeyRepository;
 import com.builddash.backend.domain.port.OrderRepository;
 import com.builddash.backend.domain.port.PaymentGateway;
+import com.builddash.backend.infra.config.OrderIdempotencyProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +40,7 @@ public class OrderServiceImpl implements OrderService {
     private final CheckoutIntentService checkoutIntentService;
     private final OrderRepository orderRepository;
     private final IdempotencyKeyRepository idempotencyKeyRepository;
+    private final OrderIdempotencyProperties idempotencyProperties;
     private final com.builddash.backend.domain.port.PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway;
     private final TransactionTemplate transactionTemplate;
@@ -47,7 +51,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResult create(UUID userId, UUID addressId, UUID slotId, LocalDate slotDate, BigDecimal expectedTotal, String idempotencyKey) {
         Order savedOrder = transactionTemplate.execute(status -> {
-            Optional<UUID> existingOrderId = idempotencyKeyRepository.findOrderId(idempotencyKey);
+            // Rolling window (PLAN_PHASE8 decision 10): an expired key reads as absent —
+            // the caller gets a genuinely new order, not the stale one.
+            Instant idempotencyCutoff = Instant.now()
+                    .minus(Duration.ofHours(idempotencyProperties.getIdempotencyWindowHours()));
+            Optional<UUID> existingOrderId = idempotencyKeyRepository.findOrderId(idempotencyKey, idempotencyCutoff);
             if (existingOrderId.isPresent()) {
                 return existingOrderForKey(idempotencyKey, userId);
             }
@@ -116,7 +124,11 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private Order existingOrderForKey(String idempotencyKey, UUID userId) {
-        UUID orderId = idempotencyKeyRepository.findOrderId(idempotencyKey)
+        // Race-retry path: the winner inserted this key moments ago, so the window filter
+        // can never miss it — same cutoff discipline as the primary read for consistency.
+        Instant idempotencyCutoff = Instant.now()
+                .minus(Duration.ofHours(idempotencyProperties.getIdempotencyWindowHours()));
+        UUID orderId = idempotencyKeyRepository.findOrderId(idempotencyKey, idempotencyCutoff)
                 .orElseThrow(() -> new IllegalStateException("Order not found for idempotency key"));
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalStateException("Order not found for idempotency key"));
