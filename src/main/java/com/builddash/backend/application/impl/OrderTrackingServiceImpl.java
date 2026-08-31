@@ -27,6 +27,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -51,7 +53,11 @@ public class OrderTrackingServiceImpl implements OrderTrackingService {
     public void updateDeliveryStatus(UUID orderId, OrderStatus status, String driverId, String driverPhone,
                                      Double latitude, Double longitude, String apiKey) {
         String configuredKey = deliveryProperties.getWebhookApiKey();
-        if (configuredKey == null || configuredKey.isBlank() || !configuredKey.equals(apiKey)) {
+        // Constant-time comparison (PLAN_PHASE8 §6 flagged deviation): same mechanism as the
+        // payment/refund webhook HMAC checks — plain .equals() is a timing side-channel.
+        if (configuredKey == null || configuredKey.isBlank() || !MessageDigest.isEqual(
+                configuredKey.getBytes(StandardCharsets.UTF_8),
+                apiKey == null ? new byte[0] : apiKey.getBytes(StandardCharsets.UTF_8))) {
             throw new UnauthorizedException("UNAUTHORIZED", "Invalid or missing webhook API key");
         }
 
