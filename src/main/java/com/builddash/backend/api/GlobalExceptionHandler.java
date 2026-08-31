@@ -6,10 +6,12 @@ import com.builddash.backend.domain.exception.CheckoutValidationException;
 import com.builddash.backend.domain.exception.ContractPriceOverlapException;
 import com.builddash.backend.domain.exception.DeleteRequestPendingException;
 import com.builddash.backend.domain.exception.DomainException;
+import com.builddash.backend.domain.exception.DuplicateQuoteException;
 import com.builddash.backend.domain.exception.ForbiddenException;
 import com.builddash.backend.domain.exception.GstRateUnresolvedException;
 import com.builddash.backend.domain.exception.InvalidOrderStateException;
 import com.builddash.backend.domain.exception.InvalidReturnStateException;
+import com.builddash.backend.domain.exception.InvalidRfqStateException;
 import com.builddash.backend.domain.exception.InvalidSupportTicketStateException;
 import com.builddash.backend.domain.exception.LastOwnerProtectedException;
 import com.builddash.backend.domain.exception.LockedException;
@@ -18,7 +20,9 @@ import com.builddash.backend.domain.exception.ModificationWindowExpiredException
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.exception.PaymentRetryInProgressException;
 import com.builddash.backend.domain.exception.ProductNotPricedException;
+import com.builddash.backend.domain.exception.QuoteValidationException;
 import com.builddash.backend.domain.exception.ReturnAlreadyExistsException;
+import com.builddash.backend.domain.exception.RfqValidationException;
 import com.builddash.backend.domain.exception.SlotUnavailableException;
 import com.builddash.backend.domain.exception.SiteInUseException;
 import com.builddash.backend.domain.exception.SiteNameTakenException;
@@ -26,6 +30,7 @@ import com.builddash.backend.domain.exception.OwnerPermissionsImmutableException
 import com.builddash.backend.domain.exception.PermissionEscalationGuardException;
 import com.builddash.backend.domain.exception.TooManyRequestsException;
 import com.builddash.backend.domain.exception.UnauthorizedException;
+import com.builddash.backend.domain.exception.VendorNotRoutableException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -73,7 +78,13 @@ public class GlobalExceptionHandler {
             Map.entry(SiteNameTakenException.class, HttpStatus.CONFLICT),
             Map.entry(LastOwnerProtectedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             Map.entry(OwnerPermissionsImmutableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
-            Map.entry(PermissionEscalationGuardException.class, HttpStatus.UNPROCESSABLE_ENTITY)
+            Map.entry(PermissionEscalationGuardException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            // Phase 9-B: RFQ lifecycle / vendor routing / controlled quotes
+            Map.entry(InvalidRfqStateException.class, HttpStatus.CONFLICT),
+            Map.entry(DuplicateQuoteException.class, HttpStatus.CONFLICT),
+            Map.entry(RfqValidationException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(QuoteValidationException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(VendorNotRoutableException.class, HttpStatus.UNPROCESSABLE_ENTITY)
     );
 
     @ExceptionHandler(DomainException.class)

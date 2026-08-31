@@ -47,6 +47,10 @@ public class SecurityConfig {
                         // GET-scoped (8.1-B): method-agnostic permitAll let anonymous POST
                         // /search/image through — now it falls to the POST USER rule below.
                         .requestMatchers(HttpMethod.GET, "/search/**").permitAll()
+                        // Application-admin surface (9-B): vendor management and controlled
+                        // quote submission. ROLE_ADMIN only — B2B company roles/permissions
+                        // never apply here, and an ADMIN gets no /rfq/** without membership.
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/users/**").hasRole("USER")
                         .requestMatchers("/cart/**").hasAnyRole("GUEST", "USER")
                         // Support: customers own their tickets; VENDOR/ADMIN reach any ticket by id.

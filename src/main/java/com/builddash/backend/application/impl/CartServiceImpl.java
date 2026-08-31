@@ -135,6 +135,28 @@ public class CartServiceImpl implements CartService {
         return cartPricingCalculator.calculate(refreshed, userId);
     }
 
+    @Override
+    @Transactional
+    public PricedCart createB2bDraftCart(UUID companyId, UUID userId, UUID sourceId, List<CartLineItem> items) {
+        // Same shape as createReorderCart, plus the company scope and the source
+        // reference (projectId = RFQ/PO id). Runs inside the converter's transaction —
+        // the RFQ status flip and the cart commit or roll back together.
+        Cart cart = new Cart(UUID.randomUUID(), userId, sourceId,
+                com.builddash.backend.domain.enums.CartType.B2B_DRAFT, null, List.of(), companyId);
+        cartRepository.save(cart);
+
+        for (CartLineItem inputItem : items) {
+            if (productRepository.findById(inputItem.productId()).isEmpty()) {
+                throw new NotFoundException("PRODUCT_NOT_FOUND", "Product not found: " + inputItem.productId());
+            }
+            cartLineItemRepository.save(new CartLineItem(
+                    UUID.randomUUID(), cart.id(), inputItem.productId(), inputItem.quantity(), null));
+        }
+
+        Cart refreshed = cartRepository.findById(cart.id()).orElseThrow();
+        return cartPricingCalculator.calculate(refreshed, userId);
+    }
+
     private Cart getOrCreateCart(UUID userId, UUID projectId) {
         return cartRepository.findByUserIdAndProjectId(userId, projectId)
                 .orElseGet(() -> {

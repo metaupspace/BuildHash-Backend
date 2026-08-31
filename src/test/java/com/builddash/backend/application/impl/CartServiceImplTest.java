@@ -106,4 +106,46 @@ class CartServiceImplTest {
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("Cart not found");
     }
+
+    @Test
+    void createB2bDraftCart_scopesCartToCompanyAndSource() {
+        UUID companyId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID sourceId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        when(productRepository.findById(productId)).thenReturn(Optional.of(new com.builddash.backend.domain.model.Product()));
+        UUID cartId = UUID.randomUUID();
+        Cart draft = new Cart(cartId, userId, sourceId, com.builddash.backend.domain.enums.CartType.B2B_DRAFT,
+                null, List.of(), companyId);
+        // The service generates its own cart id and reloads by it; return the fixed draft either way.
+        when(cartRepository.save(any(Cart.class))).thenReturn(draft);
+        when(cartRepository.findById(any(UUID.class))).thenReturn(Optional.of(draft));
+        when(cartPricingCalculator.calculate(any(Cart.class), eq(userId))).thenReturn(
+                new PricedCart(cartId, userId, sourceId, List.of(), BigDecimal.ZERO, BigDecimal.ZERO,
+                        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, null, companyId));
+
+        cartService.createB2bDraftCart(companyId, userId, sourceId,
+                List.of(new CartLineItem(null, null, productId, 7, null)));
+
+        var cartCaptor = org.mockito.ArgumentCaptor.forClass(Cart.class);
+        verify(cartRepository).save(cartCaptor.capture());
+        assertThat(cartCaptor.getValue().type()).isEqualTo(com.builddash.backend.domain.enums.CartType.B2B_DRAFT);
+        assertThat(cartCaptor.getValue().companyId()).isEqualTo(companyId);
+        assertThat(cartCaptor.getValue().projectId()).isEqualTo(sourceId);
+        var itemCaptor = org.mockito.ArgumentCaptor.forClass(CartLineItem.class);
+        verify(cartLineItemRepository).save(itemCaptor.capture());
+        assertThat(itemCaptor.getValue().quantity()).isEqualTo(7);
+        assertThat(itemCaptor.getValue().productId()).isEqualTo(productId);
+    }
+
+    @Test
+    void createB2bDraftCart_missingProduct_throwsNotFound_atomically() {
+        UUID productId = UUID.randomUUID();
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> cartService.createB2bDraftCart(UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), List.of(new CartLineItem(null, null, productId, 1, null))))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("Product not found");
+    }
 }
