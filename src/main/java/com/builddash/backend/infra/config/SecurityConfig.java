@@ -44,7 +44,9 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/categories/**", "/products/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/orders/*/status").permitAll()
-                        .requestMatchers("/search/**").permitAll()
+                        // GET-scoped (8.1-B): method-agnostic permitAll let anonymous POST
+                        // /search/image through — now it falls to the POST USER rule below.
+                        .requestMatchers(HttpMethod.GET, "/search/**").permitAll()
                         .requestMatchers("/users/**").hasRole("USER")
                         .requestMatchers("/cart/**").hasAnyRole("GUEST", "USER")
                         // Support: customers own their tickets; VENDOR/ADMIN reach any ticket by id.
