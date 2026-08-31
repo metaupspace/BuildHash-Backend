@@ -63,12 +63,20 @@ class RefundServiceEventPublishTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+
     private RefundServiceImpl refundService;
 
     @BeforeEach
     void setUp() {
+        // 8.1-C wiring: claim/finalize phases run through the template pass-through.
+        lenient().when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
+            org.springframework.transaction.support.TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(null);
+        });
         refundService = new RefundServiceImpl(returnRepository, paymentRepository, paymentGateway,
-                refundRepository, eventPublisher);
+                refundRepository, eventPublisher, transactionTemplate);
     }
 
     private Return qcReturn(UUID returnId, UUID orderId) {
@@ -82,7 +90,8 @@ class RefundServiceEventPublishTest {
     void initiateRefund_success_firesQcToRefundInitiated() {
         UUID returnId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
-        when(returnRepository.findById(returnId)).thenReturn(Optional.of(qcReturn(returnId, orderId)));
+        when(returnRepository.findByIdForUpdate(returnId)).thenReturn(Optional.of(qcReturn(returnId, orderId)));
+        when(refundRepository.findAllByReturnId(returnId)).thenReturn(List.of());
         when(paymentRepository.findLatestByOrderId(orderId)).thenReturn(Optional.of(
                 new Payment(UUID.randomUUID(), orderId, "tx_gateway_123", new BigDecimal("500.00"), PaymentStatus.SUCCESS, "url")));
         when(paymentGateway.refund(eq("tx_gateway_123"), eq(new BigDecimal("250.00"))))
@@ -103,9 +112,9 @@ class RefundServiceEventPublishTest {
     void initiateRefund_paymentNotFound_throwsBeforeTransition_firesNothing() {
         UUID returnId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
-        when(returnRepository.findById(returnId)).thenReturn(Optional.of(qcReturn(returnId, orderId)));
+        when(returnRepository.findByIdForUpdate(returnId)).thenReturn(Optional.of(qcReturn(returnId, orderId)));
+        when(refundRepository.findAllByReturnId(returnId)).thenReturn(List.of());
         when(paymentRepository.findLatestByOrderId(orderId)).thenReturn(Optional.empty());
-        lenient().when(returnRepository.save(any(Return.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> refundService.initiateRefund(returnId)).isInstanceOf(NotFoundException.class);
 

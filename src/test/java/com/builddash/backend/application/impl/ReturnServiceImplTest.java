@@ -20,6 +20,7 @@ import com.builddash.backend.domain.model.Product;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -86,6 +87,11 @@ class ReturnServiceImplTest {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(null);
         });
+        lenient().doAnswer(invocation -> {
+            java.util.function.Consumer<org.springframework.transaction.TransactionStatus> consumer = invocation.getArgument(0);
+            consumer.accept(null);
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
         service = new ReturnServiceImpl(orderRepository, returnRepository, refundRepository,
                 productRepository, categoryRepository, objectStorage, refundService, eventPublisher,
                 transactionTemplate);
@@ -155,5 +161,23 @@ class ReturnServiceImplTest {
                 .isInstanceOf(ReturnAlreadyExistsException.class);
 
         verify(returnRepository, never()).save(any());
+    }
+
+    @Test
+    void passQc_transitionsAndSaves_thenDelegatesRefundInitiation() {
+        Return pickedUp = new Return(UUID.randomUUID(), orderId, userId, ReturnStatus.PICKED_UP,
+                ReturnReason.DAMAGED, List.of(), List.of(), Instant.now(), Instant.now());
+        lenient().when(returnRepository.findById(pickedUp.id())).thenReturn(Optional.of(pickedUp));
+
+        service.passQc(pickedUp.id());
+
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        com.builddash.backend.application.event.ReturnStatusChangedEvent event =
+                (com.builddash.backend.application.event.ReturnStatusChangedEvent) eventCaptor.getValue();
+        assertThat(event.to()).isEqualTo(ReturnStatus.QC);
+        // 8.1-C: the QC transition is saved and refund initiation is delegated exactly once.
+        verify(returnRepository).save(any(Return.class));
+        verify(refundService).initiateRefund(pickedUp.id());
     }
 }

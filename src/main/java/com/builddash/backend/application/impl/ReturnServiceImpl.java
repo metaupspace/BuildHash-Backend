@@ -240,14 +240,17 @@ public class ReturnServiceImpl implements ReturnService {
     }
 
     @Override
-    @Transactional
     public Return passQc(UUID returnId) {
-        Return returnObj = returnRepository.findById(returnId)
-                .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
+        // 8.1-C boundary: the QC transition and its event commit BEFORE refund initiation
+        // is delegated — the gateway workflow must never run inside this method's tx.
+        transactionTemplate.executeWithoutResult(status -> {
+            Return returnObj = returnRepository.findById(returnId)
+                    .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
 
-        Return inQc = returnObj.passQc();
-        returnRepository.save(inQc);
-        eventPublisher.publishEvent(new ReturnStatusChangedEvent(returnId, returnObj.status(), ReturnStatus.QC));
+            Return inQc = returnObj.passQc();
+            returnRepository.save(inQc);
+            eventPublisher.publishEvent(new ReturnStatusChangedEvent(returnId, returnObj.status(), ReturnStatus.QC));
+        });
 
         refundService.initiateRefund(returnId);
 
