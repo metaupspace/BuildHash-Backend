@@ -97,5 +97,8 @@ class S3ObjectStorageAdapterIT {
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body()).isEqualTo(expectedContent);
+
+        // 9-E: email retry reads stored artifacts verbatim via get().
+        assertThat(adapter.get(key)).isEqualTo(expectedContent);
     }
 }

@@ -133,6 +133,17 @@ public class S3ObjectStorageAdapter implements ObjectStorage {
     }
 
     @Override
+    public byte[] get(String key) {
+        // Statement email retry reads stored artifacts verbatim; a missing object is an
+        // error the caller (email sweep) records as a failed attempt.
+        try (var response = s3Client.getObject(GetObjectRequest.builder().bucket(bucket).key(key).build())) {
+            return response.readAllBytes();
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Failed reading storage object: " + key, e);
+        }
+    }
+
+    @Override
     public void delete(String key) {
         // Best-effort per the port contract — a key that never existed (or already deleted)
         // is not an error for the DPDP sweep.

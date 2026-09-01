@@ -90,6 +90,18 @@ approval:
     stage-hours: ${APPROVAL_ESCALATION_STAGE_HOURS:24}
     sweep-interval-ms: ${APPROVAL_ESCALATION_SWEEP_INTERVAL_MS:60000}
 
+statement:
+  scheduler:
+    delay-ms: ${STATEMENT_SCHEDULER_DELAY_MS:300000}
+  generation:
+    max-attempts: ${STATEMENT_GENERATION_MAX_ATTEMPTS:3}
+    stale-minutes: ${STATEMENT_GENERATION_STALE_MINUTES:15}
+    sweep-batch-limit: ${STATEMENT_GENERATION_SWEEP_BATCH_LIMIT:25}
+  email:
+    max-attempts: ${STATEMENT_EMAIL_MAX_ATTEMPTS:5}
+    max-attachment-bytes: ${STATEMENT_EMAIL_MAX_ATTACHMENT_BYTES:10485760}
+    sweep-batch-limit: ${STATEMENT_EMAIL_SWEEP_BATCH_LIMIT:25}
+
 notification:
   cart-abandonment:
     after-minutes: ${NOTIFICATION_CART_ABANDONMENT_AFTER_MINUTES:60}
