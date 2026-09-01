@@ -51,6 +51,9 @@ public class SecurityConfig {
                         // quote submission. ROLE_ADMIN only — B2B company roles/permissions
                         // never apply here, and an ADMIN gets no /rfq/** without membership.
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        // H0.4: status transitions are service-checked app-ADMIN authority;
+                        // the matcher must not filter-block an ADMIN-only principal first.
+                        .requestMatchers(HttpMethod.PATCH, "/companies/*/status").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/users/**").hasRole("USER")
                         .requestMatchers("/cart/**").hasAnyRole("GUEST", "USER")
                         // Support: customers own their tickets; VENDOR/ADMIN reach any ticket by id.

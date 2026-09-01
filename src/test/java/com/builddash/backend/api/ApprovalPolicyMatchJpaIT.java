@@ -96,9 +96,10 @@ class ApprovalPolicyMatchJpaIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void siteOnly_nullNeverMatches() {
+    void siteOnly_nullFailsClosed() {
         assertThat(evaluate(null, null, new UUID[]{siteId}, new BigDecimal("1.00"), siteId).gated()).isTrue();
-        assertThat(evaluate(null, null, new UUID[]{siteId}, new BigDecimal("1.00"), null).gated()).isFalse();
+        // H0.5: a site-constrained policy must never let a null-site order pass ungated
+        assertThat(evaluate(null, null, new UUID[]{siteId}, new BigDecimal("1.00"), null).gated()).isTrue();
         assertThat(evaluate(null, null, new UUID[]{siteId}, new BigDecimal("1.00"), UUID.randomUUID()).gated()).isFalse();
     }
 

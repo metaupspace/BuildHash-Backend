@@ -121,9 +121,12 @@ class ApprovalGateServiceImplTest {
     }
 
     @Test
-    void evaluate_otherSite_notGated_andNullSiteNeverMatches() {
+    void evaluate_otherSite_notGated_andNullSiteFailsClosed() {
         assertThat(evaluate(null, List.of(), List.of(siteId), new BigDecimal("1.00"), otherSiteId).gated()).isFalse();
-        assertThat(evaluate(null, List.of(), List.of(siteId), new BigDecimal("1.00"), null).gated()).isFalse();
+        // H0.5: a site-constrained policy must never let a null-site order pass ungated
+        var d = evaluate(null, List.of(), List.of(siteId), new BigDecimal("1.00"), null);
+        assertThat(d.gated()).isTrue();
+        assertThat(d.matchedRules()).containsExactly(ApprovalMatchRule.SITE);
     }
 
     @Test

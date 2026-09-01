@@ -1,6 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.B2bAuthorizer;
+import com.builddash.backend.domain.exception.ForbiddenException;
 import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.CompanyRole;
 import com.builddash.backend.domain.enums.CompanyStatus;
@@ -16,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -112,15 +114,26 @@ class CompanyServiceImplTest {
     }
 
     @Test
-    void updateStatus_authorizesCritical_suspendsCompany() {
-        when(companyRepository.findById(companyId))
-                .thenReturn(Optional.of(new Company(companyId, "Acme", null, null, "Asia/Kolkata",
-                        CompanyStatus.ACTIVE, null, null)));
+    void updateStatus_companyOwner_withoutAdminRole_forbidden() {
+        // H0.4: suspension is a platform action — COMPANY_UPDATE (OWNER implicit)
+        // must no longer move the company's own status in either direction.
+        assertThatThrownBy(() -> service.updateStatus(companyId, creator, List.of("USER"), CompanyStatus.SUSPENDED))
+                .isInstanceOf(ForbiddenException.class);
+        verify(companyRepository, never()).save(any());
+    }
+
+    @Test
+    void updateStatus_appAdmin_suspendsAndReactivates() {
+        Company active = new Company(companyId, "Acme", null, null, "Asia/Kolkata",
+                CompanyStatus.ACTIVE, null, null);
+        when(companyRepository.findByIdForUpdate(companyId)).thenReturn(active);
         when(companyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        Company suspended = service.updateStatus(companyId, creator, CompanyStatus.SUSPENDED);
-
-        verify(authorizer).authorize(creator, companyId, CompanyPermission.COMPANY_UPDATE, null, true);
+        Company suspended = service.updateStatus(companyId, creator, List.of("ADMIN"), CompanyStatus.SUSPENDED);
         assertThat(suspended.status()).isEqualTo(CompanyStatus.SUSPENDED);
+
+        when(companyRepository.findByIdForUpdate(companyId)).thenReturn(suspended);
+        Company reactivated = service.updateStatus(companyId, creator, List.of("ADMIN"), CompanyStatus.ACTIVE);
+        assertThat(reactivated.status()).isEqualTo(CompanyStatus.ACTIVE);
     }
 }

@@ -158,7 +158,7 @@ class ReturnServiceEventPublishTest {
         Return returnObj = returnIn(ReturnStatus.PICKED_UP);
         stubFind(returnObj);
 
-        service.passQc(returnObj.id());
+        service.passQc(returnObj.id(), UUID.randomUUID(), List.of("VENDOR"));
 
         ReturnStatusChangedEvent event = captureSingleEvent();
         assertThat(event.returnId()).isEqualTo(returnObj.id());
@@ -171,7 +171,7 @@ class ReturnServiceEventPublishTest {
         Return returnObj = returnIn(ReturnStatus.REQUESTED);
         stubFind(returnObj);
 
-        service.reject(returnObj.id());
+        service.reject(returnObj.id(), UUID.randomUUID(), List.of("ADMIN"));
 
         ReturnStatusChangedEvent event = captureSingleEvent();
         assertThat(event.returnId()).isEqualTo(returnObj.id());
@@ -184,7 +184,7 @@ class ReturnServiceEventPublishTest {
         Return returnObj = returnIn(ReturnStatus.APPROVED);
         stubFind(returnObj);
 
-        service.reject(returnObj.id());
+        service.reject(returnObj.id(), UUID.randomUUID(), List.of("VENDOR"));
 
         ReturnStatusChangedEvent event = captureSingleEvent();
         assertThat(event.returnId()).isEqualTo(returnObj.id());

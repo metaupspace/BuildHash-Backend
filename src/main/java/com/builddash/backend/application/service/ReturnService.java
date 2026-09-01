@@ -24,7 +24,7 @@ public interface ReturnService {
 
     Return pickUp(UUID returnId);
 
-    Return passQc(UUID returnId);
+    Return passQc(UUID returnId, UUID userId, List<String> roles);
 
-    Return reject(UUID returnId);
+    Return reject(UUID returnId, UUID userId, List<String> roles);
 }

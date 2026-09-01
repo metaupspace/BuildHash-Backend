@@ -81,13 +81,32 @@ class CompanyMembershipServiceImplTest {
     }
 
     @Test
-    void updateMember_selfDemotionOfSoleOwner_throwsLastOwnerProtected() {
+    void updateMember_selfRoleChange_forbiddenEvenForOwner() {
+        // H0.3: nobody changes their own role — an OWNER steps down via transferOwnership.
         when(companyMemberRepository.findById(actorMemberId))
                 .thenReturn(Optional.of(actor(CompanyRole.OWNER)));
-        when(companyMemberRepository.findByCompanyIdForUpdate(companyId))
-                .thenReturn(List.of(actor(CompanyRole.OWNER)));
+        when(companyMemberRepository.findByCompanyIdAndUserId(companyId, actorId))
+                .thenReturn(Optional.of(actor(CompanyRole.OWNER)));
 
         assertThatThrownBy(() -> service.updateMember(companyId, actorId, actorMemberId,
+                CompanyRole.PROCUREMENT_MANAGER, null))
+                .isInstanceOf(ForbiddenException.class)
+                .hasFieldOrPropertyWithValue("code", "SELF_ROLE_CHANGE");
+        verify(companyMemberRepository, never()).save(any());
+    }
+
+    @Test
+    void updateMember_demotingSoleOwnerByAnother_throwsLastOwnerProtected() {
+        UUID targetId = UUID.randomUUID();
+        CompanyMember soleOwner = new CompanyMember(targetId, companyId,
+                UUID.randomUUID(), CompanyRole.OWNER, null, null);
+        when(companyMemberRepository.findById(targetId)).thenReturn(Optional.of(soleOwner));
+        when(companyMemberRepository.findByCompanyIdAndUserId(companyId, actorId))
+                .thenReturn(Optional.of(actor(CompanyRole.PROCUREMENT_MANAGER)));
+        when(companyMemberRepository.findByCompanyIdForUpdate(companyId))
+                .thenReturn(List.of(soleOwner));
+
+        assertThatThrownBy(() -> service.updateMember(companyId, actorId, targetId,
                 CompanyRole.PROCUREMENT_MANAGER, null))
                 .isInstanceOf(LastOwnerProtectedException.class);
         verify(companyMemberRepository, never()).save(any());
@@ -95,15 +114,17 @@ class CompanyMembershipServiceImplTest {
 
     @Test
     void updateMember_ownerDemotionWithAnotherOwnerRemaining_succeeds() {
-        CompanyMember otherOwner = new CompanyMember(UUID.randomUUID(), companyId,
+        UUID targetId = UUID.randomUUID();
+        CompanyMember target = new CompanyMember(targetId, companyId,
                 UUID.randomUUID(), CompanyRole.OWNER, null, null);
-        when(companyMemberRepository.findById(actorMemberId))
+        when(companyMemberRepository.findById(targetId)).thenReturn(Optional.of(target));
+        when(companyMemberRepository.findByCompanyIdAndUserId(companyId, actorId))
                 .thenReturn(Optional.of(actor(CompanyRole.OWNER)));
         when(companyMemberRepository.findByCompanyIdForUpdate(companyId))
-                .thenReturn(List.of(actor(CompanyRole.OWNER), otherOwner));
+                .thenReturn(List.of(actor(CompanyRole.OWNER), target));
         when(companyMemberRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        CompanyMember updated = service.updateMember(companyId, actorId, actorMemberId,
+        CompanyMember updated = service.updateMember(companyId, actorId, targetId,
                 CompanyRole.ACCOUNTANT, null);
 
         assertThat(updated.role()).isEqualTo(CompanyRole.ACCOUNTANT);

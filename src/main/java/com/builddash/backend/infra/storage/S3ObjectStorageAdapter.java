@@ -37,10 +37,11 @@ public class S3ObjectStorageAdapter implements ObjectStorage {
     @Value("${storage.s3.endpoint:}")
     private String endpoint;
 
-    @Value("${storage.s3.access-key:minioadmin}")
+    // No credential defaults (H0.1): absence fails startup; init() rejects blank values.
+    @Value("${storage.s3.access-key}")
     private String accessKey;
 
-    @Value("${storage.s3.secret-key:minioadminpassword}")
+    @Value("${storage.s3.secret-key}")
     private String secretKey;
 
     @Value("${storage.s3.path-style-access:true}")
@@ -62,6 +63,10 @@ public class S3ObjectStorageAdapter implements ObjectStorage {
     public void init() {
         if (s3Client != null && s3Presigner != null) {
             return;
+        }
+        if (accessKey == null || accessKey.isBlank() || secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException(
+                    "storage.s3.access-key / storage.s3.secret-key must be configured (blank or missing is not allowed)");
         }
 
         AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);

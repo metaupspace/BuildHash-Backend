@@ -51,6 +51,9 @@ public class CompanyMembershipServiceImpl implements CompanyMembershipService {
     public CompanyMember addMember(UUID companyId, UUID actorUserId, UUID memberUserId,
                                    CompanyRole role, List<UUID> siteIds) {
         authorizer.authorize(actorUserId, companyId, CompanyPermission.MEMBER_MANAGE, null, true);
+        if (role == CompanyRole.OWNER) {
+            requireOwnerCrownAuthority(companyId, actorUserId);
+        }
         validateSitesBelongToCompany(companyId, siteIds);
 
         CompanyMember member = new CompanyMember(
@@ -73,6 +76,17 @@ public class CompanyMembershipServiceImpl implements CompanyMembershipService {
         CompanyMember member = companyMemberRepository.findById(memberId)
                 .filter(m -> m.companyId().equals(companyId))
                 .orElseThrow(() -> new NotFoundException("MEMBER_NOT_FOUND", "Member not found: " + memberId));
+        if (role != null) {
+            CompanyMember actor = requireActorMember(companyId, actorUserId);
+            boolean selfChange = member.id().equals(actor.id()) && role != member.role();
+            if (selfChange) {
+                throw new ForbiddenException("SELF_ROLE_CHANGE",
+                        "Members cannot change their own role");
+            }
+            if (role == CompanyRole.OWNER) {
+                requireOwnerCrownAuthority(companyId, actorUserId);
+            }
+        }
         if (siteIds != null) {
             validateSitesBelongToCompany(companyId, siteIds);
         }
@@ -113,8 +127,7 @@ public class CompanyMembershipServiceImpl implements CompanyMembershipService {
         // Structural rule on top of the permission: the ownership crown moves only by
         // an OWNER's hand — MEMBER_MANAGE may be granted to other roles for everyday
         // member administration, but never for transfer.
-        CompanyMember actor = companyMemberRepository.findByCompanyIdAndUserId(companyId, actorUserId)
-                .orElseThrow(() -> new NotFoundException("COMPANY_NOT_FOUND", "Company not found: " + companyId));
+        CompanyMember actor = requireActorMember(companyId, actorUserId);
         if (actor.role() != CompanyRole.OWNER) {
             throw new ForbiddenException("FORBIDDEN", "Only a company OWNER can transfer ownership");
         }
@@ -157,6 +170,29 @@ public class CompanyMembershipServiceImpl implements CompanyMembershipService {
                 .anyMatch(m -> m.role() == CompanyRole.OWNER);
         if (!anotherOwnerRemains) {
             throw new LastOwnerProtectedException(companyId);
+        }
+    }
+
+    private CompanyMember requireActorMember(UUID companyId, UUID actorUserId) {
+        return companyMemberRepository.findByCompanyIdAndUserId(companyId, actorUserId)
+                .orElseThrow(() -> new NotFoundException("COMPANY_NOT_FOUND", "Company not found: " + companyId));
+    }
+
+    /**
+     * H0.3: the ownership crown moves only by an OWNER's hand — the same structural
+     * rule transferOwnership carries, applied to the two sibling entry points that
+     * can also assign OWNER (addMember, updateMember). The actor's role is read from
+     * the invariant-protocol all-member lock, so a concurrent demotion of the actor
+     * cannot interleave with a crown assignment.
+     */
+    private void requireOwnerCrownAuthority(UUID companyId, UUID actorUserId) {
+        List<CompanyMember> members = companyMemberRepository.findByCompanyIdForUpdate(companyId);
+        CompanyMember actor = members.stream()
+                .filter(m -> m.userId().equals(actorUserId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("COMPANY_NOT_FOUND", "Company not found: " + companyId));
+        if (actor.role() != CompanyRole.OWNER) {
+            throw new ForbiddenException("FORBIDDEN", "Only a company OWNER can assign the OWNER role");
         }
     }
 

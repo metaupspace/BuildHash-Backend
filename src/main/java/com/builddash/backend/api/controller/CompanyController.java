@@ -61,10 +61,10 @@ public class CompanyController {
     }
 
     @PatchMapping("/{companyId}/status")
-    @Operation(summary = "Suspend or activate a company (COMPANY_UPDATE)")
+    @Operation(summary = "Suspend or activate a company (application ADMIN only)")
     public CompanyResponse updateStatus(@PathVariable UUID companyId,
                                         @RequestParam CompanyStatus status,
                                         @AuthenticationPrincipal AuthenticatedUser user) {
-        return CompanyResponse.from(companyService.updateStatus(companyId, user.userId(), status));
+        return CompanyResponse.from(companyService.updateStatus(companyId, user.userId(), user.roles(), status));
     }
 }

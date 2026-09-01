@@ -68,7 +68,11 @@ public class ApprovalGateServiceImpl implements ApprovalGateService {
             }
         }
 
-        if (siteId != null && policy.siteIds().contains(siteId)) {
+        // H0.5: fail closed — a site-constrained policy never lets a null-site order
+        // pass ungated (unreachable from checkout since siteId became mandatory, but
+        // this is the belt for any other caller of evaluate()).
+        if (!policy.siteIds().isEmpty()
+                && (siteId == null || policy.siteIds().contains(siteId))) {
             rules.add(ApprovalMatchRule.SITE);
         }
 

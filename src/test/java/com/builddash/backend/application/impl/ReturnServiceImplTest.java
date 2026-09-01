@@ -169,7 +169,7 @@ class ReturnServiceImplTest {
                 ReturnReason.DAMAGED, List.of(), List.of(), Instant.now(), Instant.now());
         lenient().when(returnRepository.findById(pickedUp.id())).thenReturn(Optional.of(pickedUp));
 
-        service.passQc(pickedUp.id());
+        service.passQc(pickedUp.id(), userId, List.of("VENDOR"));
 
         ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());

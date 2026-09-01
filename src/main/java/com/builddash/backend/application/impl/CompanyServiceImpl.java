@@ -5,6 +5,7 @@ import com.builddash.backend.application.service.CompanyService;
 import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.CompanyRole;
 import com.builddash.backend.domain.enums.CompanyStatus;
+import com.builddash.backend.domain.exception.ForbiddenException;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.model.Company;
 import com.builddash.backend.domain.model.CompanyMember;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -73,10 +75,17 @@ public class CompanyServiceImpl implements CompanyService {
 
     @Override
     @Transactional
-    public Company updateStatus(UUID companyId, UUID actorUserId, CompanyStatus status) {
-        authorizer.authorize(actorUserId, companyId, CompanyPermission.COMPANY_UPDATE, null, true);
-        Company current = companyRepository.findById(companyId)
-                .orElseThrow(() -> new NotFoundException("COMPANY_NOT_FOUND", "Company not found: " + companyId));
+    public Company updateStatus(UUID companyId, UUID actorUserId, List<String> actorRoles, CompanyStatus status) {
+        // H0.4: suspension is a platform action, not a tenant one — COMPANY_UPDATE
+        // (which OWNER holds implicitly) must not suspend or, worse, un-suspend the
+        // company's own account. Application ADMIN authority only; the company row
+        // lock is still taken first to keep the global lock order intact.
+        boolean isAdmin = actorRoles != null && actorRoles.contains("ADMIN");
+        if (!isAdmin) {
+            throw new ForbiddenException("FORBIDDEN",
+                    "Company status transitions require application admin authority");
+        }
+        Company current = companyRepository.findByIdForUpdate(companyId);
         Company next = status == CompanyStatus.SUSPENDED ? current.suspend() : current.activate();
         return companyRepository.save(next);
     }

@@ -504,12 +504,15 @@ class OrderServiceImplTest {
         UUID companyId = UUID.randomUUID();
         UUID sourceId = UUID.randomUUID();
         UUID lockId = UUID.randomUUID();
+        UUID siteId = UUID.randomUUID();
 
         when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
         PricedCart draft = mock(PricedCart.class);
         when(draft.companyId()).thenReturn(companyId);
         when(draft.projectId()).thenReturn(sourceId);
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+        when(companySiteRepository.findById(siteId)).thenReturn(Optional.of(
+                new com.builddash.backend.domain.model.CompanySite(siteId, companyId, "Main", null, true, null, null)));
 
         CheckoutIntent intent = mock(CheckoutIntent.class);
         when(intent.lockedTotal()).thenReturn(expectedTotal);
@@ -529,12 +532,12 @@ class OrderServiceImplTest {
                 OrderStatus.PENDING_APPROVAL, null, java.time.Instant.now(), null, null, List.of(), companyId, null, null);
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
 
-        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, cartId, null, idempotencyKey);
+        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, cartId, siteId, idempotencyKey);
 
         assertThat(result.paymentUrl()).isNull();
         assertThat(result.order().status()).isEqualTo(OrderStatus.PENDING_APPROVAL);
         verify(b2bAuthorizer).authorize(userId, companyId,
-                com.builddash.backend.domain.enums.CompanyPermission.ORDER_CREATE, null, true);
+                com.builddash.backend.domain.enums.CompanyPermission.ORDER_CREATE, siteId, true);
         verify(approvalGateService).openApproval(savedOrder, gated, lockId);
         verify(paymentGateway, never()).initiate(any(), any());
         verify(paymentRepository, never()).save(any());
@@ -545,12 +548,15 @@ class OrderServiceImplTest {
     void create_whenB2bCartWithoutPolicy_followsOrdinaryPaymentFlow() {
         UUID cartId = UUID.randomUUID();
         UUID companyId = UUID.randomUUID();
+        UUID siteId = UUID.randomUUID();
 
         when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
         PricedCart draft = mock(PricedCart.class);
         when(draft.companyId()).thenReturn(companyId);
         when(draft.projectId()).thenReturn(UUID.randomUUID());
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+        when(companySiteRepository.findById(siteId)).thenReturn(Optional.of(
+                new com.builddash.backend.domain.model.CompanySite(siteId, companyId, "Main", null, true, null, null)));
 
         CheckoutIntent intent = mock(CheckoutIntent.class);
         when(intent.lockedTotal()).thenReturn(expectedTotal);
@@ -569,11 +575,30 @@ class OrderServiceImplTest {
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
         when(paymentGateway.initiate(eq(savedOrder.id()), eq(expectedTotal))).thenReturn(new PaymentReference("tx-9", "url-9"));
 
-        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, cartId, null, idempotencyKey);
+        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, cartId, siteId, idempotencyKey);
 
         assertThat(result.paymentUrl()).isEqualTo("url-9");
         verify(approvalGateService, never()).openApproval(any(), any(), any());
         verify(paymentGateway).initiate(savedOrder.id(), expectedTotal);
+    }
+
+    @Test
+    void create_whenB2bCartWithoutSiteId_throwsSiteRequired() {
+        // H0.5: an optional siteId defeats site scoping and can bypass a site-only
+        // approval policy — company checkout must name its site.
+        UUID cartId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+
+        PricedCart draft = mock(PricedCart.class);
+        when(draft.companyId()).thenReturn(companyId);
+        when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+
+        assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, cartId, null, idempotencyKey))
+                .isInstanceOf(com.builddash.backend.domain.exception.BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", "SITE_REQUIRED");
+
+        verify(b2bAuthorizer, never()).authorize(any(), any(), any(), any(), anyBoolean());
+        verify(checkoutIntentService, never()).createIntent(any(), any(), any(), any(), any(), any());
     }
 
     @Test

@@ -18,5 +18,5 @@ public interface CompanyService {
                    String statementEmail, String businessTimezone);
 
     /** COMPANY_UPDATE (critical). */
-    Company updateStatus(UUID companyId, UUID actorUserId, CompanyStatus status);
+    Company updateStatus(UUID companyId, UUID actorUserId, java.util.List<String> actorRoles, CompanyStatus status);
 }

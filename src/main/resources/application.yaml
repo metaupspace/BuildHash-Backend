@@ -132,11 +132,13 @@ otp:
 
 storage:
   s3:
+    # Credentials have no default (H0.1): missing/blank keys fail startup instead of
+    # silently using world-known MinIO defaults. Local dev supplies them via env.
     bucket: ${S3_BUCKET:builddash-invoices}
     region: ${AWS_REGION:ap-south-1}
     endpoint: ${S3_ENDPOINT:http://localhost:9000}
-    access-key: ${AWS_ACCESS_KEY_ID:minioadmin}
-    secret-key: ${AWS_SECRET_ACCESS_KEY:minioadminpassword}
+    access-key: ${AWS_ACCESS_KEY_ID}
+    secret-key: ${AWS_SECRET_ACCESS_KEY}
     path-style-access: ${S3_PATH_STYLE_ACCESS:true}
 
 management:

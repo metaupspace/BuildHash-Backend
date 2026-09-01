@@ -1,6 +1,6 @@
-security:
-  jwt:
-    secret: ${JWT_SECRET:super_secret_key_which_must_be_long_enough_to_be_at_least_256_bits_length}
+# No secrets here by design (H0.1): JWT secret, webhook secret and S3 credentials
+# fail closed at startup when absent. Supply them via environment variables or a
+# developer-owned .env — never a committed fallback.
 
 logging:
   level:
@@ -18,15 +18,4 @@ management:
     health:
       show-details: always
 
-payment:
-  webhook-secret: ${PAYMENT_WEBHOOK_SECRET:dev-only-webhook-secret-0123456789abcdef}
-
-storage:
-  s3:
-    bucket: builddash-invoices
-    region: ap-south-1
-    endpoint: http://localhost:9000
-    access-key: minioadmin
-    secret-key: minioadminpassword
-    path-style-access: true
 

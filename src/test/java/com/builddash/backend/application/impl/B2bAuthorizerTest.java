@@ -65,6 +65,7 @@ class B2bAuthorizerTest {
 
     @Test
     void owner_implicitAll_neverReadsPermissionRows() {
+        when(companyRepository.findByIdForUpdate(companyId)).thenReturn(activeCompany());
         when(companyMemberRepository.findByCompanyIdAndUserId(companyId, userId))
                 .thenReturn(Optional.of(member(CompanyRole.OWNER)));
 
@@ -74,6 +75,24 @@ class B2bAuthorizerTest {
         verify(companyRolePermissionRepository, never())
                 .findPermissions(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         verify(companyRepository).findByIdForUpdate(companyId); // critical lock taken
+    }
+
+    @Test
+    void critical_suspendedCompany_forbiddenBeforeMembershipLookup() {
+        when(companyRepository.findByIdForUpdate(companyId))
+                .thenReturn(new com.builddash.backend.domain.model.Company(companyId, "Co", null, null,
+                        "Asia/Kolkata", com.builddash.backend.domain.enums.CompanyStatus.SUSPENDED, null, null));
+
+        assertThatThrownBy(() -> authorizer.authorize(userId, companyId,
+                CompanyPermission.ORDER_CREATE, null, true))
+                .isInstanceOf(ForbiddenException.class)
+                .hasFieldOrPropertyWithValue("code", "COMPANY_SUSPENDED");
+        verify(companyMemberRepository, never()).findByCompanyIdAndUserId(companyId, userId);
+    }
+
+    private com.builddash.backend.domain.model.Company activeCompany() {
+        return new com.builddash.backend.domain.model.Company(companyId, "Co", null, null,
+                "Asia/Kolkata", com.builddash.backend.domain.enums.CompanyStatus.ACTIVE, null, null);
     }
 
     @Test
@@ -93,6 +112,7 @@ class B2bAuthorizerTest {
 
     @Test
     void readSiteMismatch_404_mutationSiteMismatch_403() {
+        when(companyRepository.findByIdForUpdate(companyId)).thenReturn(activeCompany());
         when(companyMemberRepository.findByCompanyIdAndUserId(companyId, userId))
                 .thenReturn(Optional.of(member(CompanyRole.SITE_SUPERVISOR)));
         when(companyRolePermissionRepository.findPermissions(companyId, CompanyRole.SITE_SUPERVISOR))

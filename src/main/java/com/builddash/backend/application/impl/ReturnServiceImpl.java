@@ -192,12 +192,27 @@ public class ReturnServiceImpl implements ReturnService {
         Return returnObj = returnRepository.findById(returnId)
                 .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
 
-        boolean isPrivileged = roles != null && (roles.contains("ADMIN") || roles.contains("VENDOR"));
+        boolean isPrivileged = isPrivileged(roles);
         if (!isPrivileged && !returnObj.userId().equals(userId)) {
             throw new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId);
         }
 
         return returnObj;
+    }
+
+    /**
+     * H0.2: reject/QC (and the refund initiation QC delegates to) are VENDOR/ADMIN
+     * operations. Non-privileged principals get the same existence-hiding 404 the
+     * read path uses, so arbitrary return ids cannot be probed.
+     */
+    private static boolean isPrivileged(List<String> roles) {
+        return roles != null && (roles.contains("ADMIN") || roles.contains("VENDOR"));
+    }
+
+    private static void requirePrivileged(List<String> roles, UUID returnId) {
+        if (!isPrivileged(roles)) {
+            throw new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId);
+        }
     }
 
     @Override
@@ -240,7 +255,10 @@ public class ReturnServiceImpl implements ReturnService {
     }
 
     @Override
-    public Return passQc(UUID returnId) {
+    public Return passQc(UUID returnId, UUID userId, List<String> roles) {
+        // H0.2: the filter chain gates the HTTP route, the service is the authority —
+        // internal callers cannot reach the refund trigger without VENDOR/ADMIN.
+        requirePrivileged(roles, returnId);
         // 8.1-C boundary: the QC transition and its event commit BEFORE refund initiation
         // is delegated — the gateway workflow must never run inside this method's tx.
         transactionTemplate.executeWithoutResult(status -> {
@@ -260,7 +278,8 @@ public class ReturnServiceImpl implements ReturnService {
 
     @Override
     @Transactional
-    public Return reject(UUID returnId) {
+    public Return reject(UUID returnId, UUID userId, List<String> roles) {
+        requirePrivileged(roles, returnId);
         Return returnObj = returnRepository.findById(returnId)
                 .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
         Return rejected = returnObj.reject();

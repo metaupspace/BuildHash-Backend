@@ -72,7 +72,7 @@ public class ReturnController {
             @PathVariable("id") UUID returnId,
             @AuthenticationPrincipal AuthenticatedUser user) {
 
-        Return rejected = returnService.reject(returnId);
+        Return rejected = returnService.reject(returnId, user.userId(), user.roles());
         Refund refund = returnService.getRefund(returnId).orElse(null);
         return returnDtoMapper.toResponse(rejected, refund);
     }
@@ -83,7 +83,7 @@ public class ReturnController {
             @PathVariable("id") UUID returnId,
             @AuthenticationPrincipal AuthenticatedUser user) {
 
-        Return inRefund = returnService.passQc(returnId);
+        Return inRefund = returnService.passQc(returnId, user.userId(), user.roles());
         Refund refund = returnService.getRefund(returnId).orElse(null);
         return returnDtoMapper.toResponse(inRefund, refund);
     }

@@ -84,21 +84,26 @@ public class OrderServiceImpl implements OrderService {
             draftProjectId[0] = preRead != null ? preRead.projectId() : null;
             UUID b2bSiteId = null;
             if (b2bCompanyId != null) {
-                b2bAuthorizer.authorize(userId, b2bCompanyId, CompanyPermission.ORDER_CREATE, siteId, true);
-                if (siteId != null) {
-                    CompanySite site = companySiteRepository.findById(siteId)
-                            .orElseThrow(() -> new BadRequestException("SITE_INVALID",
-                                    "Unknown delivery site: " + siteId));
-                    if (!site.companyId().equals(b2bCompanyId)) {
-                        throw new BadRequestException("SITE_INVALID",
-                                "Site " + siteId + " does not belong to the order's company");
-                    }
-                    if (!site.active()) {
-                        throw new BadRequestException("SITE_INACTIVE",
-                                "Site " + siteId + " is inactive");
-                    }
-                    b2bSiteId = siteId;
+                // H0.5: site context is mandatory for company checkout — an optional
+                // siteId defeats site scoping and lets a site-only approval policy
+                // pass unmatched. B2C (no company) never enters this branch.
+                if (siteId == null) {
+                    throw new BadRequestException("SITE_REQUIRED",
+                            "siteId is required for company checkout");
                 }
+                b2bAuthorizer.authorize(userId, b2bCompanyId, CompanyPermission.ORDER_CREATE, siteId, true);
+                CompanySite site = companySiteRepository.findById(siteId)
+                        .orElseThrow(() -> new BadRequestException("SITE_INVALID",
+                                "Unknown delivery site: " + siteId));
+                if (!site.companyId().equals(b2bCompanyId)) {
+                    throw new BadRequestException("SITE_INVALID",
+                            "Site " + siteId + " does not belong to the order's company");
+                }
+                if (!site.active()) {
+                    throw new BadRequestException("SITE_INACTIVE",
+                            "Site " + siteId + " is inactive");
+                }
+                b2bSiteId = siteId;
             }
 
             CheckoutIntent intent = checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal, cartId);
