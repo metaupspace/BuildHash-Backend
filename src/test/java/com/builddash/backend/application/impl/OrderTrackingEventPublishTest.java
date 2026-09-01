@@ -73,7 +73,9 @@ class OrderTrackingEventPublishTest {
         properties.setWebhookApiKey(API_KEY);
         service = new OrderTrackingServiceImpl(
                 orderRepository, trackingEventRepository, deliverySlotService, callProxyGateway,
-                properties, broadcaster, eventPublisher);
+                properties, broadcaster, eventPublisher,
+                mock(com.builddash.backend.domain.port.ApprovalRequestRepository.class),
+                mock(com.builddash.backend.domain.port.ApprovalActionRepository.class));
     }
 
     private Order orderIn(OrderStatus status) {

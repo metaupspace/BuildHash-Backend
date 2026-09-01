@@ -1,15 +1,24 @@
 package com.builddash.backend.application.impl;
 
+import com.builddash.backend.application.service.ApprovalGateService;
+import com.builddash.backend.application.service.B2bAuthorizer;
+import com.builddash.backend.application.service.CartService;
 import com.builddash.backend.application.service.CheckoutIntentService;
 import com.builddash.backend.application.service.OrderService;
 import com.builddash.backend.application.service.OrderResult;
 import com.builddash.backend.application.service.ReorderResult;
+import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.OrderStatus;
+import com.builddash.backend.domain.exception.BadRequestException;
 import com.builddash.backend.domain.exception.PaymentGatewayException;
 import com.builddash.backend.domain.model.CheckoutIntent;
+import com.builddash.backend.domain.model.CompanySite;
 import com.builddash.backend.domain.model.Order;
 import com.builddash.backend.domain.model.OrderLineItem;
+import com.builddash.backend.domain.model.Payment;
 import com.builddash.backend.domain.model.PaymentReference;
+import com.builddash.backend.domain.model.PricedCart;
+import com.builddash.backend.domain.port.CompanySiteRepository;
 import com.builddash.backend.domain.port.IdempotencyKeyRepository;
 import com.builddash.backend.domain.port.OrderRepository;
 import com.builddash.backend.domain.port.PaymentGateway;
@@ -47,9 +56,16 @@ public class OrderServiceImpl implements OrderService {
     private final CartService cartService;
     private final com.builddash.backend.domain.port.CouponRepository couponRepository;
     private final com.builddash.backend.domain.port.CouponRedemptionRepository couponRedemptionRepository;
+    private final B2bAuthorizer b2bAuthorizer;
+    private final ApprovalGateService approvalGateService;
+    private final CompanySiteRepository companySiteRepository;
 
     @Override
-    public OrderResult create(UUID userId, UUID addressId, UUID slotId, LocalDate slotDate, BigDecimal expectedTotal, String idempotencyKey) {
+    public OrderResult create(UUID userId, UUID addressId, UUID slotId, LocalDate slotDate, BigDecimal expectedTotal,
+                               UUID cartId, UUID siteId, String idempotencyKey) {
+        // Draft carts are keyed by their project/source id — needed AFTER the transaction
+        // to clear the right cart (the primary-cart call would leave a draft intact).
+        UUID[] draftProjectId = new UUID[1];
         Order savedOrder = transactionTemplate.execute(status -> {
             // Rolling window (PLAN_PHASE8 decision 10): an expired key reads as absent —
             // the caller gets a genuinely new order, not the stale one.
@@ -60,7 +76,32 @@ public class OrderServiceImpl implements OrderService {
                 return existingOrderForKey(idempotencyKey, userId);
             }
 
-            CheckoutIntent intent = checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal, null);
+            // B2B branch (9-D): a draft cart carries the company scope. Authorization runs
+            // BEFORE createIntent so the COMPANY row precedes the delivery counter in the
+            // global lock order — authorizing after the counter would invert it.
+            PricedCart preRead = cartId != null ? cartService.getCartById(userId, cartId) : null;
+            UUID b2bCompanyId = preRead != null ? preRead.companyId() : null;
+            draftProjectId[0] = preRead != null ? preRead.projectId() : null;
+            UUID b2bSiteId = null;
+            if (b2bCompanyId != null) {
+                b2bAuthorizer.authorize(userId, b2bCompanyId, CompanyPermission.ORDER_CREATE, siteId, true);
+                if (siteId != null) {
+                    CompanySite site = companySiteRepository.findById(siteId)
+                            .orElseThrow(() -> new BadRequestException("SITE_INVALID",
+                                    "Unknown delivery site: " + siteId));
+                    if (!site.companyId().equals(b2bCompanyId)) {
+                        throw new BadRequestException("SITE_INVALID",
+                                "Site " + siteId + " does not belong to the order's company");
+                    }
+                    if (!site.active()) {
+                        throw new BadRequestException("SITE_INACTIVE",
+                                "Site " + siteId + " is inactive");
+                    }
+                    b2bSiteId = siteId;
+                }
+            }
+
+            CheckoutIntent intent = checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal, cartId);
 
             List<OrderLineItem> lineItems = intent.pricedCart().items().stream()
                     .map(item -> new OrderLineItem(
@@ -72,6 +113,16 @@ public class OrderServiceImpl implements OrderService {
                             item.lineFinalTotal()
                     )).collect(Collectors.toList());
 
+            ApprovalGateService.GateDecision gate = b2bCompanyId != null
+                    ? approvalGateService.evaluate(b2bCompanyId, intent.lockedTotal(),
+                            intent.pricedCart().items().stream()
+                                    .map(com.builddash.backend.domain.model.PricedCartLineItem::productId)
+                                    .toList(),
+                            b2bSiteId)
+                    : ApprovalGateService.GateDecision.notGated();
+
+            // Gated orders are born PENDING_APPROVAL — never PAYMENT_PENDING first — and
+            // hold no delivery slot: the gate releases what createIntent just acquired.
             Order newOrder = new Order(
                     UUID.randomUUID(),
                     userId,
@@ -79,14 +130,14 @@ public class OrderServiceImpl implements OrderService {
                     slotId,
                     slotDate,
                     intent.lockedTotal(),
-                    OrderStatus.PAYMENT_PENDING,
-                    intent.deliverySlotLockId(),
+                    gate.gated() ? OrderStatus.PENDING_APPROVAL : OrderStatus.PAYMENT_PENDING,
+                    gate.gated() ? null : intent.deliverySlotLockId(),
                     java.time.Instant.now(),
                     null,
                     null,
                     lineItems,
                     intent.pricedCart().companyId(),
-                    null,
+                    b2bSiteId,
                     null
             );
 
@@ -99,9 +150,18 @@ public class OrderServiceImpl implements OrderService {
                 return existingOrderForKey(idempotencyKey, userId);
             }
             recordCouponRedemptions(userId, intent.pricedCart(), saved.id());
+            if (gate.gated()) {
+                approvalGateService.openApproval(saved, gate, intent.deliverySlotLockId());
+            }
 
             return saved;
         });
+
+        if (savedOrder.status() == OrderStatus.PENDING_APPROVAL) {
+            // No gateway, no Payment row, paymentUrl null — approval resumes payment.
+            cartService.clearCart(userId, draftProjectId[0]);
+            return new OrderResult(savedOrder, null);
+        }
 
         // Only the gateway call maps to PaymentGatewayException — a DB failure after a
         // successful initiate must surface as itself, not be mislabeled "gateway down".
@@ -112,7 +172,7 @@ public class OrderServiceImpl implements OrderService {
             throw new PaymentGatewayException(savedOrder.id(), e.getMessage());
         }
 
-        paymentRepository.save(new com.builddash.backend.domain.model.Payment(
+        paymentRepository.save(new Payment(
                 UUID.randomUUID(),
                 savedOrder.id(),
                 ref.transactionId(),
@@ -121,7 +181,7 @@ public class OrderServiceImpl implements OrderService {
                 ref.paymentUrl()
         ));
 
-        cartService.clearCart(userId, null);
+        cartService.clearCart(userId, cartId != null ? draftProjectId[0] : null);
 
         return new OrderResult(savedOrder, ref.paymentUrl());
     }
@@ -189,14 +249,53 @@ public class OrderServiceImpl implements OrderService {
         });
         Order order = orderHolder[0];
 
-        // Gateway outside the tx so the row lock isn't held during the network call
+        PaymentReference ref = completePaymentInitiation(savedPayment);
+
+        return new OrderResult(order, ref.paymentUrl());
+    }
+
+    @Override
+    public OrderResult initiatePaymentForApprovedOrder(UUID orderId) {
+        // retryPayment minus the ownership check — the approver already cleared critical
+        // B2B authorization; the order's own user has no involvement in this call. The
+        // existing guards still hold: PAYMENT_PENDING only, at most one PENDING payment.
+        final Order[] orderHolder = new Order[1];
+        com.builddash.backend.domain.model.Payment savedPayment = transactionTemplate.execute(status -> {
+            Order order = orderRepository.findByIdForUpdate(orderId)
+                    .orElseThrow(() -> new com.builddash.backend.domain.exception.NotFoundException("Order", orderId.toString()));
+            if (order.status() != OrderStatus.PAYMENT_PENDING) {
+                throw new InvalidOrderStateException(order.status());
+            }
+            Optional<com.builddash.backend.domain.model.Payment> latestPayment = paymentRepository.findLatestByOrderId(orderId);
+            if (latestPayment.isPresent() && latestPayment.get().status() == com.builddash.backend.domain.enums.PaymentStatus.PENDING) {
+                throw new PaymentRetryInProgressException();
+            }
+            orderHolder[0] = order;
+            return paymentRepository.save(new com.builddash.backend.domain.model.Payment(
+                    UUID.randomUUID(), order.id(), null, order.totalAmount(),
+                    com.builddash.backend.domain.enums.PaymentStatus.PENDING, null
+            ));
+        });
+
+        PaymentReference ref = completePaymentInitiation(savedPayment);
+
+        return new OrderResult(orderHolder[0], ref.paymentUrl());
+    }
+
+    /**
+     * Shared gateway tail (9-D extraction, retryPayment behavior byte-identical): gateway
+     * outside any tx so no row lock is held during the network call; failure marks the
+     * PENDING payment FAILED in a fresh tx and surfaces PaymentGatewayException.
+     */
+    private PaymentReference completePaymentInitiation(com.builddash.backend.domain.model.Payment pendingPayment) {
+        UUID orderId = pendingPayment.orderId();
         final PaymentReference ref;
         try {
-            ref = paymentGateway.initiate(orderId, order.totalAmount());
+            ref = paymentGateway.initiate(orderId, pendingPayment.amount());
         } catch (Exception e) {
             transactionTemplate.executeWithoutResult(status -> paymentRepository.save(
                     new com.builddash.backend.domain.model.Payment(
-                            savedPayment.id(), orderId, null, order.totalAmount(),
+                            pendingPayment.id(), orderId, null, pendingPayment.amount(),
                             com.builddash.backend.domain.enums.PaymentStatus.FAILED, null)));
             throw new PaymentGatewayException(orderId, e.getMessage());
         }
@@ -204,10 +303,10 @@ public class OrderServiceImpl implements OrderService {
         // Tx 2: record transaction id + payment URL so the client can actually pay
         transactionTemplate.executeWithoutResult(status -> paymentRepository.save(
                 new com.builddash.backend.domain.model.Payment(
-                        savedPayment.id(), orderId, ref.transactionId(), order.totalAmount(),
+                        pendingPayment.id(), orderId, ref.transactionId(), pendingPayment.amount(),
                         com.builddash.backend.domain.enums.PaymentStatus.PENDING, ref.paymentUrl())));
 
-        return new OrderResult(order, ref.paymentUrl());
+        return ref;
     }
 
     @Override

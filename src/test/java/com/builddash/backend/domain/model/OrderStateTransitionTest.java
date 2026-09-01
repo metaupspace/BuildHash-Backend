@@ -42,7 +42,7 @@ class OrderStateTransitionTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"CONFIRMED", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
+    @EnumSource(value = OrderStatus.class, names = {"PENDING_APPROVAL", "CONFIRMED", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
     void confirm_fromOtherStates_throwsException(OrderStatus status) {
         Order order = createOrder(status);
         assertThatThrownBy(order::confirm)
@@ -57,7 +57,7 @@ class OrderStateTransitionTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"PAYMENT_PENDING", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
+    @EnumSource(value = OrderStatus.class, names = {"PAYMENT_PENDING", "PENDING_APPROVAL", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
     void pack_fromOtherStates_throwsException(OrderStatus status) {
         Order order = createOrder(status);
         assertThatThrownBy(order::pack)
@@ -74,7 +74,7 @@ class OrderStateTransitionTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"PAYMENT_PENDING", "CONFIRMED", "DISPATCHED", "DELIVERED", "CANCELLED"})
+    @EnumSource(value = OrderStatus.class, names = {"PAYMENT_PENDING", "PENDING_APPROVAL", "CONFIRMED", "DISPATCHED", "DELIVERED", "CANCELLED"})
     void dispatch_fromOtherStates_throwsException(OrderStatus status) {
         Order order = createOrder(status);
         assertThatThrownBy(() -> order.dispatch("driver-123", "+919876543210"))
@@ -104,7 +104,7 @@ class OrderStateTransitionTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"CONFIRMED", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
+    @EnumSource(value = OrderStatus.class, names = {"PENDING_APPROVAL", "CONFIRMED", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
     void cancel_fromOtherStates_throwsException(OrderStatus status) {
         Order order = createOrder(status);
         assertThatThrownBy(order::cancel)
@@ -119,7 +119,7 @@ class OrderStateTransitionTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"PAYMENT_PENDING", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
+    @EnumSource(value = OrderStatus.class, names = {"PAYMENT_PENDING", "PENDING_APPROVAL", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
     void cancelConfirmed_fromOtherStates_throwsException(OrderStatus status) {
         Order order = createOrder(status);
         assertThatThrownBy(order::cancelConfirmed)
@@ -141,7 +141,7 @@ class OrderStateTransitionTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"PAYMENT_PENDING", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
+    @EnumSource(value = OrderStatus.class, names = {"PAYMENT_PENDING", "PENDING_APPROVAL", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
     void reschedule_fromOtherStates_throwsException(OrderStatus status) {
         Order order = createOrder(status);
         UUID newSlotId = UUID.randomUUID();
@@ -149,6 +149,40 @@ class OrderStateTransitionTest {
         UUID newLockId = UUID.randomUUID();
 
         assertThatThrownBy(() -> order.reschedule(newSlotId, newDate, newLockId))
+                .isInstanceOf(InvalidOrderStateException.class);
+    }
+
+    // ---------- 9-D: approval gate transitions ----------
+
+    @Test
+    void resumePayment_fromPendingApproval_succeedsAndAssignsNewLock() {
+        Order order = createOrder(OrderStatus.PENDING_APPROVAL);
+        UUID newLockId = UUID.randomUUID();
+        Order resumed = order.resumePayment(newLockId);
+        assertThat(resumed.status()).isEqualTo(OrderStatus.PAYMENT_PENDING);
+        assertThat(resumed.deliverySlotLockId()).isEqualTo(newLockId);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = OrderStatus.class, names = {"PAYMENT_PENDING", "CONFIRMED", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
+    void resumePayment_fromOtherStates_throwsException(OrderStatus status) {
+        Order order = createOrder(status);
+        assertThatThrownBy(() -> order.resumePayment(UUID.randomUUID()))
+                .isInstanceOf(InvalidOrderStateException.class);
+    }
+
+    @Test
+    void cancelPendingApproval_fromPendingApproval_succeeds() {
+        Order order = createOrder(OrderStatus.PENDING_APPROVAL);
+        Order cancelled = order.cancelPendingApproval();
+        assertThat(cancelled.status()).isEqualTo(OrderStatus.CANCELLED);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = OrderStatus.class, names = {"PAYMENT_PENDING", "CONFIRMED", "PACKED", "DISPATCHED", "DELIVERED", "CANCELLED"})
+    void cancelPendingApproval_fromOtherStates_throwsException(OrderStatus status) {
+        Order order = createOrder(status);
+        assertThatThrownBy(order::cancelPendingApproval)
                 .isInstanceOf(InvalidOrderStateException.class);
     }
 }

@@ -43,6 +43,9 @@ class NotificationTriggerListenerTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private com.builddash.backend.application.service.ApprovalEligibilityResolver approvalEligibilityResolver;
+
     private NotificationTriggerListener listener;
 
     private final UUID orderId = UUID.randomUUID();
@@ -52,7 +55,8 @@ class NotificationTriggerListenerTest {
 
     @BeforeEach
     void setUp() {
-        listener = new NotificationTriggerListener(orderRepository, returnRepository, notificationService);
+        listener = new NotificationTriggerListener(orderRepository, returnRepository, notificationService,
+                approvalEligibilityResolver);
     }
 
     private Order order() {

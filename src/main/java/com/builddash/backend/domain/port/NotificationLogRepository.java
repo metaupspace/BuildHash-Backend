@@ -17,6 +17,13 @@ public interface NotificationLogRepository {
     /** The idempotency guard — same (eventType, referenceId) shape as OrderConfirmedInvoiceListener's findByOrderId check. */
     boolean existsByEventTypeAndReferenceId(NotificationEventType eventType, UUID referenceId);
 
+    /**
+     * Per-recipient idempotency guard (9-D): approval fan-out notifies several members
+     * under one (eventType, referenceId), so the one-way guard must be scoped by user.
+     * Identical behavior for every existing single-recipient moment.
+     */
+    boolean existsByEventTypeAndReferenceIdAndUserId(NotificationEventType eventType, UUID referenceId, UUID userId);
+
     /** The cooldown guard for recurring moments — true only if a row exists inside the window. */
     boolean existsByEventTypeAndReferenceIdAndCreatedAtAfter(NotificationEventType eventType, UUID referenceId, Instant cutoff);
 

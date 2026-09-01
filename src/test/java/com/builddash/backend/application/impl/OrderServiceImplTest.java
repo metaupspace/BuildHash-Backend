@@ -1,5 +1,6 @@
 package com.builddash.backend.application.impl;
 
+import com.builddash.backend.application.service.ApprovalGateService;
 import com.builddash.backend.application.service.CheckoutIntentService;
 import com.builddash.backend.application.service.OrderResult;
 import com.builddash.backend.application.service.ReorderResult;
@@ -64,6 +65,12 @@ class OrderServiceImplTest {
     private com.builddash.backend.domain.port.CouponRepository couponRepository;
     @Mock
     private com.builddash.backend.api.mapper.CartDtoMapper cartDtoMapper;
+    @Mock
+    private com.builddash.backend.application.service.B2bAuthorizer b2bAuthorizer;
+    @Mock
+    private com.builddash.backend.application.service.ApprovalGateService approvalGateService;
+    @Mock
+    private com.builddash.backend.domain.port.CompanySiteRepository companySiteRepository;
 
     /** Real instance (not a mock): the cutoff-derivation test asserts against its window. */
     @Spy
@@ -103,7 +110,7 @@ class OrderServiceImplTest {
         when(orderRepository.findById(existingOrderId)).thenReturn(Optional.of(existingOrder));
         when(paymentGateway.initiate(existingOrderId, expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
 
-        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey);
+        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey);
 
         assertThat(result.order().id()).isEqualTo(existingOrderId);
         assertThat(result.paymentUrl()).isEqualTo("url-1");
@@ -122,7 +129,7 @@ class OrderServiceImplTest {
         when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.of(existingOrderId));
         when(orderRepository.findById(existingOrderId)).thenReturn(Optional.of(foreignOrder));
 
-        assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey))
+        assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey))
                 .isInstanceOf(com.builddash.backend.domain.exception.ForbiddenException.class);
 
         verify(paymentGateway, never()).initiate(any(), any());
@@ -146,7 +153,7 @@ class OrderServiceImplTest {
 
         when(paymentGateway.initiate(savedOrder.id(), expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
 
-        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey);
+        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey);
 
         assertThat(result.order().id()).isEqualTo(savedOrder.id());
         assertThat(result.paymentUrl()).isEqualTo("url-1");
@@ -159,11 +166,11 @@ class OrderServiceImplTest {
         when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
         stubNewOrderHappyPath();
 
-        orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey);
+        orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey);
 
         // Override: window widening must flow through to the read's cutoff.
         idempotencyProperties.setIdempotencyWindowHours(48);
-        orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey);
+        orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey);
 
         org.mockito.ArgumentCaptor<Instant> cutoffs = org.mockito.ArgumentCaptor.forClass(Instant.class);
         verify(idempotencyKeyRepository, times(2)).findOrderId(eq(idempotencyKey), cutoffs.capture());
@@ -201,7 +208,7 @@ class OrderServiceImplTest {
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
         when(paymentGateway.initiate(savedOrder.id(), expectedTotal)).thenThrow(new RuntimeException("Gateway down"));
 
-        assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey))
+        assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey))
                 .isInstanceOf(PaymentGatewayException.class);
 
         verify(cartService, never()).clearCart(any(), any());
@@ -237,7 +244,7 @@ class OrderServiceImplTest {
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
         when(paymentGateway.initiate(savedOrder.id(), expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
 
-        orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey);
+        orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey);
 
         verify(couponRedemptionRepository).record(userId, cartCouponId, savedOrder.id());
         verify(couponRedemptionRepository).record(userId, itemCouponId, savedOrder.id());
@@ -259,7 +266,7 @@ class OrderServiceImplTest {
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
         when(paymentGateway.initiate(savedOrder.id(), expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
 
-        orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey);
+        orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey);
 
         verify(couponRedemptionRepository, never()).record(any(), any(), any());
     }
@@ -281,7 +288,7 @@ class OrderServiceImplTest {
         when(paymentGateway.initiate(savedOrder.id(), expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
         when(paymentRepository.save(any())).thenThrow(new IllegalStateException("DB down"));
 
-        assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey))
+        assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DB down");
     }
@@ -310,7 +317,7 @@ class OrderServiceImplTest {
         doThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate key"))
                 .when(idempotencyKeyRepository).save(idempotencyKey, savedOrder.id());
 
-        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey);
+        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey);
 
         assertThat(result.order().id()).isEqualTo(winnerOrderId);
     }
@@ -332,7 +339,7 @@ class OrderServiceImplTest {
 
         when(paymentGateway.initiate(savedOrder.id(), expectedTotal)).thenThrow(new RuntimeException("Gateway down"));
 
-        assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, idempotencyKey))
+        assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasFieldOrPropertyWithValue("orderId", savedOrder.id());
     }
@@ -487,5 +494,167 @@ class OrderServiceImplTest {
 
         assertThatThrownBy(() -> orderService.retryPayment(userId, orderId))
                 .isInstanceOf(com.builddash.backend.domain.exception.PaymentRetryInProgressException.class);
+    }
+
+    // ---------- 9-D: approval gate branch ----------
+
+    @Test
+    void create_whenB2bDraftCartMatchesPolicy_isBornPendingApprovalWithoutPayment() {
+        UUID cartId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+        UUID sourceId = UUID.randomUUID();
+        UUID lockId = UUID.randomUUID();
+
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
+        PricedCart draft = mock(PricedCart.class);
+        when(draft.companyId()).thenReturn(companyId);
+        when(draft.projectId()).thenReturn(sourceId);
+        when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+
+        CheckoutIntent intent = mock(CheckoutIntent.class);
+        when(intent.lockedTotal()).thenReturn(expectedTotal);
+        PricedCart intentCart = mock(PricedCart.class);
+        when(intentCart.items()).thenReturn(List.of());
+        when(intentCart.companyId()).thenReturn(companyId);
+        when(intent.pricedCart()).thenReturn(intentCart);
+        when(intent.deliverySlotLockId()).thenReturn(lockId);
+        when(checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal, cartId)).thenReturn(intent);
+
+        ApprovalGateService.GateDecision gated = new ApprovalGateService.GateDecision(true,
+                List.of(com.builddash.backend.domain.enums.ApprovalMatchRule.AMOUNT), List.of(),
+                new BigDecimal("50.00"), List.of(com.builddash.backend.domain.enums.CompanyRole.PROCUREMENT_MANAGER), 24, 1);
+        when(approvalGateService.evaluate(eq(companyId), eq(expectedTotal), any(), any())).thenReturn(gated);
+
+        Order savedOrder = new Order(UUID.randomUUID(), userId, addressId, slotId, slotDate, expectedTotal,
+                OrderStatus.PENDING_APPROVAL, null, java.time.Instant.now(), null, null, List.of(), companyId, null, null);
+        when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
+
+        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, cartId, null, idempotencyKey);
+
+        assertThat(result.paymentUrl()).isNull();
+        assertThat(result.order().status()).isEqualTo(OrderStatus.PENDING_APPROVAL);
+        verify(b2bAuthorizer).authorize(userId, companyId,
+                com.builddash.backend.domain.enums.CompanyPermission.ORDER_CREATE, null, true);
+        verify(approvalGateService).openApproval(savedOrder, gated, lockId);
+        verify(paymentGateway, never()).initiate(any(), any());
+        verify(paymentRepository, never()).save(any());
+        verify(cartService).clearCart(userId, sourceId);
+    }
+
+    @Test
+    void create_whenB2bCartWithoutPolicy_followsOrdinaryPaymentFlow() {
+        UUID cartId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.empty());
+        PricedCart draft = mock(PricedCart.class);
+        when(draft.companyId()).thenReturn(companyId);
+        when(draft.projectId()).thenReturn(UUID.randomUUID());
+        when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+
+        CheckoutIntent intent = mock(CheckoutIntent.class);
+        when(intent.lockedTotal()).thenReturn(expectedTotal);
+        PricedCart intentCart = mock(PricedCart.class);
+        when(intentCart.items()).thenReturn(List.of());
+        when(intentCart.companyId()).thenReturn(companyId);
+        when(intent.pricedCart()).thenReturn(intentCart);
+        when(intent.deliverySlotLockId()).thenReturn(UUID.randomUUID());
+        when(checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal, cartId)).thenReturn(intent);
+
+        when(approvalGateService.evaluate(eq(companyId), eq(expectedTotal), any(), any()))
+                .thenReturn(ApprovalGateService.GateDecision.notGated());
+
+        Order savedOrder = new Order(UUID.randomUUID(), userId, addressId, slotId, slotDate, expectedTotal,
+                OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), java.time.Instant.now(), null, null, List.of(), companyId, null, null);
+        when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
+        when(paymentGateway.initiate(eq(savedOrder.id()), eq(expectedTotal))).thenReturn(new PaymentReference("tx-9", "url-9"));
+
+        OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, cartId, null, idempotencyKey);
+
+        assertThat(result.paymentUrl()).isEqualTo("url-9");
+        verify(approvalGateService, never()).openApproval(any(), any(), any());
+        verify(paymentGateway).initiate(savedOrder.id(), expectedTotal);
+    }
+
+    @Test
+    void create_whenSiteIdFromAnotherCompany_throwsBadRequest() {
+        UUID cartId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+        UUID foreignSiteId = UUID.randomUUID();
+
+        PricedCart draft = mock(PricedCart.class);
+        when(draft.companyId()).thenReturn(companyId);
+        when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+        when(companySiteRepository.findById(foreignSiteId)).thenReturn(Optional.of(
+                new com.builddash.backend.domain.model.CompanySite(foreignSiteId, UUID.randomUUID(),
+                        "Foreign", null, true, null, null)));
+
+        assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, cartId, foreignSiteId, idempotencyKey))
+                .isInstanceOf(com.builddash.backend.domain.exception.BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", "SITE_INVALID");
+
+        verify(checkoutIntentService, never()).createIntent(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void create_whenSiteInactive_throwsBadRequest() {
+        UUID cartId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+        UUID siteId = UUID.randomUUID();
+
+        PricedCart draft = mock(PricedCart.class);
+        when(draft.companyId()).thenReturn(companyId);
+        when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+        when(companySiteRepository.findById(siteId)).thenReturn(Optional.of(
+                new com.builddash.backend.domain.model.CompanySite(siteId, companyId,
+                        "Main", null, false, null, null)));
+
+        assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, cartId, siteId, idempotencyKey))
+                .isInstanceOf(com.builddash.backend.domain.exception.BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", "SITE_INACTIVE");
+    }
+
+    @Test
+    void retryPayment_whenPendingApproval_throwsInvalidOrderState() {
+        UUID orderId = UUID.randomUUID();
+        Order order = new Order(orderId, userId, addressId, slotId, slotDate, expectedTotal,
+                OrderStatus.PENDING_APPROVAL, null, java.time.Instant.now(), null, null, List.of());
+
+        when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.retryPayment(userId, orderId))
+                .isInstanceOf(com.builddash.backend.domain.exception.InvalidOrderStateException.class)
+                .hasFieldOrPropertyWithValue("code", "ORDER_ALREADY_PENDING_APPROVAL");
+        verify(paymentGateway, never()).initiate(any(), any());
+    }
+
+    @Test
+    void initiatePaymentForApprovedOrder_happyPath_initiatesOncePersistsPending() {
+        UUID orderId = UUID.randomUUID();
+        Order order = new Order(orderId, userId, addressId, slotId, slotDate, expectedTotal,
+                OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), java.time.Instant.now(), null, null, List.of());
+
+        when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
+        when(paymentRepository.findLatestByOrderId(orderId)).thenReturn(Optional.empty());
+        when(paymentRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(paymentGateway.initiate(orderId, expectedTotal)).thenReturn(new PaymentReference("tx-10", "url-10"));
+
+        OrderResult result = orderService.initiatePaymentForApprovedOrder(orderId);
+
+        assertThat(result.paymentUrl()).isEqualTo("url-10");
+        verify(paymentGateway, times(1)).initiate(orderId, expectedTotal);
+        verify(paymentRepository, times(2)).save(any());
+    }
+
+    @Test
+    void initiatePaymentForApprovedOrder_whenNotPaymentPending_throws() {
+        UUID orderId = UUID.randomUUID();
+        Order order = new Order(orderId, userId, addressId, slotId, slotDate, expectedTotal,
+                OrderStatus.PENDING_APPROVAL, null, java.time.Instant.now(), null, null, List.of());
+        when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.initiatePaymentForApprovedOrder(orderId))
+                .isInstanceOf(com.builddash.backend.domain.exception.InvalidOrderStateException.class);
+        verify(paymentGateway, never()).initiate(any(), any());
     }
 }

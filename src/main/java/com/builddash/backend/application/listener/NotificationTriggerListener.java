@@ -1,5 +1,8 @@
 package com.builddash.backend.application.listener;
 
+import com.builddash.backend.application.event.ApprovalDecidedEvent;
+import com.builddash.backend.application.event.ApprovalEscalatedEvent;
+import com.builddash.backend.application.event.ApprovalRequestedEvent;
 import com.builddash.backend.application.event.InvoiceReadyEvent;
 import com.builddash.backend.application.event.OrderCancelledEvent;
 import com.builddash.backend.application.event.OrderDeliveredEvent;
@@ -7,8 +10,11 @@ import com.builddash.backend.application.event.OrderDispatchedEvent;
 import com.builddash.backend.application.event.OrderPackedEvent;
 import com.builddash.backend.application.event.RefundCompletedEvent;
 import com.builddash.backend.application.event.ReturnStatusChangedEvent;
+import com.builddash.backend.application.service.ApprovalEligibilityResolver;
 import com.builddash.backend.application.service.NotificationService;
+import com.builddash.backend.domain.enums.CompanyRole;
 import com.builddash.backend.domain.enums.NotificationEventType;
+import com.builddash.backend.domain.model.CompanyMember;
 import com.builddash.backend.domain.port.OrderRepository;
 import com.builddash.backend.domain.port.ReturnRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +41,7 @@ public class NotificationTriggerListener {
     private final OrderRepository orderRepository;
     private final ReturnRepository returnRepository;
     private final NotificationService notificationService;
+    private final ApprovalEligibilityResolver approvalEligibilityResolver;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -117,5 +124,53 @@ public class NotificationTriggerListener {
                 .ifPresentOrElse(
                         order -> notificationService.notify(order.userId(), eventType, order.id()),
                         () -> log.warn("Order {} not found for {}, skipping notification", orderId, eventType));
+    }
+
+    // 9-D: approver fan-out — recipients resolved AFTER_COMMIT against live eligibility
+    // (membership, APPROVAL_ACT, site scope, placer exclusion), so a member removed while
+    // the request pends is simply not notified. Per-user guard in NotificationService
+    // keeps the fan-out idempotent.
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onApprovalRequested(ApprovalRequestedEvent event) {
+        if (event == null) {
+            return;
+        }
+        notifyApprovers(event.companyId(), event.stageRole(), event.siteId(), event.placerUserId(),
+                event.requestId(), NotificationEventType.APPROVAL_REQUESTED);
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onApprovalEscalated(ApprovalEscalatedEvent event) {
+        if (event == null) {
+            return;
+        }
+        notifyApprovers(event.companyId(), event.stageRole(), event.siteId(), event.placerUserId(),
+                event.requestId(), NotificationEventType.APPROVAL_ESCALATED);
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onApprovalDecided(ApprovalDecidedEvent event) {
+        if (event == null) {
+            return;
+        }
+        notificationService.notify(event.placerUserId(), NotificationEventType.APPROVAL_DECIDED,
+                event.requestId());
+    }
+
+    private void notifyApprovers(UUID companyId, CompanyRole stageRole, UUID siteId, UUID placerUserId,
+                                 UUID requestId, NotificationEventType eventType) {
+        int sent = 0;
+        for (CompanyMember member : approvalEligibilityResolver.eligibleApprovers(
+                companyId, stageRole, siteId, placerUserId)) {
+            notificationService.notify(member.userId(), eventType, requestId);
+            sent++;
+        }
+        if (sent == 0) {
+            log.info("No eligible approver for {} request {} — notification skipped", eventType, requestId);
+        }
     }
 }

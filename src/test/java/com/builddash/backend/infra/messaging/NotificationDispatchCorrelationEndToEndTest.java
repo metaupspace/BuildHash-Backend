@@ -76,7 +76,8 @@ class NotificationDispatchCorrelationEndToEndTest {
         NotificationService notificationService =
                 new NotificationServiceImpl(logRepository, userRepository, dispatchQueue);
         NotificationTriggerListener triggerListener =
-                new NotificationTriggerListener(orderRepository, mock(com.builddash.backend.domain.port.ReturnRepository.class), notificationService);
+                new NotificationTriggerListener(orderRepository, mock(com.builddash.backend.domain.port.ReturnRepository.class), notificationService,
+                        mock(com.builddash.backend.application.service.ApprovalEligibilityResolver.class));
 
         triggerListener.onOrderPacked(new OrderPackedEvent(orderId));
 

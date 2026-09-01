@@ -66,6 +66,8 @@ public class OrderController {
                 request.slotId(),
                 request.slotDate(),
                 request.expectedTotal(),
+                request.cartId(),
+                request.siteId(),
                 idempotencyKey
         );
         return orderMapper.toResponse(result);

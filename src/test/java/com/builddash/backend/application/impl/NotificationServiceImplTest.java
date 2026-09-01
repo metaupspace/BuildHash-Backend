@@ -48,7 +48,7 @@ class NotificationServiceImplTest {
     void duplicateGuard_skipsWithoutUserLookup() {
         UUID userId = UUID.randomUUID();
         UUID referenceId = UUID.randomUUID();
-        when(logRepository.existsByEventTypeAndReferenceId(NotificationEventType.ORDER_PACKED, referenceId)).thenReturn(true);
+        when(logRepository.existsByEventTypeAndReferenceIdAndUserId(NotificationEventType.ORDER_PACKED, referenceId, userId)).thenReturn(true);
 
         service.notify(userId, NotificationEventType.ORDER_PACKED, referenceId);
 
@@ -59,7 +59,7 @@ class NotificationServiceImplTest {
     @Test
     void missingUser_skipsCleanly() {
         UUID userId = UUID.randomUUID();
-        when(logRepository.existsByEventTypeAndReferenceId(any(), any())).thenReturn(false);
+        when(logRepository.existsByEventTypeAndReferenceIdAndUserId(any(), any(), any())).thenReturn(false);
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         service.notify(userId, NotificationEventType.INVOICE_READY, UUID.randomUUID());
@@ -73,7 +73,7 @@ class NotificationServiceImplTest {
         UUID userId = UUID.randomUUID();
         User phoneless = new User();
         phoneless.setId(userId);
-        when(logRepository.existsByEventTypeAndReferenceId(any(), any())).thenReturn(false);
+        when(logRepository.existsByEventTypeAndReferenceIdAndUserId(any(), any(), any())).thenReturn(false);
         when(userRepository.findById(userId)).thenReturn(Optional.of(phoneless));
 
         service.notify(userId, NotificationEventType.REFUND_COMPLETED, UUID.randomUUID());
@@ -90,7 +90,7 @@ class NotificationServiceImplTest {
         User user = new User();
         user.setId(userId);
         user.setPhone("+911234567890");
-        when(logRepository.existsByEventTypeAndReferenceId(NotificationEventType.ORDER_PACKED, referenceId)).thenReturn(false);
+        when(logRepository.existsByEventTypeAndReferenceIdAndUserId(NotificationEventType.ORDER_PACKED, referenceId, userId)).thenReturn(false);
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(logRepository.save(any())).thenAnswer(invocation -> {
             NotificationLog saved = invocation.getArgument(0);
@@ -124,7 +124,6 @@ class NotificationServiceImplTest {
 
         service.notifyRecurring(userId, NotificationEventType.CART_ABANDONED, cartId, java.time.Duration.ofHours(24));
 
-        verify(logRepository, never()).existsByEventTypeAndReferenceId(NotificationEventType.CART_ABANDONED, cartId);
         verifyNoInteractions(userRepository, dispatchQueue);
         verify(logRepository, never()).save(any());
     }
@@ -160,14 +159,15 @@ class NotificationServiceImplTest {
     @Test
     void strictNotify_regressionPin_stillUsesPlainExistenceCheck() {
         // The shared-guard-body refactor must not leak the cooldown branch into notify():
-        // a one-way moment checks existsByEventTypeAndReferenceId, never the windowed query.
+        // a one-way moment checks the per-user existence guard (9-D fan-out scope),
+        // never the windowed query.
         UUID userId = UUID.randomUUID();
         UUID referenceId = UUID.randomUUID();
-        when(logRepository.existsByEventTypeAndReferenceId(NotificationEventType.INVOICE_READY, referenceId)).thenReturn(true);
+        when(logRepository.existsByEventTypeAndReferenceIdAndUserId(NotificationEventType.INVOICE_READY, referenceId, userId)).thenReturn(true);
 
         service.notify(userId, NotificationEventType.INVOICE_READY, referenceId);
 
-        verify(logRepository).existsByEventTypeAndReferenceId(NotificationEventType.INVOICE_READY, referenceId);
+        verify(logRepository).existsByEventTypeAndReferenceIdAndUserId(NotificationEventType.INVOICE_READY, referenceId, userId);
         verify(logRepository, org.mockito.Mockito.never()).existsByEventTypeAndReferenceIdAndCreatedAtAfter(
                 org.mockito.ArgumentMatchers.eq(NotificationEventType.INVOICE_READY), org.mockito.ArgumentMatchers.eq(referenceId),
                 org.mockito.ArgumentMatchers.any(java.time.Instant.class));

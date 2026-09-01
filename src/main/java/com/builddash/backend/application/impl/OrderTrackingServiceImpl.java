@@ -7,16 +7,21 @@ import com.builddash.backend.application.event.OrderPackedEvent;
 import com.builddash.backend.application.service.DeliverySlotService;
 import com.builddash.backend.application.service.OrderTrackingBroadcaster;
 import com.builddash.backend.application.service.OrderTrackingService;
+import com.builddash.backend.domain.enums.ApprovalActionType;
 import com.builddash.backend.domain.enums.OrderStatus;
 import com.builddash.backend.domain.exception.BadRequestException;
 import com.builddash.backend.domain.exception.InvalidOrderStateException;
 import com.builddash.backend.domain.exception.ModificationWindowExpiredException;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.exception.UnauthorizedException;
+import com.builddash.backend.domain.model.ApprovalAction;
+import com.builddash.backend.domain.model.ApprovalRequest;
 import com.builddash.backend.domain.model.DeliverySlotLock;
 import com.builddash.backend.domain.model.DeliveryTrackingEvent;
 import com.builddash.backend.domain.model.Order;
 import com.builddash.backend.domain.model.OrderTracking;
+import com.builddash.backend.domain.port.ApprovalActionRepository;
+import com.builddash.backend.domain.port.ApprovalRequestRepository;
 import com.builddash.backend.domain.port.CallProxyGateway;
 import com.builddash.backend.domain.port.DeliveryTrackingEventRepository;
 import com.builddash.backend.domain.port.OrderRepository;
@@ -47,6 +52,8 @@ public class OrderTrackingServiceImpl implements OrderTrackingService {
     private final DeliveryProperties deliveryProperties;
     private final OrderTrackingBroadcaster broadcaster;
     private final ApplicationEventPublisher eventPublisher;
+    private final ApprovalRequestRepository approvalRequestRepository;
+    private final ApprovalActionRepository approvalActionRepository;
 
     @Override
     @Transactional
@@ -209,6 +216,14 @@ public class OrderTrackingServiceImpl implements OrderTrackingService {
                 .filter(o -> o.userId().equals(userId))
                 .orElseThrow(() -> new NotFoundException("Order", orderId.toString()));
 
+        if (order.status() == OrderStatus.PENDING_APPROVAL) {
+            // 9-D placer cancellation of a gated order: no 15-minute window (approval may
+            // pend indefinitely), no slot release (the gate never held one). Serialized by
+            // the order row lock; the request row lock follows it (global lock order).
+            cancelGatedApproval(order, "PLACER_CANCELLED");
+            return;
+        }
+
         if (order.status() != OrderStatus.CONFIRMED) {
             throw new InvalidOrderStateException(order.status().name(), OrderStatus.CANCELLED.name());
         }
@@ -224,6 +239,19 @@ public class OrderTrackingServiceImpl implements OrderTrackingService {
         orderRepository.save(updated);
         eventPublisher.publishEvent(new OrderCancelledEvent(
                 orderId, OrderCancelledEvent.OrderCancellationOrigin.CUSTOMER_WINDOW));
+    }
+
+    /** Cancels the gated order + its PENDING request under the locks already held. */
+    private void cancelGatedApproval(Order order, String detail) {
+        ApprovalRequest request = approvalRequestRepository.findByOrderIdForUpdate(order.id())
+                .orElseThrow(() -> new InvalidOrderStateException(
+                        order.status().name(), OrderStatus.CANCELLED.name()));
+        approvalRequestRepository.save(request.cancel());
+        approvalActionRepository.save(new ApprovalAction(UUID.randomUUID(), request.id(),
+                ApprovalActionType.CANCELLED, null, null, request.currentStageIndex(), detail, null));
+        orderRepository.save(order.cancelPendingApproval());
+        eventPublisher.publishEvent(new OrderCancelledEvent(
+                order.id(), OrderCancelledEvent.OrderCancellationOrigin.CUSTOMER_WINDOW));
     }
 
     @Override

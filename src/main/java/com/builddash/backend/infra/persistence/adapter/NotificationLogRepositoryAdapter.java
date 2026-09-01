@@ -37,6 +37,11 @@ class NotificationLogRepositoryAdapter implements NotificationLogRepository {
     }
 
     @Override
+    public boolean existsByEventTypeAndReferenceIdAndUserId(NotificationEventType eventType, UUID referenceId, UUID userId) {
+        return jpaRepository.existsByEventTypeAndReferenceIdAndUserId(eventType, referenceId, userId);
+    }
+
+    @Override
     public boolean existsByEventTypeAndReferenceIdAndCreatedAtAfter(NotificationEventType eventType, UUID referenceId, Instant cutoff) {
         return jpaRepository.existsByEventTypeAndReferenceIdAndCreatedAtAfter(eventType, referenceId, cutoff);
     }

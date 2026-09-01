@@ -30,6 +30,12 @@ public enum NotificationEventType {
     REFUND_COMPLETED(NotificationChannel.WHATSAPP),
     INVOICE_READY(NotificationChannel.WHATSAPP),
 
+    /** 9-D approval moments — multi-recipient (fan-out to eligible approvers), so their
+     *  guard scope is (eventType, referenceId, userId), handled inside NotificationService. */
+    APPROVAL_REQUESTED(NotificationChannel.WHATSAPP),
+    APPROVAL_DECIDED(NotificationChannel.WHATSAPP),
+    APPROVAL_ESCALATED(NotificationChannel.WHATSAPP),
+
     CART_ABANDONED(NotificationChannel.SMS);
 
     private final NotificationChannel channel;

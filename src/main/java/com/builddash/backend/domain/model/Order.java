@@ -89,6 +89,31 @@ public record Order(
         return with(OrderStatus.CANCELLED, null);
     }
 
+    /**
+     * 9-D approval gate: approval won and the delivery slot was re-acquired, so the
+     * order re-enters the ordinary payment flow (same state the webhook/confirm path
+     * expects). No confirmedAt — that stays webhook-only.
+     */
+    public Order resumePayment(UUID newDeliverySlotLockId) {
+        if (status != OrderStatus.PENDING_APPROVAL) {
+            throw new InvalidOrderStateException(status.name(), OrderStatus.PAYMENT_PENDING.name());
+        }
+        return new Order(id, userId, addressId, slotId, slotDate, totalAmount, OrderStatus.PAYMENT_PENDING,
+                newDeliverySlotLockId, placedAt, driverId, driverPhone, lineItems,
+                companyId, siteId, confirmedAt);
+    }
+
+    /**
+     * 9-D: cancellation while gated (placer cancel, rejection, slot reacquisition
+     * failure). No slot release — the gate released capacity at creation.
+     */
+    public Order cancelPendingApproval() {
+        if (status != OrderStatus.PENDING_APPROVAL) {
+            throw new InvalidOrderStateException(status.name(), OrderStatus.CANCELLED.name());
+        }
+        return with(OrderStatus.CANCELLED, null);
+    }
+
     public Order cancelConfirmed() {
         if (status != OrderStatus.CONFIRMED) {
             throw new InvalidOrderStateException(status.name(), OrderStatus.CANCELLED.name());

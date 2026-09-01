@@ -12,6 +12,8 @@ import com.builddash.backend.domain.exception.GstRateUnresolvedException;
 import com.builddash.backend.domain.exception.InvalidOrderStateException;
 import com.builddash.backend.domain.exception.InvalidReturnStateException;
 import com.builddash.backend.domain.exception.InvalidPoStateException;
+import com.builddash.backend.domain.exception.InvalidApprovalStateException;
+import com.builddash.backend.domain.exception.ApprovalPolicyValidationException;
 import com.builddash.backend.domain.exception.InvalidRfqStateException;
 import com.builddash.backend.domain.exception.InvalidSupportTicketStateException;
 import com.builddash.backend.domain.exception.LastOwnerProtectedException;
@@ -93,7 +95,10 @@ public class GlobalExceptionHandler {
             Map.entry(InvalidPoStateException.class, HttpStatus.CONFLICT),
             Map.entry(PoAttachmentExistsException.class, HttpStatus.CONFLICT),
             Map.entry(PoUploadInProgressException.class, HttpStatus.CONFLICT),
-            Map.entry(PoImportValidationException.class, HttpStatus.BAD_REQUEST)
+            Map.entry(PoImportValidationException.class, HttpStatus.BAD_REQUEST),
+            // Phase 9-D: order approval gate
+            Map.entry(InvalidApprovalStateException.class, HttpStatus.CONFLICT),
+            Map.entry(ApprovalPolicyValidationException.class, HttpStatus.BAD_REQUEST)
     );
 
     @ExceptionHandler(DomainException.class)

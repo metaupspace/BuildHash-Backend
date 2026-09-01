@@ -83,10 +83,10 @@ class OrderControllerTest {
         OrderResult result = new OrderResult(order, "url-1");
         OrderResponse response = new OrderResponse(orderId, "PAYMENT_PENDING", new BigDecimal("100.00"), "url-1", java.time.Instant.now(), null, null, java.util.List.of());
 
-        when(orderService.create(eq(userId), any(), any(), any(), any(), eq("key-1"))).thenReturn(result);
+        when(orderService.create(eq(userId), any(), any(), any(), any(), any(), any(), eq("key-1"))).thenReturn(result);
         when(orderMapper.toResponse(result)).thenReturn(response);
 
-        CreateOrderRequest request = new CreateOrderRequest(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), new BigDecimal("100.00"));
+        CreateOrderRequest request = new CreateOrderRequest(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), new BigDecimal("100.00"), null, null);
 
         mockMvc.perform(post("/orders")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -148,10 +148,10 @@ class OrderControllerTest {
     @Test
     void createOrder_whenPaymentGatewayFails_returnsBadGatewayWithOrderId() throws Exception {
         UUID orderId = UUID.randomUUID();
-        when(orderService.create(eq(userId), any(), any(), any(), any(), eq("key-1")))
+        when(orderService.create(eq(userId), any(), any(), any(), any(), any(), any(), eq("key-1")))
                 .thenThrow(new PaymentGatewayException(orderId, "Connection timeout"));
 
-        CreateOrderRequest request = new CreateOrderRequest(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), new BigDecimal("100.00"));
+        CreateOrderRequest request = new CreateOrderRequest(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), new BigDecimal("100.00"), null, null);
 
         mockMvc.perform(post("/orders")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -15,6 +15,8 @@ public interface NotificationLogJpaRepository extends JpaRepository<Notification
 
     boolean existsByEventTypeAndReferenceId(NotificationEventType eventType, UUID referenceId);
 
+    boolean existsByEventTypeAndReferenceIdAndUserId(NotificationEventType eventType, UUID referenceId, UUID userId);
+
     boolean existsByEventTypeAndReferenceIdAndCreatedAtAfter(NotificationEventType eventType, UUID referenceId, Instant cutoff);
 
     List<NotificationLogEntity> findByStatusAndCreatedAtBefore(NotificationStatus status, Instant cutoff);

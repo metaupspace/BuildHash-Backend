@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Pins the locked OQ-11 mapping (12 WhatsApp moments + CART_ABANDONED as the SMS side,
- * producer-backed since Checkpoint C) and the ReturnStatus -> enum granularity the
- * (eventType, referenceId) guard depends on.
+ * producer-backed since Checkpoint C; 9-D adds the three approval moments, also WhatsApp)
+ * and the ReturnStatus -> enum granularity the idempotency guard depends on.
  */
 class NotificationEventTypeTest {
 
@@ -22,18 +22,19 @@ class NotificationEventTypeTest {
         List<NotificationEventType> whatsApp = Arrays.stream(NotificationEventType.values())
                 .filter(type -> type.channel() == NotificationChannel.WHATSAPP)
                 .toList();
-        assertThat(whatsApp).hasSize(12);
+        assertThat(whatsApp).hasSize(15);
         assertThat(NotificationEventType.CART_ABANDONED.channel()).isEqualTo(NotificationChannel.SMS);
     }
 
     @Test
-    void enumCoversExactlyTheThirteenProducerBackedMoments() {
+    void enumCoversExactlyTheProducerBackedMoments() {
         List<String> names = Arrays.stream(NotificationEventType.values()).map(Enum::name).toList();
 
         assertThat(names).containsExactlyInAnyOrder(
                 "ORDER_PACKED", "ORDER_DISPATCHED", "ORDER_DELIVERED", "ORDER_CANCELLED",
                 "RETURN_APPROVED", "RETURN_PICKUP_SCHEDULED", "RETURN_PICKED_UP", "RETURN_IN_QC", "RETURN_REJECTED",
-                "REFUND_INITIATED", "REFUND_COMPLETED", "INVOICE_READY", "CART_ABANDONED");
+                "REFUND_INITIATED", "REFUND_COMPLETED", "INVOICE_READY", "CART_ABANDONED",
+                "APPROVAL_REQUESTED", "APPROVAL_DECIDED", "APPROVAL_ESCALATED");
     }
 
     @Test

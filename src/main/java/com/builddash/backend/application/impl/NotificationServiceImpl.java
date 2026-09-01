@@ -50,7 +50,9 @@ public class NotificationServiceImpl implements NotificationService {
      */
     private void dispatch(UUID userId, NotificationEventType eventType, UUID referenceId, Duration cooldown) {
         boolean duplicate = cooldown == null
-                ? logRepository.existsByEventTypeAndReferenceId(eventType, referenceId)
+                // per-user scope (9-D): approval fan-out notifies several members under one
+                // referenceId — identical result for every existing single-recipient moment
+                ? logRepository.existsByEventTypeAndReferenceIdAndUserId(eventType, referenceId, userId)
                 : logRepository.existsByEventTypeAndReferenceIdAndCreatedAtAfter(eventType, referenceId, Instant.now().minus(cooldown));
         if (duplicate) {
             log.info("Notification {} for reference {} already covered, skipping duplicate", eventType, referenceId);

@@ -43,7 +43,7 @@ public class OrderEntity {
     @Column(name = "slot_date", nullable = false)
     private LocalDate slotDate;
 
-    @Column(name = "delivery_slot_lock_id", nullable = false)
+    @Column(name = "delivery_slot_lock_id")
     private UUID deliverySlotLockId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
