@@ -120,6 +120,11 @@ class RefundFinalizeVsWebhookRaceJpaIT extends AbstractIntegrationTest {
                 await(barrier);
                 return new RefundReference(gwId, "PENDING");
             }
+
+            @Override
+            public java.util.Optional<com.builddash.backend.domain.enums.PaymentStatus> queryStatus(String transactionId, UUID orderId) {
+                return java.util.Optional.of(com.builddash.backend.domain.enums.PaymentStatus.SUCCESS);
+            }
         };
         RefundServiceImpl raceService = new RefundServiceImpl(returnRepository, paymentRepository,
                 barrierGateway, refundRepository, eventPublisher, transactionTemplate);

@@ -1,6 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.DeliverySlotService;
+import com.builddash.backend.application.service.PaymentReconciliationService;
 import com.builddash.backend.application.service.StaleOrderSweepService;
 import com.builddash.backend.domain.enums.OrderStatus;
 import com.builddash.backend.domain.model.Order;
@@ -25,6 +26,7 @@ public class StaleOrderSweepServiceImpl implements StaleOrderSweepService {
     private final DeliverySlotService deliverySlotService;
     private final com.builddash.backend.domain.port.DeliverySlotLockRepository deliverySlotLockRepository;
     private final com.builddash.backend.domain.port.DeliverySlotCounterRepository deliverySlotCounterRepository;
+    private final PaymentReconciliationService paymentReconciliationService;
     /**
      * Invariant seam only — never called by this service. A stale PAYMENT_PENDING cancel is not a
      * customer-facing transition (the order was never confirmed or paid), so it must publish no
@@ -41,11 +43,17 @@ public class StaleOrderSweepServiceImpl implements StaleOrderSweepService {
         if (staleOrderIds.isEmpty()) {
             return;
         }
-        
+
         log.info("Found {} stale PAYMENT_PENDING orders", staleOrderIds.size());
 
         for (UUID orderId : staleOrderIds) {
             try {
+                // H9.1: Reconcile in-flight payment with gateway before cancelling
+                boolean reconciled = paymentReconciliationService.reconcileStalePendingPayment(orderId);
+                if (reconciled) {
+                    log.info("Stale order {} was reconciled to CONFIRMED via gateway, skipping cancellation", orderId);
+                    continue;
+                }
                 self.sweepOrder(orderId);
             } catch (Exception e) {
                 log.error("Failed to sweep order {}", orderId, e);

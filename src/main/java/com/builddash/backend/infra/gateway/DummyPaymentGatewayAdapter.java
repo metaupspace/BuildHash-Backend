@@ -2,6 +2,7 @@ package com.builddash.backend.infra.gateway;
 
 import com.builddash.backend.application.event.PaymentWebhookEvent;
 import com.builddash.backend.application.event.RefundWebhookEvent;
+import com.builddash.backend.domain.enums.PaymentStatus;
 import com.builddash.backend.domain.exception.AmbiguousGatewayException;
 import com.builddash.backend.domain.model.PaymentReference;
 import com.builddash.backend.domain.model.RefundReference;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -59,5 +61,19 @@ public class DummyPaymentGatewayAdapter implements PaymentGateway {
         });
 
         return new RefundReference(gatewayRefundId, "PENDING");
+    }
+
+    @Override
+    public Optional<PaymentStatus> queryStatus(String transactionId, UUID orderId) {
+        if (transactionId != null && transactionId.contains("fail")) {
+            return Optional.of(PaymentStatus.FAILED);
+        }
+        if (transactionId != null && transactionId.contains("timeout")) {
+            return Optional.empty();
+        }
+        if (transactionId != null && transactionId.contains("pending")) {
+            return Optional.of(PaymentStatus.PENDING);
+        }
+        return Optional.of(PaymentStatus.SUCCESS);
     }
 }

@@ -4,13 +4,17 @@ import com.builddash.backend.application.event.OrderConfirmedEvent;
 import com.builddash.backend.application.service.DeliverySlotService;
 import com.builddash.backend.application.service.PaymentWebhookService;
 import com.builddash.backend.domain.enums.OrderStatus;
+import com.builddash.backend.domain.enums.PaymentReconciliationStatus;
+import com.builddash.backend.domain.enums.PaymentReconciliationType;
 import com.builddash.backend.domain.enums.PaymentStatus;
+import com.builddash.backend.domain.model.Invoice;
 import com.builddash.backend.domain.model.Order;
 import com.builddash.backend.domain.model.Payment;
-import com.builddash.backend.domain.model.Invoice;
+import com.builddash.backend.domain.model.PaymentReconciliation;
 import com.builddash.backend.domain.port.InvoiceRepository;
 import com.builddash.backend.domain.port.OrderRepository;
 import com.builddash.backend.domain.exception.UnauthorizedException;
+import com.builddash.backend.domain.port.PaymentReconciliationRepository;
 import com.builddash.backend.domain.port.PaymentRepository;
 import com.builddash.backend.domain.port.PaymentWebhookConfig;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +44,7 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
     private final PaymentWebhookConfig webhookConfig;
     private final ApplicationEventPublisher eventPublisher;
     private final InvoiceRepository invoiceRepository;
+    private final PaymentReconciliationRepository paymentReconciliationRepository;
 
     @Override
     @Transactional
@@ -125,7 +130,25 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
             log.error("CRITICAL: SUCCESS webhook for cancelled order {} with no Payment row at all — captured money cannot be correlated to any durable record", orderId);
             return;
         }
-        paymentRepository.save(payment.get().markSuccess(payment.get().transactionId()));
+        Payment updated = payment.get().markSuccess(payment.get().transactionId());
+        paymentRepository.save(updated);
+
+        // H9.2: Persist durable PaymentReconciliation work item for manual compensating refund
+        if (paymentReconciliationRepository.findByOrderIdAndType(
+                orderId, PaymentReconciliationType.CAPTURED_ON_CANCELLED_ORDER).isEmpty()) {
+            paymentReconciliationRepository.save(new PaymentReconciliation(
+                    UUID.randomUUID(),
+                    orderId,
+                    updated.id(),
+                    updated.transactionId(),
+                    updated.amount(),
+                    PaymentReconciliationType.CAPTURED_ON_CANCELLED_ORDER,
+                    PaymentReconciliationStatus.FLAGGED_MANUAL,
+                    "Payment captured after order was cancelled by stale sweep",
+                    Instant.now(),
+                    Instant.now()
+            ));
+        }
         log.error("CRITICAL: payment captured for order {} after it was already CANCELLED (stale-order sweep race) — manual compensating-refund reconciliation required", orderId);
     }
 

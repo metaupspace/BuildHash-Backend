@@ -1,9 +1,11 @@
 package com.builddash.backend.domain.port;
 
+import com.builddash.backend.domain.enums.PaymentStatus;
 import com.builddash.backend.domain.model.PaymentReference;
 import com.builddash.backend.domain.model.RefundReference;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface PaymentGateway {
@@ -15,4 +17,10 @@ public interface PaymentGateway {
      * lose the gatewayRefundId forever with no way to recover the claim (H1.4).
      */
     RefundReference refund(String transactionId, BigDecimal amount, UUID returnId);
+
+    /**
+     * Queries upstream payment gateway provider status for an existing transaction/order.
+     * Used by reconciliation schedulers before cancelling stale orders or handling crashes.
+     */
+    Optional<PaymentStatus> queryStatus(String transactionId, UUID orderId);
 }

@@ -34,9 +34,11 @@ class StaleOrderSweepServiceImplTest {
         deliverySlotService = mock(DeliverySlotService.class);
         deliverySlotLockRepository = mock(com.builddash.backend.domain.port.DeliverySlotLockRepository.class);
         deliverySlotCounterRepository = mock(com.builddash.backend.domain.port.DeliverySlotCounterRepository.class);
+        com.builddash.backend.application.service.PaymentReconciliationService reconciliationService =
+                mock(com.builddash.backend.application.service.PaymentReconciliationService.class);
         eventPublisher = mock(org.springframework.context.ApplicationEventPublisher.class);
         sweepService = new StaleOrderSweepServiceImpl(orderRepository, deliverySlotService,
-                deliverySlotLockRepository, deliverySlotCounterRepository, eventPublisher);
+                deliverySlotLockRepository, deliverySlotCounterRepository, reconciliationService, eventPublisher);
         // Self-injection is a Spring field injection; wire it manually for the unit test
         try {
             java.lang.reflect.Field selfField = StaleOrderSweepServiceImpl.class.getDeclaredField("self");
