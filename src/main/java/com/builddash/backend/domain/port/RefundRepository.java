@@ -10,6 +10,7 @@ public interface RefundRepository {
     Refund save(Refund refund);
     Optional<Refund> findById(UUID id);
     Optional<Refund> findByReturnId(UUID returnId);
+    Optional<Refund> findLatestByReturnId(UUID returnId);
     Optional<Refund> findByGatewayRefundId(String gatewayRefundId);
     List<Refund> findAllByReturnId(UUID returnId);
 

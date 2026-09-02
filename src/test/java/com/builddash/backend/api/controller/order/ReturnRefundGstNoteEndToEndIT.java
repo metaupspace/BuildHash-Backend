@@ -189,8 +189,21 @@ class ReturnRefundGstNoteEndToEndIT extends AbstractIntegrationTest {
 
         UUID returnId = UUID.fromString(objectMapper.readTree(createRes).get("id").asText());
 
-        // 3. Warehouse advances return state to PICKED_UP and performs QC Pass
-        jdbcTemplate.update("UPDATE returns SET status = 'PICKED_UP' WHERE id = ?", returnId);
+        // 3. Warehouse advances return state to PICKED_UP via HTTP endpoints and performs QC Pass
+        mockMvc.perform(post("/returns/{id}/approve", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
+
+        mockMvc.perform(post("/returns/{id}/schedule-pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PICKUP_SCHEDULED"));
+
+        mockMvc.perform(post("/returns/{id}/pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PICKED_UP"));
 
         mockMvc.perform(post("/returns/{id}/qc-pass", returnId)
                         .header(HttpHeaders.AUTHORIZATION, adminToken))

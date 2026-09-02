@@ -160,9 +160,23 @@ class ReturnStateTransitionTest {
         assertThat(rejected.status()).isEqualTo(ReturnStatus.REJECTED);
     }
 
+    @Test
+    void reject_fromPickupScheduled_succeeds() {
+        Return returnObj = createReturn(ReturnStatus.PICKUP_SCHEDULED);
+        Return rejected = returnObj.reject();
+        assertThat(rejected.status()).isEqualTo(ReturnStatus.REJECTED);
+    }
+
+    @Test
+    void reject_fromPickedUp_succeeds() {
+        Return returnObj = createReturn(ReturnStatus.PICKED_UP);
+        Return rejected = returnObj.reject();
+        assertThat(rejected.status()).isEqualTo(ReturnStatus.REJECTED);
+    }
+
     @ParameterizedTest
     @EnumSource(value = ReturnStatus.class, names = {
-            "PICKUP_SCHEDULED", "PICKED_UP", "QC", "REFUND_INITIATED", "REFUND_COMPLETED", "REJECTED"
+            "QC", "REFUND_INITIATED", "REFUND_COMPLETED", "REJECTED"
     })
     void reject_fromOtherStates_throwsException(ReturnStatus status) {
         Return returnObj = createReturn(status);

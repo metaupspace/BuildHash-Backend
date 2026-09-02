@@ -523,8 +523,21 @@ class ReturnControllerIT extends AbstractIntegrationTest {
 
         UUID returnId = UUID.fromString(objectMapper.readTree(createRes).get("id").asText());
 
-        // Advance return state to PICKED_UP
-        jdbcTemplate.update("UPDATE returns SET status = 'PICKED_UP' WHERE id = ?", returnId);
+        // Advance return state through HTTP lifecycle: REQUESTED -> APPROVED -> PICKUP_SCHEDULED -> PICKED_UP
+        mockMvc.perform(post("/returns/{id}/approve", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, vendorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
+
+        mockMvc.perform(post("/returns/{id}/schedule-pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, vendorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PICKUP_SCHEDULED"));
+
+        mockMvc.perform(post("/returns/{id}/pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, vendorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PICKED_UP"));
 
         // Regular USER gets 403
         mockMvc.perform(post("/returns/{id}/qc-pass", returnId)

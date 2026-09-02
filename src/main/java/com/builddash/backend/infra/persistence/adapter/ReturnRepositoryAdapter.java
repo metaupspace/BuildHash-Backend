@@ -34,8 +34,20 @@ class ReturnRepositoryAdapter implements ReturnRepository {
     }
 
     @Override
+    public Optional<Return> findActiveByOrderId(UUID orderId) {
+        return jpaRepository.findActiveByOrderId(orderId).map(mapper::toDomain);
+    }
+
+    @Override
     public Optional<Return> findByOrderId(UUID orderId) {
         return jpaRepository.findByOrderId(orderId).map(mapper::toDomain);
+    }
+
+    @Override
+    public List<Return> findAllByOrderId(UUID orderId) {
+        return jpaRepository.findAllByOrderIdOrderByCreatedAtDesc(orderId).stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 
     @Override

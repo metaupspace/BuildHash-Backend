@@ -20,10 +20,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * H0.2: the HTTP filter chain gates /returns/{id}/reject and /returns/{id}/qc-pass to
- * VENDOR/ADMIN (see ReturnSecurityMatcherTest); this proves the service layer is its
- * own authority on real data — privileged principals reach the mutation, everyone else
- * gets the existence-hiding 404 even when the return exists.
+ * H0.2 / H3.1: the HTTP filter chain gates return mutations to VENDOR/ADMIN;
+ * this proves the service layer is its own authority on real data — privileged
+ * principals reach the mutation, everyone else gets the existence-hiding 404
+ * even when the return exists.
  */
 class ReturnServiceAuthorizationJpaIT extends AbstractIntegrationTest {
 
@@ -48,6 +48,50 @@ class ReturnServiceAuthorizationJpaIT extends AbstractIntegrationTest {
                 UUID.randomUUID(), UUID.randomUUID(), List.of("VENDOR")).token();
         adminToken = "Bearer " + tokenIssuer.issueAccessToken(
                 UUID.randomUUID(), UUID.randomUUID(), List.of("ADMIN")).token();
+    }
+
+    @Test
+    void vendorApproves_realHttp_returnsApproved() throws Exception {
+        UUID returnId = seedDeliveredOrderWithReturn("REQUESTED");
+
+        mockMvc.perform(post("/returns/{id}/approve", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, vendorToken))
+                .andExpect(status().isOk());
+
+        assertThat(returnStatus(returnId)).isEqualTo("APPROVED");
+    }
+
+    @Test
+    void vendorSchedulesPickup_realHttp_returnsPickupScheduled() throws Exception {
+        UUID returnId = seedDeliveredOrderWithReturn("APPROVED");
+
+        mockMvc.perform(post("/returns/{id}/schedule-pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, vendorToken))
+                .andExpect(status().isOk());
+
+        assertThat(returnStatus(returnId)).isEqualTo("PICKUP_SCHEDULED");
+    }
+
+    @Test
+    void vendorPicksUp_realHttp_returnsPickedUp() throws Exception {
+        UUID returnId = seedDeliveredOrderWithReturn("PICKUP_SCHEDULED");
+
+        mockMvc.perform(post("/returns/{id}/pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, vendorToken))
+                .andExpect(status().isOk());
+
+        assertThat(returnStatus(returnId)).isEqualTo("PICKED_UP");
+    }
+
+    @Test
+    void vendorRejects_fromPickedUp_realHttp_returnsRejected() throws Exception {
+        UUID returnId = seedDeliveredOrderWithReturn("PICKED_UP");
+
+        mockMvc.perform(post("/returns/{id}/reject", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, vendorToken))
+                .andExpect(status().isOk());
+
+        assertThat(returnStatus(returnId)).isEqualTo("REJECTED");
     }
 
     @Test
@@ -90,6 +134,18 @@ class ReturnServiceAuthorizationJpaIT extends AbstractIntegrationTest {
     @Test
     void nonPrivilegedDirectServiceCall_getsExistenceHidingNotFound() {
         UUID returnId = seedDeliveredOrderWithReturn("REQUESTED");
+
+        assertThatThrownBy(() -> returnService.approve(returnId, customerId, List.of("USER")))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", "RETURN_NOT_FOUND");
+
+        assertThatThrownBy(() -> returnService.schedulePickup(returnId, customerId, List.of("USER")))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", "RETURN_NOT_FOUND");
+
+        assertThatThrownBy(() -> returnService.pickUp(returnId, customerId, List.of("USER")))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", "RETURN_NOT_FOUND");
 
         assertThatThrownBy(() -> returnService.reject(returnId, customerId, List.of("USER")))
                 .isInstanceOf(NotFoundException.class)

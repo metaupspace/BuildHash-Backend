@@ -98,6 +98,18 @@ class ReturnRepositoryAdapterTest {
     }
 
     @Test
+    void findActiveByOrderId_whenFound_returnsMappedDomain() {
+        Return domain = sampleDomainReturn();
+        ReturnEntity entity = mapper.toEntity(domain);
+        when(jpaRepository.findActiveByOrderId(domain.orderId())).thenReturn(Optional.of(entity));
+
+        Optional<Return> result = adapter.findActiveByOrderId(domain.orderId());
+
+        assertThat(result).isPresent();
+        assertThat(result.get().orderId()).isEqualTo(domain.orderId());
+    }
+
+    @Test
     void findByOrderId_whenFound_returnsMappedDomain() {
         Return domain = sampleDomainReturn();
         ReturnEntity entity = mapper.toEntity(domain);
@@ -117,6 +129,18 @@ class ReturnRepositoryAdapterTest {
         Optional<Return> result = adapter.findByOrderId(orderId);
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void findAllByOrderId_returnsMappedDomainList() {
+        Return domain = sampleDomainReturn();
+        ReturnEntity entity = mapper.toEntity(domain);
+        when(jpaRepository.findAllByOrderIdOrderByCreatedAtDesc(domain.orderId())).thenReturn(List.of(entity));
+
+        List<Return> results = adapter.findAllByOrderId(domain.orderId());
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).orderId()).isEqualTo(domain.orderId());
     }
 
     @Test

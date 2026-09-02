@@ -18,11 +18,11 @@ public interface ReturnService {
 
     Optional<Refund> getRefund(UUID returnId);
 
-    Return approve(UUID returnId);
+    Return approve(UUID returnId, UUID userId, List<String> roles);
 
-    Return schedulePickup(UUID returnId);
+    Return schedulePickup(UUID returnId, UUID userId, List<String> roles);
 
-    Return pickUp(UUID returnId);
+    Return pickUp(UUID returnId, UUID userId, List<String> roles);
 
     Return passQc(UUID returnId, UUID userId, List<String> roles);
 

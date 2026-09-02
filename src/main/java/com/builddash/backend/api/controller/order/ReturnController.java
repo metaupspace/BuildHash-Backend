@@ -66,6 +66,39 @@ public class ReturnController {
         return returnDtoMapper.toResponse(returnObj, refund);
     }
 
+    @PostMapping("/returns/{id}/approve")
+    @Operation(summary = "Vendor or Admin approves a return request")
+    public ReturnResponse approve(
+            @PathVariable("id") UUID returnId,
+            @AuthenticationPrincipal AuthenticatedUser user) {
+
+        Return approved = returnService.approve(returnId, user.userId(), user.roles());
+        Refund refund = returnService.getRefund(returnId).orElse(null);
+        return returnDtoMapper.toResponse(approved, refund);
+    }
+
+    @PostMapping("/returns/{id}/schedule-pickup")
+    @Operation(summary = "Vendor or Admin schedules pickup for an approved return")
+    public ReturnResponse schedulePickup(
+            @PathVariable("id") UUID returnId,
+            @AuthenticationPrincipal AuthenticatedUser user) {
+
+        Return scheduled = returnService.schedulePickup(returnId, user.userId(), user.roles());
+        Refund refund = returnService.getRefund(returnId).orElse(null);
+        return returnDtoMapper.toResponse(scheduled, refund);
+    }
+
+    @PostMapping("/returns/{id}/pickup")
+    @Operation(summary = "Vendor or Admin marks return as picked up")
+    public ReturnResponse pickUp(
+            @PathVariable("id") UUID returnId,
+            @AuthenticationPrincipal AuthenticatedUser user) {
+
+        Return pickedUp = returnService.pickUp(returnId, user.userId(), user.roles());
+        Refund refund = returnService.getRefund(returnId).orElse(null);
+        return returnDtoMapper.toResponse(pickedUp, refund);
+    }
+
     @PostMapping("/returns/{id}/reject")
     @Operation(summary = "Vendor or Admin rejects a return request")
     public ReturnResponse rejectReturn(

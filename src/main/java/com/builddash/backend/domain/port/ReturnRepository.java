@@ -12,6 +12,8 @@ public interface ReturnRepository {
 
     /** Row-locked read (8.1-C): the refund claim/finalize phases serialize on this. */
     Optional<Return> findByIdForUpdate(UUID id);
+    Optional<Return> findActiveByOrderId(UUID orderId);
     Optional<Return> findByOrderId(UUID orderId);
+    List<Return> findAllByOrderId(UUID orderId);
     List<Return> findAllByUserId(UUID userId);
 }

@@ -80,9 +80,21 @@ class RefundRepositoryAdapterTest {
     void findByReturnId_whenFound_returnsMappedDomain() {
         Refund domain = sampleDomainRefund();
         RefundEntity entity = mapper.toEntity(domain);
-        when(jpaRepository.findByReturnId(domain.returnId())).thenReturn(Optional.of(entity));
+        when(jpaRepository.findFirstByReturnIdOrderByCreatedAtDescIdDesc(domain.returnId())).thenReturn(Optional.of(entity));
 
         Optional<Refund> result = adapter.findByReturnId(domain.returnId());
+
+        assertThat(result).isPresent();
+        assertThat(result.get().returnId()).isEqualTo(domain.returnId());
+    }
+
+    @Test
+    void findLatestByReturnId_whenFound_returnsMappedDomain() {
+        Refund domain = sampleDomainRefund();
+        RefundEntity entity = mapper.toEntity(domain);
+        when(jpaRepository.findFirstByReturnIdOrderByCreatedAtDescIdDesc(domain.returnId())).thenReturn(Optional.of(entity));
+
+        Optional<Refund> result = adapter.findLatestByReturnId(domain.returnId());
 
         assertThat(result).isPresent();
         assertThat(result.get().returnId()).isEqualTo(domain.returnId());

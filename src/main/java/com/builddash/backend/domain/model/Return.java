@@ -62,7 +62,8 @@ public record Return(
     }
 
     public Return reject() {
-        if (status != ReturnStatus.REQUESTED && status != ReturnStatus.APPROVED) {
+        if (status != ReturnStatus.REQUESTED && status != ReturnStatus.APPROVED
+                && status != ReturnStatus.PICKUP_SCHEDULED && status != ReturnStatus.PICKED_UP) {
             throw new InvalidReturnStateException(status.name(), ReturnStatus.REJECTED.name());
         }
         return new Return(id, orderId, userId, ReturnStatus.REJECTED, reason, photoKeys, lineItems, createdAt, Instant.now());

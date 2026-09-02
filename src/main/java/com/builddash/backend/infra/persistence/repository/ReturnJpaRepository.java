@@ -20,13 +20,19 @@ public interface ReturnJpaRepository extends JpaRepository<ReturnEntity, UUID> {
     @EntityGraph(attributePaths = {"lineItems"})
     Optional<ReturnEntity> findById(UUID id);
 
-    /** OrderJpaRepository.findByIdForUpdate shape (8.1-C): SELECT ... FOR UPDATE with items. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT r FROM ReturnEntity r LEFT JOIN FETCH r.lineItems WHERE r.id = :id")
+    @Query("SELECT r FROM ReturnEntity r WHERE r.id = :id")
     Optional<ReturnEntity> findByIdForUpdate(@Param("id") UUID id);
 
     @EntityGraph(attributePaths = {"lineItems"})
+    @Query("SELECT r FROM ReturnEntity r WHERE r.orderId = :orderId AND r.status <> 'REJECTED'")
+    Optional<ReturnEntity> findActiveByOrderId(@Param("orderId") UUID orderId);
+
+    @EntityGraph(attributePaths = {"lineItems"})
     Optional<ReturnEntity> findByOrderId(UUID orderId);
+
+    @EntityGraph(attributePaths = {"lineItems"})
+    List<ReturnEntity> findAllByOrderIdOrderByCreatedAtDesc(UUID orderId);
 
     @EntityGraph(attributePaths = {"lineItems"})
     List<ReturnEntity> findAllByUserIdOrderByCreatedAtDesc(UUID userId);

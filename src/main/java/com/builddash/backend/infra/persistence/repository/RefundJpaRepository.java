@@ -15,6 +15,7 @@ import java.util.UUID;
 @Repository
 public interface RefundJpaRepository extends JpaRepository<RefundEntity, UUID> {
     Optional<RefundEntity> findByReturnId(UUID returnId);
+    Optional<RefundEntity> findFirstByReturnIdOrderByCreatedAtDescIdDesc(UUID returnId);
     Optional<RefundEntity> findByGatewayRefundId(String gatewayRefundId);
     List<RefundEntity> findAllByReturnIdOrderByCreatedAtDesc(UUID returnId);
 

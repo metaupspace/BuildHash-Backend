@@ -66,7 +66,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/orders/*/return").hasRole("USER")
                         .requestMatchers(HttpMethod.GET, "/orders/*/invoice").hasRole("USER")
                         .requestMatchers(HttpMethod.GET, "/returns/*").hasAnyRole("USER", "VENDOR", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/returns/*/reject", "/returns/*/qc-pass").hasAnyRole("VENDOR", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/returns/*/approve", "/returns/*/schedule-pickup", "/returns/*/pickup", "/returns/*/reject", "/returns/*/qc-pass").hasAnyRole("VENDOR", "ADMIN")
                         // Q&A answers: customers, vendors and staff all answer (feature doc §3);
                         // answer.source is resolved from issuance-controlled role claims, never
                         // client-supplied. Explicit gate, not blanket-rule fall-through.

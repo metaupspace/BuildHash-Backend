@@ -2,6 +2,7 @@ package com.builddash.backend.application.impl;
 
 import com.builddash.backend.api.dto.request.ReturnLineItemRequest;
 import com.builddash.backend.application.event.ReturnStatusChangedEvent;
+import com.builddash.backend.application.service.B2bAuthorizer;
 import com.builddash.backend.application.service.RefundService;
 import com.builddash.backend.domain.enums.OrderStatus;
 import com.builddash.backend.domain.enums.ReturnReason;
@@ -10,6 +11,7 @@ import com.builddash.backend.domain.model.Order;
 import com.builddash.backend.domain.model.OrderLineItem;
 import com.builddash.backend.domain.model.Return;
 import com.builddash.backend.domain.port.CategoryRepository;
+import com.builddash.backend.domain.port.DeliveryTrackingEventRepository;
 import com.builddash.backend.domain.port.ObjectStorage;
 import com.builddash.backend.domain.port.OrderRepository;
 import com.builddash.backend.domain.port.ProductRepository;
@@ -21,9 +23,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
@@ -33,13 +35,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 /**
@@ -67,10 +69,16 @@ class ReturnServiceEventPublishTest {
     private CategoryRepository categoryRepository;
 
     @Mock
+    private DeliveryTrackingEventRepository trackingEventRepository;
+
+    @Mock
     private ObjectStorage objectStorage;
 
     @Mock
     private RefundService refundService;
+
+    @Mock
+    private B2bAuthorizer b2bAuthorizer;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -82,8 +90,6 @@ class ReturnServiceEventPublishTest {
 
     @BeforeEach
     void setUp() {
-        // TransactionTemplate pass-through (8.1-A wiring; 8.1-C added executeWithoutResult
-        // for passQc): both template entry points run their callback/consumer directly.
         lenient().when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(null);
@@ -94,8 +100,8 @@ class ReturnServiceEventPublishTest {
             return null;
         }).when(transactionTemplate).executeWithoutResult(any());
         service = new ReturnServiceImpl(orderRepository, returnRepository, refundRepository,
-                productRepository, categoryRepository, objectStorage, refundService, eventPublisher,
-                transactionTemplate);
+                productRepository, categoryRepository, trackingEventRepository, objectStorage,
+                refundService, b2bAuthorizer, eventPublisher, transactionTemplate);
     }
 
     private Return returnIn(ReturnStatus status) {
@@ -111,6 +117,7 @@ class ReturnServiceEventPublishTest {
 
     private void stubFind(Return returnObj) {
         lenient().when(returnRepository.findById(returnObj.id())).thenReturn(Optional.of(returnObj));
+        lenient().when(returnRepository.findByIdForUpdate(returnObj.id())).thenReturn(Optional.of(returnObj));
         lenient().when(returnRepository.save(any(Return.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -119,7 +126,7 @@ class ReturnServiceEventPublishTest {
         Return returnObj = returnIn(ReturnStatus.REQUESTED);
         stubFind(returnObj);
 
-        service.approve(returnObj.id());
+        service.approve(returnObj.id(), UUID.randomUUID(), List.of("VENDOR"));
 
         ReturnStatusChangedEvent event = captureSingleEvent();
         assertThat(event.returnId()).isEqualTo(returnObj.id());
@@ -132,7 +139,7 @@ class ReturnServiceEventPublishTest {
         Return returnObj = returnIn(ReturnStatus.APPROVED);
         stubFind(returnObj);
 
-        service.schedulePickup(returnObj.id());
+        service.schedulePickup(returnObj.id(), UUID.randomUUID(), List.of("ADMIN"));
 
         ReturnStatusChangedEvent event = captureSingleEvent();
         assertThat(event.returnId()).isEqualTo(returnObj.id());
@@ -142,13 +149,15 @@ class ReturnServiceEventPublishTest {
 
     @Test
     void pickUp_firesPickupScheduledToPickedUp() {
-        Return returnObj = returnIn(ReturnStatus.PICKUP_SCHEDULED);
+        Return returnObj = returnIn(ReturnStatus.PICKED_UP);
         stubFind(returnObj);
+        Return scheduled = returnIn(ReturnStatus.PICKUP_SCHEDULED);
+        stubFind(scheduled);
 
-        service.pickUp(returnObj.id());
+        service.pickUp(scheduled.id(), UUID.randomUUID(), List.of("VENDOR"));
 
         ReturnStatusChangedEvent event = captureSingleEvent();
-        assertThat(event.returnId()).isEqualTo(returnObj.id());
+        assertThat(event.returnId()).isEqualTo(scheduled.id());
         assertThat(event.from()).isEqualTo(ReturnStatus.PICKUP_SCHEDULED);
         assertThat(event.to()).isEqualTo(ReturnStatus.PICKED_UP);
     }
@@ -234,12 +243,10 @@ class ReturnServiceEventPublishTest {
 
     @Test
     void createReturn_existingReturnInRefundCompletedStatus_isBlocked() throws Exception {
-        // Dedicated case, not incidentally covered: a completed refund must never be
-        // re-returnable — a second return would double-refund.
         UUID userId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(deliveredOrder(userId, orderId)));
-        when(returnRepository.findByOrderId(orderId))
+        when(returnRepository.findActiveByOrderId(orderId))
                 .thenReturn(Optional.of(returnIn(ReturnStatus.REFUND_COMPLETED)));
 
         assertThatThrownBy(() -> service.createReturn(userId, orderId, ReturnReason.DAMAGED,
@@ -257,7 +264,7 @@ class ReturnServiceEventPublishTest {
         UUID userId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(deliveredOrder(userId, orderId)));
-        when(returnRepository.findByOrderId(orderId)).thenReturn(Optional.of(returnIn(existingStatus)));
+        when(returnRepository.findActiveByOrderId(orderId)).thenReturn(Optional.of(returnIn(existingStatus)));
 
         assertThatThrownBy(() -> service.createReturn(userId, orderId, ReturnReason.DAMAGED,
                 List.of(new ReturnLineItemRequest(UUID.randomUUID(), 2)), List.of(validPhoto())))
@@ -269,7 +276,6 @@ class ReturnServiceEventPublishTest {
 
     @Test
     void createReturn_existingRejectedReturn_allowsResubmission() throws Exception {
-        // REJECTED is the one re-entry door: terminal, pre-refund, corrected re-submission legit.
         UUID userId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
@@ -278,7 +284,7 @@ class ReturnServiceEventPublishTest {
                 List.of(new OrderLineItem(UUID.randomUUID(), productId, 5,
                         new BigDecimal("100.00"), new BigDecimal("18.00"), new BigDecimal("590.00"))));
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(returnRepository.findByOrderId(orderId)).thenReturn(Optional.of(returnIn(ReturnStatus.REJECTED)));
+        when(returnRepository.findActiveByOrderId(orderId)).thenReturn(Optional.empty());
         lenient().when(returnRepository.save(any(Return.class))).thenAnswer(inv -> inv.getArgument(0));
 
         MultipartFile photo = mock(MultipartFile.class);

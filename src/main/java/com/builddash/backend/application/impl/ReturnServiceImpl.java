@@ -2,8 +2,10 @@ package com.builddash.backend.application.impl;
 
 import com.builddash.backend.api.dto.request.ReturnLineItemRequest;
 import com.builddash.backend.application.event.ReturnStatusChangedEvent;
+import com.builddash.backend.application.service.B2bAuthorizer;
 import com.builddash.backend.application.service.RefundService;
 import com.builddash.backend.application.service.ReturnService;
+import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.OrderStatus;
 import com.builddash.backend.domain.enums.ReturnReason;
 import com.builddash.backend.domain.enums.ReturnStatus;
@@ -12,6 +14,7 @@ import com.builddash.backend.domain.exception.InvalidOrderStateException;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.exception.ReturnAlreadyExistsException;
 import com.builddash.backend.domain.model.Category;
+import com.builddash.backend.domain.model.DeliveryTrackingEvent;
 import com.builddash.backend.domain.model.Order;
 import com.builddash.backend.domain.model.OrderLineItem;
 import com.builddash.backend.domain.model.Product;
@@ -19,6 +22,7 @@ import com.builddash.backend.domain.model.Refund;
 import com.builddash.backend.domain.model.Return;
 import com.builddash.backend.domain.model.ReturnLineItem;
 import com.builddash.backend.domain.port.CategoryRepository;
+import com.builddash.backend.domain.port.DeliveryTrackingEventRepository;
 import com.builddash.backend.domain.port.ObjectStorage;
 import com.builddash.backend.domain.port.OrderRepository;
 import com.builddash.backend.domain.port.ProductRepository;
@@ -62,8 +66,10 @@ public class ReturnServiceImpl implements ReturnService {
     private final RefundRepository refundRepository;
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final DeliveryTrackingEventRepository trackingEventRepository;
     private final ObjectStorage objectStorage;
     private final RefundService refundService;
+    private final B2bAuthorizer b2bAuthorizer;
     private final ApplicationEventPublisher eventPublisher;
     private final TransactionTemplate transactionTemplate;
 
@@ -91,7 +97,9 @@ public class ReturnServiceImpl implements ReturnService {
                 Order order = orderRepository.findById(orderId)
                         .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found: " + orderId));
 
-                if (!order.userId().equals(userId)) {
+                if (order.companyId() != null) {
+                    b2bAuthorizer.authorize(userId, order.companyId(), CompanyPermission.ORDER_CREATE, order.siteId(), true);
+                } else if (!order.userId().equals(userId)) {
                     throw new NotFoundException("ORDER_NOT_FOUND", "Order not found: " + orderId);
                 }
 
@@ -99,21 +107,23 @@ public class ReturnServiceImpl implements ReturnService {
                     throw new InvalidOrderStateException(order.status().name(), "RETURN_REQUESTED");
                 }
 
-                // Client-retry guard: one ACTIVE return per order. No returned-quantity tracking
-                // exists (PLAN_PHASE6 Section 1), so a second return would re-return the same items
-                // and trigger a second refund. REJECTED is the one re-entry door — rejection is
-                // terminal and pre-refund, so a corrected re-submission stays legitimate.
-                returnRepository.findByOrderId(orderId)
-                        .filter(existing -> existing.status() != ReturnStatus.REJECTED)
-                        .ifPresent(existing -> {
-                            throw new ReturnAlreadyExistsException(orderId);
-                        });
+                // Client-retry guard: one ACTIVE return per order (H3.4).
+                // uq_returns_one_active_per_order (V24) guarantees at most one non-REJECTED row.
+                returnRepository.findActiveByOrderId(orderId).ifPresent(existing -> {
+                    throw new ReturnAlreadyExistsException(orderId);
+                });
 
                 Map<UUID, OrderLineItem> orderItemMap = order.lineItems().stream()
                         .collect(Collectors.toMap(OrderLineItem::productId, Function.identity()));
 
                 UUID returnId = UUID.randomUUID();
                 List<ReturnLineItem> lineItems = new ArrayList<>();
+
+                // H3.2: Return window anchored to the latest DELIVERED tracking event; fallback to placedAt.
+                Instant deliveredAt = trackingEventRepository.findLatestByOrderId(orderId)
+                        .filter(e -> e.status() == OrderStatus.DELIVERED)
+                        .map(DeliveryTrackingEvent::recordedAt)
+                        .orElse(order.placedAt());
 
                 for (ReturnLineItemRequest reqItem : requestedItems) {
                     OrderLineItem orderItem = orderItemMap.get(reqItem.productId());
@@ -134,7 +144,6 @@ public class ReturnServiceImpl implements ReturnService {
                                 .orElse(7);
                     }
 
-                    Instant deliveredAt = order.placedAt();
                     if (deliveredAt != null && Instant.now().isAfter(deliveredAt.plus(Duration.ofDays(windowDays)))) {
                         throw new BadRequestException("RETURN_WINDOW_EXPIRED", "Return window of " + windowDays + " days has expired for product " + reqItem.productId());
                     }
@@ -180,8 +189,6 @@ public class ReturnServiceImpl implements ReturnService {
             });
         } catch (DataIntegrityViolationException e) {
             // uq_returns_one_active_per_order (V24): the concurrent race loser lands here
-            // — caught at the template boundary where commit-time flush violations surface,
-            // translated to the same contract the sequential guard above enforces.
             throw new ReturnAlreadyExistsException(orderId);
         }
     }
@@ -193,15 +200,21 @@ public class ReturnServiceImpl implements ReturnService {
                 .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
 
         boolean isPrivileged = isPrivileged(roles);
-        if (!isPrivileged && !returnObj.userId().equals(userId)) {
-            throw new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId);
+        if (!isPrivileged) {
+            Order order = orderRepository.findById(returnObj.orderId())
+                    .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
+            if (order.companyId() != null) {
+                b2bAuthorizer.authorize(userId, order.companyId(), CompanyPermission.ORDER_VIEW, order.siteId(), false);
+            } else if (!returnObj.userId().equals(userId)) {
+                throw new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId);
+            }
         }
 
         return returnObj;
     }
 
     /**
-     * H0.2: reject/QC (and the refund initiation QC delegates to) are VENDOR/ADMIN
+     * H0.2 / H3.1: mutations (approve, schedulePickup, pickUp, reject, passQc) are VENDOR/ADMIN
      * operations. Non-privileged principals get the same existence-hiding 404 the
      * read path uses, so arbitrary return ids cannot be probed.
      */
@@ -223,8 +236,9 @@ public class ReturnServiceImpl implements ReturnService {
 
     @Override
     @Transactional
-    public Return approve(UUID returnId) {
-        Return returnObj = returnRepository.findById(returnId)
+    public Return approve(UUID returnId, UUID userId, List<String> roles) {
+        requirePrivileged(roles, returnId);
+        Return returnObj = returnRepository.findByIdForUpdate(returnId)
                 .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
         Return approved = returnObj.approve();
         Return saved = returnRepository.save(approved);
@@ -234,8 +248,9 @@ public class ReturnServiceImpl implements ReturnService {
 
     @Override
     @Transactional
-    public Return schedulePickup(UUID returnId) {
-        Return returnObj = returnRepository.findById(returnId)
+    public Return schedulePickup(UUID returnId, UUID userId, List<String> roles) {
+        requirePrivileged(roles, returnId);
+        Return returnObj = returnRepository.findByIdForUpdate(returnId)
                 .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
         Return scheduled = returnObj.schedulePickup();
         Return saved = returnRepository.save(scheduled);
@@ -245,8 +260,9 @@ public class ReturnServiceImpl implements ReturnService {
 
     @Override
     @Transactional
-    public Return pickUp(UUID returnId) {
-        Return returnObj = returnRepository.findById(returnId)
+    public Return pickUp(UUID returnId, UUID userId, List<String> roles) {
+        requirePrivileged(roles, returnId);
+        Return returnObj = returnRepository.findByIdForUpdate(returnId)
                 .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
         Return pickedUp = returnObj.pickUp();
         Return saved = returnRepository.save(pickedUp);
@@ -256,13 +272,12 @@ public class ReturnServiceImpl implements ReturnService {
 
     @Override
     public Return passQc(UUID returnId, UUID userId, List<String> roles) {
-        // H0.2: the filter chain gates the HTTP route, the service is the authority —
-        // internal callers cannot reach the refund trigger without VENDOR/ADMIN.
         requirePrivileged(roles, returnId);
         // 8.1-C boundary: the QC transition and its event commit BEFORE refund initiation
         // is delegated — the gateway workflow must never run inside this method's tx.
+        // H3.4: Row-lock during QC transition so concurrent mutations serialize.
         transactionTemplate.executeWithoutResult(status -> {
-            Return returnObj = returnRepository.findById(returnId)
+            Return returnObj = returnRepository.findByIdForUpdate(returnId)
                     .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
 
             Return inQc = returnObj.passQc();
@@ -280,7 +295,7 @@ public class ReturnServiceImpl implements ReturnService {
     @Transactional
     public Return reject(UUID returnId, UUID userId, List<String> roles) {
         requirePrivileged(roles, returnId);
-        Return returnObj = returnRepository.findById(returnId)
+        Return returnObj = returnRepository.findByIdForUpdate(returnId)
                 .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + returnId));
         Return rejected = returnObj.reject();
         Return saved = returnRepository.save(rejected);

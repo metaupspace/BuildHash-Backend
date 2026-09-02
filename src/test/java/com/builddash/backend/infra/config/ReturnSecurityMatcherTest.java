@@ -97,6 +97,93 @@ class ReturnSecurityMatcherTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void postReturnApprove_securityMatchers_allowOnlyVendorAndAdmin() throws Exception {
+        UUID returnId = UUID.randomUUID();
+
+        // Unauthenticated -> 401
+        mockMvc.perform(post("/returns/{id}/approve", returnId))
+                .andExpect(status().isUnauthorized());
+
+        // GUEST -> 403
+        mockMvc.perform(post("/returns/{id}/approve", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, guestToken))
+                .andExpect(status().isForbidden());
+
+        // USER -> 403
+        mockMvc.perform(post("/returns/{id}/approve", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, userToken))
+                .andExpect(status().isForbidden());
+
+        // VENDOR -> passes security (404 for non-existent returnId)
+        mockMvc.perform(post("/returns/{id}/approve", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, vendorToken))
+                .andExpect(status().isNotFound());
+
+        // ADMIN -> passes security (404 for non-existent returnId)
+        mockMvc.perform(post("/returns/{id}/approve", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void postReturnSchedulePickup_securityMatchers_allowOnlyVendorAndAdmin() throws Exception {
+        UUID returnId = UUID.randomUUID();
+
+        // Unauthenticated -> 401
+        mockMvc.perform(post("/returns/{id}/schedule-pickup", returnId))
+                .andExpect(status().isUnauthorized());
+
+        // GUEST -> 403
+        mockMvc.perform(post("/returns/{id}/schedule-pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, guestToken))
+                .andExpect(status().isForbidden());
+
+        // USER -> 403
+        mockMvc.perform(post("/returns/{id}/schedule-pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, userToken))
+                .andExpect(status().isForbidden());
+
+        // VENDOR -> passes security (404 for non-existent returnId)
+        mockMvc.perform(post("/returns/{id}/schedule-pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, vendorToken))
+                .andExpect(status().isNotFound());
+
+        // ADMIN -> passes security (404 for non-existent returnId)
+        mockMvc.perform(post("/returns/{id}/schedule-pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void postReturnPickup_securityMatchers_allowOnlyVendorAndAdmin() throws Exception {
+        UUID returnId = UUID.randomUUID();
+
+        // Unauthenticated -> 401
+        mockMvc.perform(post("/returns/{id}/pickup", returnId))
+                .andExpect(status().isUnauthorized());
+
+        // GUEST -> 403
+        mockMvc.perform(post("/returns/{id}/pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, guestToken))
+                .andExpect(status().isForbidden());
+
+        // USER -> 403
+        mockMvc.perform(post("/returns/{id}/pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, userToken))
+                .andExpect(status().isForbidden());
+
+        // VENDOR -> passes security (404 for non-existent returnId)
+        mockMvc.perform(post("/returns/{id}/pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, vendorToken))
+                .andExpect(status().isNotFound());
+
+        // ADMIN -> passes security (404 for non-existent returnId)
+        mockMvc.perform(post("/returns/{id}/pickup", returnId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void postReturnReject_securityMatchers_allowOnlyVendorAndAdmin() throws Exception {
         UUID returnId = UUID.randomUUID();
 

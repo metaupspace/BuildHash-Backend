@@ -30,7 +30,12 @@ class RefundRepositoryAdapter implements RefundRepository {
 
     @Override
     public Optional<Refund> findByReturnId(UUID returnId) {
-        return jpaRepository.findByReturnId(returnId).map(mapper::toDomain);
+        return jpaRepository.findFirstByReturnIdOrderByCreatedAtDescIdDesc(returnId).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<Refund> findLatestByReturnId(UUID returnId) {
+        return jpaRepository.findFirstByReturnIdOrderByCreatedAtDescIdDesc(returnId).map(mapper::toDomain);
     }
 
     @Override
