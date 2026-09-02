@@ -2,6 +2,7 @@ package com.builddash.backend.infra.gateway;
 
 import com.builddash.backend.application.event.PaymentWebhookEvent;
 import com.builddash.backend.application.event.RefundWebhookEvent;
+import com.builddash.backend.domain.exception.AmbiguousGatewayException;
 import com.builddash.backend.domain.model.PaymentReference;
 import com.builddash.backend.domain.model.RefundReference;
 import com.builddash.backend.domain.port.PaymentGateway;
@@ -41,16 +42,20 @@ public class DummyPaymentGatewayAdapter implements PaymentGateway {
     }
 
     @Override
-    public RefundReference refund(String transactionId, BigDecimal amount) {
+    public RefundReference refund(String transactionId, BigDecimal amount, UUID returnId) {
         if (amount != null && amount.compareTo(new BigDecimal("9999")) == 0) {
-            throw new RuntimeException("Simulated gateway connection timeout");
+            // Transport failure, not a rejection: the gateway may or may not have
+            // processed this refund. Never surface this as a definitive FAILED (H1.6).
+            throw new AmbiguousGatewayException("Simulated gateway connection timeout");
         }
 
         String gatewayRefundId = "dummy_ref_" + UUID.randomUUID();
         String status = (amount != null && amount.compareTo(new BigDecimal("9998")) == 0) ? "FAILED" : "SUCCESS";
 
+        // Echoes returnId (H1.4): lets the webhook recover the claim via findByReturnId
+        // even if the local finalize transaction never commits the gatewayRefundId.
         CompletableFuture.delayedExecutor(2, TimeUnit.SECONDS).execute(() -> {
-            eventPublisher.publishEvent(new RefundWebhookEvent(null, gatewayRefundId, status, "dummy_sig"));
+            eventPublisher.publishEvent(new RefundWebhookEvent(returnId, gatewayRefundId, status, "dummy_sig"));
         });
 
         return new RefundReference(gatewayRefundId, "PENDING");

@@ -8,6 +8,7 @@ import com.builddash.backend.domain.enums.GstNoteType;
 import com.builddash.backend.domain.enums.GstSequenceType;
 import com.builddash.backend.domain.enums.RefundStatus;
 import com.builddash.backend.domain.enums.ReturnStatus;
+import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.exception.UnauthorizedException;
 import com.builddash.backend.domain.model.GstNote;
 import com.builddash.backend.domain.model.Refund;
@@ -19,7 +20,6 @@ import com.builddash.backend.domain.port.ReturnRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,66 +50,76 @@ public class RefundWebhookServiceImpl implements RefundWebhookService {
     public void handleWebhook(UUID returnId, String gatewayRefundId, String status, String signature) {
         verifySignature(returnId, gatewayRefundId, status, signature);
 
-        Optional<Refund> refundOpt = refundRepository.findByGatewayRefundId(gatewayRefundId);
-        if (refundOpt.isEmpty() && returnId != null) {
-            refundOpt = refundRepository.findByReturnId(returnId);
+        Optional<Refund> refundLookup = refundRepository.findByGatewayRefundId(gatewayRefundId);
+        if (refundLookup.isEmpty() && returnId != null) {
+            refundLookup = refundRepository.findByReturnId(returnId);
         }
 
-        if (refundOpt.isEmpty()) {
+        if (refundLookup.isEmpty()) {
             log.warn("Refund not found for gatewayRefundId {} or returnId {}", gatewayRefundId, returnId);
             return;
         }
 
-        Refund refund = refundOpt.get();
+        UUID actualReturnId = refundLookup.get().returnId();
+        UUID refundId = refundLookup.get().id();
+
+        // Canonical lock order (RETURN -> REFUND), identical to RefundServiceImpl.finalizeClaim:
+        // a concurrent duplicate webhook delivery or a concurrent finalize serializes
+        // against this call instead of racing it (H1.1/H1.4b).
+        Return lockedReturn = returnRepository.findByIdForUpdate(actualReturnId)
+                .orElseThrow(() -> new NotFoundException("RETURN_NOT_FOUND", "Return not found: " + actualReturnId));
+        Refund refund = refundRepository.findByIdForUpdate(refundId)
+                .orElseThrow(() -> new NotFoundException("REFUND_NOT_FOUND", "Refund not found: " + refundId));
+
+        // Re-check after acquiring the lock: a concurrent delivery that got here first
+        // has already committed and released the lock by the time we unblock. This makes
+        // every delivery after the first an idempotent no-op — no unique constraint needed
+        // to detect it.
         if (refund.status() == RefundStatus.SUCCESS || refund.status() == RefundStatus.FAILED) {
             log.info("Refund {} is already in terminal status {}, ignoring webhook", refund.id(), refund.status());
             return;
         }
 
-        try {
-            if ("SUCCESS".equalsIgnoreCase(status)) {
-                Refund successRefund = refund.markSuccess(gatewayRefundId);
-                refundRepository.save(successRefund);
+        if ("SUCCESS".equalsIgnoreCase(status)) {
+            Refund successRefund = refund.markSuccess(gatewayRefundId);
+            refundRepository.save(successRefund);
 
-                UUID actualReturnId = returnId != null ? returnId : refund.returnId();
-                if (actualReturnId != null) {
-                    returnRepository.findById(actualReturnId).ifPresent(ret -> {
-                        if (ret.status() == ReturnStatus.REFUND_INITIATED) {
-                            Return completed = ret.completeRefund();
-                            returnRepository.save(completed);
-                            eventPublisher.publishEvent(new ReturnStatusChangedEvent(actualReturnId, ReturnStatus.REFUND_INITIATED, ReturnStatus.REFUND_COMPLETED));
-                            log.info("Return {} transitioned to REFUND_COMPLETED", actualReturnId);
+            if (lockedReturn.status() == ReturnStatus.REFUND_INITIATED) {
+                Return completed = lockedReturn.completeRefund();
+                returnRepository.save(completed);
+                eventPublisher.publishEvent(new ReturnStatusChangedEvent(actualReturnId, ReturnStatus.REFUND_INITIATED, ReturnStatus.REFUND_COMPLETED));
+                log.info("Return {} transitioned to REFUND_COMPLETED", actualReturnId);
 
-                            if (gstNoteRepository.findByReturnId(actualReturnId).isEmpty()) {
-                                String noteNumber = gstSequenceService.nextNumber(GstSequenceType.CREDIT_NOTE);
-                                GstNote creditNote = new GstNote(
-                                        UUID.randomUUID(),
-                                        actualReturnId,
-                                        GstNoteType.CREDIT,
-                                        noteNumber,
-                                        refund.amount(),
-                                        Instant.now(),
-                                        Instant.now(),
-                                        Instant.now()
-                                );
-                                gstNoteRepository.save(creditNote);
-                                log.info("Generated GstNote CREDIT {} for return {} with amount {}",
-                                        noteNumber, actualReturnId, refund.amount());
-                            }
-                        }
-                    });
+                // Only the delivery that wins the Refund-row lock and finds the Return
+                // still REFUND_INITIATED reaches here — a duplicate delivery already
+                // returned above via the terminal re-check, so this insert happens
+                // at most once per return. uq_gst_notes_return_type (V31) is a pure
+                // backstop, not the concurrency mechanism.
+                if (gstNoteRepository.findByReturnId(actualReturnId).isEmpty()) {
+                    String noteNumber = gstSequenceService.nextNumber(GstSequenceType.CREDIT_NOTE);
+                    GstNote creditNote = new GstNote(
+                            UUID.randomUUID(),
+                            actualReturnId,
+                            GstNoteType.CREDIT,
+                            noteNumber,
+                            refund.amount(),
+                            Instant.now(),
+                            Instant.now(),
+                            Instant.now()
+                    );
+                    gstNoteRepository.save(creditNote);
+                    log.info("Generated GstNote CREDIT {} for return {} with amount {}",
+                            noteNumber, actualReturnId, refund.amount());
                 }
-                log.info("Refund {} marked SUCCESS", refund.id());
-                eventPublisher.publishEvent(new RefundCompletedEvent(successRefund.returnId(), successRefund.id()));
-            } else if ("FAILED".equalsIgnoreCase(status)) {
-                Refund failedRefund = refund.markFailed(gatewayRefundId);
-                refundRepository.save(failedRefund);
-                log.info("Refund {} marked FAILED", refund.id());
-            } else {
-                log.warn("Unknown refund status {} for gatewayRefundId {}", status, gatewayRefundId);
             }
-        } catch (DataIntegrityViolationException e) {
-            log.info("Concurrent update for gatewayRefundId {}, treating as idempotent success", gatewayRefundId);
+            log.info("Refund {} marked SUCCESS", refund.id());
+            eventPublisher.publishEvent(new RefundCompletedEvent(successRefund.returnId(), successRefund.id()));
+        } else if ("FAILED".equalsIgnoreCase(status)) {
+            Refund failedRefund = refund.markFailed(gatewayRefundId);
+            refundRepository.save(failedRefund);
+            log.info("Refund {} marked FAILED", refund.id());
+        } else {
+            log.warn("Unknown refund status {} for gatewayRefundId {}", status, gatewayRefundId);
         }
     }
 

@@ -110,7 +110,17 @@ class RefundServiceImplTest {
         when(returnRepository.findByIdForUpdate(returnObj.id())).thenReturn(Optional.of(returnObj));
         when(refundRepository.findAllByReturnId(returnObj.id())).thenReturn(List.of());
         when(paymentRepository.findLatestByOrderId(returnObj.orderId())).thenReturn(Optional.of(payment));
-        when(refundRepository.save(any(Refund.class))).thenAnswer(inv -> inv.getArgument(0));
+        // finalizeClaim locks the Refund row by id after the claim commits (H1.4b); echo
+        // back whatever was last saved so the lock read sees the durable claim state.
+        java.util.concurrent.atomic.AtomicReference<Refund> lastSaved = new java.util.concurrent.atomic.AtomicReference<>();
+        when(refundRepository.save(any(Refund.class))).thenAnswer(inv -> {
+            Refund saved = inv.getArgument(0);
+            lastSaved.set(saved);
+            return saved;
+        });
+        // lenient: only the success-path tests reach finalizeClaim's lock read.
+        org.mockito.Mockito.lenient().when(refundRepository.findByIdForUpdate(any(UUID.class)))
+                .thenAnswer(inv -> Optional.ofNullable(lastSaved.get()));
     }
 
     @Test
@@ -119,7 +129,7 @@ class RefundServiceImplTest {
         UUID orderId = UUID.randomUUID();
         Return returnObj = createQcPassedReturn(returnId, orderId);
         stubClaimPath(returnObj, payment(orderId));
-        when(paymentGateway.refund(eq("tx_gateway_123"), eq(new BigDecimal("250.00"))))
+        when(paymentGateway.refund(eq("tx_gateway_123"), eq(new BigDecimal("250.00")), eq(returnId)))
                 .thenReturn(new RefundReference("ref_gw_999", "PENDING"));
 
         Refund refund = refundService.initiateRefund(returnId);
@@ -147,23 +157,45 @@ class RefundServiceImplTest {
     }
 
     @Test
-    void initiateRefund_gatewayFailure_marksClaimFailed_returnStaysQc() {
+    void initiateRefund_definitiveRejection_marksClaimFailed_returnStaysQc() {
         UUID returnId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         Return returnObj = createQcPassedReturn(returnId, orderId);
         stubClaimPath(returnObj, payment(orderId));
-        when(paymentGateway.refund(any(), any()))
-                .thenThrow(new RuntimeException("Simulated gateway connection timeout"));
+        when(paymentGateway.refund(any(), any(), any()))
+                .thenThrow(new com.builddash.backend.domain.exception.GatewayRejectedException("Gateway declined the refund"));
 
         assertThatThrownBy(() -> refundService.initiateRefund(returnId))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Simulated gateway connection timeout");
+                .isInstanceOf(com.builddash.backend.domain.exception.GatewayRejectedException.class)
+                .hasMessageContaining("Gateway declined the refund");
 
         // Claim lifecycle: PENDING insert, then FAILED — the Return is never transitioned.
         ArgumentCaptor<Refund> refundCaptor = ArgumentCaptor.forClass(Refund.class);
         verify(refundRepository, times(2)).save(refundCaptor.capture());
         assertThat(refundCaptor.getAllValues().get(1).status()).isEqualTo(RefundStatus.FAILED);
 
+        verify(returnRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void initiateRefund_ambiguousGatewayFailure_claimStaysPending_returnStaysQc() {
+        // H1.6: a timeout/transport failure must never be treated as a definitive
+        // rejection — the gateway may have already processed the refund. Marking FAILED
+        // here would make the claim retry-eligible and risk a second real refund.
+        UUID returnId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        Return returnObj = createQcPassedReturn(returnId, orderId);
+        stubClaimPath(returnObj, payment(orderId));
+        when(paymentGateway.refund(any(), any(), any()))
+                .thenThrow(new com.builddash.backend.domain.exception.AmbiguousGatewayException("Simulated gateway connection timeout"));
+
+        assertThatThrownBy(() -> refundService.initiateRefund(returnId))
+                .isInstanceOf(com.builddash.backend.domain.exception.AmbiguousGatewayException.class)
+                .hasMessageContaining("Simulated gateway connection timeout");
+
+        // Claim lifecycle: PENDING insert only — never downgraded to FAILED.
+        verify(refundRepository, times(1)).save(any(Refund.class));
         verify(returnRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any());
     }
@@ -177,7 +209,7 @@ class RefundServiceImplTest {
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("Return not found");
 
-        verify(paymentGateway, never()).refund(any(), any());
+        verify(paymentGateway, never()).refund(any(), any(), any());
         verify(refundRepository, never()).save(any());
     }
 
@@ -194,7 +226,7 @@ class RefundServiceImplTest {
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("No payment found for order");
 
-        verify(paymentGateway, never()).refund(any(), any());
+        verify(paymentGateway, never()).refund(any(), any(), any());
         verify(refundRepository, never()).save(any());
     }
 
@@ -212,7 +244,7 @@ class RefundServiceImplTest {
         assertThatThrownBy(() -> refundService.initiateRefund(returnId))
                 .isInstanceOf(InvalidReturnStateException.class);
 
-        verify(paymentGateway, never()).refund(any(), any());
+        verify(paymentGateway, never()).refund(any(), any(), any());
         verify(refundRepository, never()).save(any());
     }
 
@@ -225,12 +257,12 @@ class RefundServiceImplTest {
         when(refundRepository.findAllByReturnId(returnId)).thenReturn(List.of(
                 new Refund(UUID.randomUUID(), returnId, "tx_gateway_123", new BigDecimal("250.00"),
                         RefundStatus.FAILED, null, Instant.now(), Instant.now())));
-        when(paymentGateway.refund(any(), any())).thenReturn(new RefundReference("ref_gw_retry", "PENDING"));
+        when(paymentGateway.refund(any(), any(), any())).thenReturn(new RefundReference("ref_gw_retry", "PENDING"));
 
         Refund refund = refundService.initiateRefund(returnId);
 
         assertThat(refund.gatewayRefundId()).isEqualTo("ref_gw_retry");
-        verify(paymentGateway, times(1)).refund(any(), any());
+        verify(paymentGateway, times(1)).refund(any(), any(), any());
     }
 
     @Test
@@ -244,7 +276,7 @@ class RefundServiceImplTest {
         assertThatThrownBy(() -> refundService.initiateRefund(returnId))
                 .isInstanceOf(InvalidReturnStateException.class);
 
-        verify(paymentGateway, never()).refund(any(), any());
+        verify(paymentGateway, never()).refund(any(), any(), any());
         verify(refundRepository, never()).save(any());
     }
 }

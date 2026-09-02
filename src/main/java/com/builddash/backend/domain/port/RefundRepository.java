@@ -12,4 +12,8 @@ public interface RefundRepository {
     Optional<Refund> findByReturnId(UUID returnId);
     Optional<Refund> findByGatewayRefundId(String gatewayRefundId);
     List<Refund> findAllByReturnId(UUID returnId);
+
+    /** Row lock for the webhook/finalize race (H1.1/H1.4b): acquire after locking the
+     *  owning Return row (canonical order RETURN -> REFUND) so both writers serialize. */
+    Optional<Refund> findByIdForUpdate(UUID id);
 }

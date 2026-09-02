@@ -102,13 +102,18 @@ class OrderServiceImplTest {
 
 
     @Test
-    void create_whenIdempotencyKeyExists_returnsExistingOrderAndInitiatesPayment() {
+    void create_whenIdempotencyKeyExists_returnsExistingOrderWithoutReinitiatingGateway() {
+        // H1.3b: retrying create() with the same key must never call the gateway a
+        // second time for an order that may already have a payment attempt in flight.
         UUID existingOrderId = UUID.randomUUID();
         Order existingOrder = new Order(existingOrderId, userId, addressId, slotId, slotDate, expectedTotal, OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), java.time.Instant.now(), null, null, List.of());
+        com.builddash.backend.domain.model.Payment existingPayment = new com.builddash.backend.domain.model.Payment(
+                UUID.randomUUID(), existingOrderId, "tx-1", expectedTotal,
+                com.builddash.backend.domain.enums.PaymentStatus.PENDING, "url-1");
 
         when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class))).thenReturn(Optional.of(existingOrderId));
         when(orderRepository.findById(existingOrderId)).thenReturn(Optional.of(existingOrder));
-        when(paymentGateway.initiate(existingOrderId, expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
+        when(paymentRepository.findLatestByOrderId(existingOrderId)).thenReturn(Optional.of(existingPayment));
 
         OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey);
 
@@ -116,6 +121,44 @@ class OrderServiceImplTest {
         assertThat(result.paymentUrl()).isEqualTo("url-1");
         verify(checkoutIntentService, never()).createIntent(any(), any(), any(), any(), any(), any());
         verify(orderRepository, never()).save(any());
+        verify(paymentGateway, never()).initiate(any(), any());
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void create_calledTwiceWithSameIdempotencyKey_initiatesGatewayExactlyOnce() {
+        // OrderCreateRetryDoesNotDoubleInitiateGatewayTest scenario (H1.3b): two create()
+        // calls with the same idempotency key must hit the gateway at most once.
+        Order savedOrder = new Order(UUID.randomUUID(), userId, addressId, slotId, slotDate, expectedTotal,
+                OrderStatus.PAYMENT_PENDING, UUID.randomUUID(), Instant.now(), null, null, List.of());
+
+        when(idempotencyKeyRepository.findOrderId(eq(idempotencyKey), any(Instant.class)))
+                .thenReturn(Optional.empty())                   // 1st call: genuinely new
+                .thenReturn(Optional.of(savedOrder.id()));       // 2nd call: retry resolves to it
+
+        CheckoutIntent intent = mock(CheckoutIntent.class);
+        when(intent.lockedTotal()).thenReturn(expectedTotal);
+        PricedCart cart = mock(PricedCart.class);
+        when(cart.items()).thenReturn(List.of());
+        when(intent.pricedCart()).thenReturn(cart);
+        when(checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal, null)).thenReturn(intent);
+        when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
+        when(orderRepository.findById(savedOrder.id())).thenReturn(Optional.of(savedOrder));
+        when(paymentGateway.initiate(savedOrder.id(), expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
+
+        OrderResult first = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey);
+
+        com.builddash.backend.domain.model.Payment claim = new com.builddash.backend.domain.model.Payment(
+                UUID.randomUUID(), savedOrder.id(), "tx-1", expectedTotal,
+                com.builddash.backend.domain.enums.PaymentStatus.PENDING, "url-1");
+        when(paymentRepository.findLatestByOrderId(savedOrder.id())).thenReturn(Optional.of(claim));
+
+        OrderResult retry = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey);
+
+        assertThat(first.order().id()).isEqualTo(savedOrder.id());
+        assertThat(retry.order().id()).isEqualTo(savedOrder.id());
+        assertThat(retry.paymentUrl()).isEqualTo("url-1");
+        verify(paymentGateway, times(1)).initiate(any(), any());
     }
 
 
@@ -286,7 +329,12 @@ class OrderServiceImplTest {
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
 
         when(paymentGateway.initiate(savedOrder.id(), expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
-        when(paymentRepository.save(any())).thenThrow(new IllegalStateException("DB down"));
+        // First save is the H1.3 pre-gateway claim (must succeed so the gateway is
+        // actually called); second save is completePaymentInitiation's post-gateway
+        // update, which is where this test's DB failure occurs.
+        when(paymentRepository.save(any()))
+                .thenAnswer(inv -> inv.getArgument(0))
+                .thenThrow(new IllegalStateException("DB down"));
 
         assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey))
                 .isInstanceOf(IllegalStateException.class)
@@ -304,7 +352,8 @@ class OrderServiceImplTest {
                 .thenReturn(Optional.empty())                 // first read: no key yet
                 .thenReturn(Optional.of(winnerOrderId));      // re-read after conflict
         when(orderRepository.findById(winnerOrderId)).thenReturn(Optional.of(winnerOrder));
-        when(paymentGateway.initiate(winnerOrderId, expectedTotal)).thenReturn(new PaymentReference("tx-1", "url-1"));
+        // H1.3b: the loser resolves via existingOrderForKey (a retry path) and must not
+        // re-enter the gateway — no paymentGateway stub needed/expected here.
 
         CheckoutIntent intent = mock(CheckoutIntent.class);
         when(intent.lockedTotal()).thenReturn(expectedTotal);
@@ -320,6 +369,7 @@ class OrderServiceImplTest {
         OrderResult result = orderService.create(userId, addressId, slotId, slotDate, expectedTotal, null, null, idempotencyKey);
 
         assertThat(result.order().id()).isEqualTo(winnerOrderId);
+        verify(paymentGateway, never()).initiate(any(), any());
     }
 
     @Test

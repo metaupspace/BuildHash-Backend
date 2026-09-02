@@ -20,7 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -126,7 +125,9 @@ class RefundWebhookServiceImplTest {
         Return returnObj = createReturn(returnId, ReturnStatus.REFUND_INITIATED);
 
         when(refundRepository.findByGatewayRefundId(gatewayRefundId)).thenReturn(Optional.of(refund));
-        when(returnRepository.findById(returnId)).thenReturn(Optional.of(returnObj));
+        // Lock order RETURN -> REFUND (H1.1/H1.4b): both locks re-read after acquisition.
+        when(returnRepository.findByIdForUpdate(returnId)).thenReturn(Optional.of(returnObj));
+        when(refundRepository.findByIdForUpdate(refund.id())).thenReturn(Optional.of(refund));
         when(gstNoteRepository.findByReturnId(returnId)).thenReturn(Optional.empty());
         when(gstSequenceService.nextNumber(GstSequenceType.CREDIT_NOTE)).thenReturn("CN-2627-000001");
 
@@ -156,8 +157,11 @@ class RefundWebhookServiceImplTest {
 
         when(webhookConfig.getWebhookSecret()).thenReturn(SECRET);
         Refund refund = createRefund(returnId, gatewayRefundId, RefundStatus.PENDING);
+        Return returnObj = createReturn(returnId, ReturnStatus.REFUND_INITIATED);
 
         when(refundRepository.findByGatewayRefundId(gatewayRefundId)).thenReturn(Optional.of(refund));
+        when(returnRepository.findByIdForUpdate(returnId)).thenReturn(Optional.of(returnObj));
+        when(refundRepository.findByIdForUpdate(refund.id())).thenReturn(Optional.of(refund));
 
         webhookService.handleWebhook(returnId, gatewayRefundId, status, signature);
 
@@ -177,8 +181,13 @@ class RefundWebhookServiceImplTest {
 
         when(webhookConfig.getWebhookSecret()).thenReturn(SECRET);
         Refund refund = createRefund(returnId, gatewayRefundId, RefundStatus.SUCCESS);
+        Return returnObj = createReturn(returnId, ReturnStatus.REFUND_COMPLETED);
 
         when(refundRepository.findByGatewayRefundId(gatewayRefundId)).thenReturn(Optional.of(refund));
+        // Post-lock re-check is what makes a duplicate/late delivery an idempotent no-op —
+        // no unique constraint or DataIntegrityViolationException handling needed for it.
+        when(returnRepository.findByIdForUpdate(returnId)).thenReturn(Optional.of(returnObj));
+        when(refundRepository.findByIdForUpdate(refund.id())).thenReturn(Optional.of(refund));
 
         webhookService.handleWebhook(returnId, gatewayRefundId, status, signature);
 
@@ -229,22 +238,5 @@ class RefundWebhookServiceImplTest {
 
         verify(refundRepository, never()).save(any());
         verify(returnRepository, never()).save(any());
-    }
-
-    @Test
-    void handleWebhook_dataIntegrityViolation_treatedAsIdempotentSuccess() {
-        UUID returnId = UUID.randomUUID();
-        String gatewayRefundId = "gw_ref_race";
-        String status = "SUCCESS";
-        String signature = sign(returnId + ":" + gatewayRefundId + ":" + status);
-
-        when(webhookConfig.getWebhookSecret()).thenReturn(SECRET);
-        Refund refund = createRefund(returnId, gatewayRefundId, RefundStatus.PENDING);
-
-        when(refundRepository.findByGatewayRefundId(gatewayRefundId)).thenReturn(Optional.of(refund));
-        when(refundRepository.save(any())).thenThrow(new DataIntegrityViolationException("Duplicate key uq_refunds_gateway_refund_id"));
-
-        // Should not throw, treated as idempotent
-        webhookService.handleWebhook(returnId, gatewayRefundId, status, signature);
     }
 }

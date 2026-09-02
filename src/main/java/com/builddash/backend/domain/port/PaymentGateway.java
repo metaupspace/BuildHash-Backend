@@ -8,5 +8,11 @@ import java.util.UUID;
 
 public interface PaymentGateway {
     PaymentReference initiate(UUID orderId, BigDecimal amount);
-    RefundReference refund(String transactionId, BigDecimal amount);
+
+    /**
+     * returnId is a durable correlation key the gateway is expected to echo back in its
+     * refund webhook. Without it, a crash between gateway success and local finalize can
+     * lose the gatewayRefundId forever with no way to recover the claim (H1.4).
+     */
+    RefundReference refund(String transactionId, BigDecimal amount, UUID returnId);
 }

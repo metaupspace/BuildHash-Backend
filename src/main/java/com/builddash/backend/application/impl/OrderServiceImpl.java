@@ -66,6 +66,11 @@ public class OrderServiceImpl implements OrderService {
         // Draft carts are keyed by their project/source id — needed AFTER the transaction
         // to clear the right cart (the primary-cart call would leave a draft intact).
         UUID[] draftProjectId = new UUID[1];
+        // H1.3: set only on the fresh-order, non-gated branch, in the SAME transaction as
+        // the order itself. Null after the transaction means either PENDING_APPROVAL
+        // (handled below before this is even read) or an idempotent retry that resolved
+        // to an already-existing order — never "no claim was needed".
+        Payment[] pendingClaim = new Payment[1];
         Order savedOrder = transactionTemplate.execute(status -> {
             // Rolling window (PLAN_PHASE8 decision 10): an expired key reads as absent —
             // the caller gets a genuinely new order, not the stale one.
@@ -157,6 +162,15 @@ public class OrderServiceImpl implements OrderService {
             recordCouponRedemptions(userId, intent.pricedCart(), saved.id());
             if (gate.gated()) {
                 approvalGateService.openApproval(saved, gate, intent.deliverySlotLockId());
+            } else {
+                // H1.2/H1.3: a durable PENDING(no transactionId) claim commits in the SAME
+                // transaction as the order, before the gateway is ever called. A crash
+                // after this point leaves evidence of the attempt (this row) instead of an
+                // order with no payment trace at all.
+                pendingClaim[0] = new Payment(
+                        UUID.randomUUID(), saved.id(), null, saved.totalAmount(),
+                        com.builddash.backend.domain.enums.PaymentStatus.PENDING, null);
+                paymentRepository.save(pendingClaim[0]);
             }
 
             return saved;
@@ -168,23 +182,24 @@ public class OrderServiceImpl implements OrderService {
             return new OrderResult(savedOrder, null);
         }
 
-        // Only the gateway call maps to PaymentGatewayException — a DB failure after a
-        // successful initiate must surface as itself, not be mislabeled "gateway down".
-        final PaymentReference ref;
-        try {
-            ref = paymentGateway.initiate(savedOrder.id(), savedOrder.totalAmount());
-        } catch (Exception e) {
-            throw new PaymentGatewayException(savedOrder.id(), e.getMessage());
+        if (pendingClaim[0] == null) {
+            // H1.3b: an idempotent retry of an already-created order (same key resolved
+            // to an existing order, or this thread lost the concurrent-insert race).
+            // Never re-enter the gateway for an order that may already have a payment
+            // attempt in flight — a PENDING claim with no transactionId is an unknown
+            // external state, not a green light for a second gateway session. Surface
+            // whatever payment attempt already exists (possibly none yet, possibly no
+            // paymentUrl yet) rather than initiating a second one.
+            Optional<Payment> existingPayment = paymentRepository.findLatestByOrderId(savedOrder.id());
+            cartService.clearCart(userId, cartId != null ? draftProjectId[0] : null);
+            return new OrderResult(savedOrder, existingPayment.map(Payment::paymentUrl).orElse(null));
         }
 
-        paymentRepository.save(new Payment(
-                UUID.randomUUID(),
-                savedOrder.id(),
-                ref.transactionId(),
-                savedOrder.totalAmount(),
-                com.builddash.backend.domain.enums.PaymentStatus.PENDING,
-                ref.paymentUrl()
-        ));
+        // Only the gateway call maps to PaymentGatewayException — a DB failure after a
+        // successful initiate must surface as itself, not be mislabeled "gateway down".
+        // Shared with retryPayment/initiatePaymentForApprovedOrder: gateway outside any
+        // transaction, then a short transaction records the outcome.
+        PaymentReference ref = completePaymentInitiation(pendingClaim[0]);
 
         cartService.clearCart(userId, cartId != null ? draftProjectId[0] : null);
 

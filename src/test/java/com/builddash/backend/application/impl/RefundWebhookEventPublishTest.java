@@ -109,7 +109,8 @@ class RefundWebhookEventPublishTest {
         Refund refund = pendingRefund(refundId, returnId, "ref_gw_1", RefundStatus.PENDING);
         when(refundRepository.findByGatewayRefundId("ref_gw_1")).thenReturn(Optional.of(refund));
         when(refundRepository.save(any(Refund.class))).thenAnswer(inv -> inv.getArgument(0));
-        lenient().when(returnRepository.findById(returnId)).thenReturn(Optional.of(returnIn(returnId, ReturnStatus.REFUND_INITIATED)));
+        when(returnRepository.findByIdForUpdate(returnId)).thenReturn(Optional.of(returnIn(returnId, ReturnStatus.REFUND_INITIATED)));
+        when(refundRepository.findByIdForUpdate(refundId)).thenReturn(Optional.of(refund));
         lenient().when(returnRepository.save(any(Return.class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(gstNoteRepository.findByReturnId(returnId)).thenReturn(Optional.empty());
         lenient().when(gstSequenceService.nextNumber(GstSequenceType.CREDIT_NOTE)).thenReturn("CN-000042");
@@ -134,6 +135,8 @@ class RefundWebhookEventPublishTest {
         Refund refund = pendingRefund(UUID.randomUUID(), returnId, "ref_gw_1", RefundStatus.PENDING);
         when(refundRepository.findByGatewayRefundId("ref_gw_1")).thenReturn(Optional.of(refund));
         when(refundRepository.save(any(Refund.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(returnRepository.findByIdForUpdate(returnId)).thenReturn(Optional.of(returnIn(returnId, ReturnStatus.QC)));
+        when(refundRepository.findByIdForUpdate(refund.id())).thenReturn(Optional.of(refund));
 
         webhookService.handleWebhook(returnId, "ref_gw_1", "FAILED", sign(returnId, "ref_gw_1", "FAILED"));
 
@@ -145,6 +148,8 @@ class RefundWebhookEventPublishTest {
         UUID returnId = UUID.randomUUID();
         Refund refund = pendingRefund(UUID.randomUUID(), returnId, "ref_gw_1", RefundStatus.PENDING);
         when(refundRepository.findByGatewayRefundId("ref_gw_1")).thenReturn(Optional.of(refund));
+        when(returnRepository.findByIdForUpdate(returnId)).thenReturn(Optional.of(returnIn(returnId, ReturnStatus.QC)));
+        when(refundRepository.findByIdForUpdate(refund.id())).thenReturn(Optional.of(refund));
 
         webhookService.handleWebhook(returnId, "ref_gw_1", "WEIRD", sign(returnId, "ref_gw_1", "WEIRD"));
 
@@ -156,6 +161,8 @@ class RefundWebhookEventPublishTest {
         UUID returnId = UUID.randomUUID();
         Refund refund = pendingRefund(UUID.randomUUID(), returnId, "ref_gw_1", RefundStatus.SUCCESS);
         when(refundRepository.findByGatewayRefundId("ref_gw_1")).thenReturn(Optional.of(refund));
+        when(returnRepository.findByIdForUpdate(returnId)).thenReturn(Optional.of(returnIn(returnId, ReturnStatus.REFUND_COMPLETED)));
+        when(refundRepository.findByIdForUpdate(refund.id())).thenReturn(Optional.of(refund));
 
         webhookService.handleWebhook(returnId, "ref_gw_1", "SUCCESS", sign(returnId, "ref_gw_1", "SUCCESS"));
 

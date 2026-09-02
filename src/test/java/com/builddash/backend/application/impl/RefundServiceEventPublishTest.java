@@ -94,9 +94,15 @@ class RefundServiceEventPublishTest {
         when(refundRepository.findAllByReturnId(returnId)).thenReturn(List.of());
         when(paymentRepository.findLatestByOrderId(orderId)).thenReturn(Optional.of(
                 new Payment(UUID.randomUUID(), orderId, "tx_gateway_123", new BigDecimal("500.00"), PaymentStatus.SUCCESS, "url")));
-        when(paymentGateway.refund(eq("tx_gateway_123"), eq(new BigDecimal("250.00"))))
+        when(paymentGateway.refund(eq("tx_gateway_123"), eq(new BigDecimal("250.00")), eq(returnId)))
                 .thenReturn(new RefundReference("ref_gw_999", "PENDING"));
-        when(refundRepository.save(any(Refund.class))).thenAnswer(inv -> inv.getArgument(0));
+        java.util.concurrent.atomic.AtomicReference<Refund> lastSaved = new java.util.concurrent.atomic.AtomicReference<>();
+        when(refundRepository.save(any(Refund.class))).thenAnswer(inv -> {
+            Refund saved = inv.getArgument(0);
+            lastSaved.set(saved);
+            return saved;
+        });
+        when(refundRepository.findByIdForUpdate(any(UUID.class))).thenAnswer(inv -> Optional.ofNullable(lastSaved.get()));
 
         refundService.initiateRefund(returnId);
 

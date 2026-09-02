@@ -2,6 +2,7 @@ package com.builddash.backend.infra.gateway;
 
 import com.builddash.backend.application.event.PaymentWebhookEvent;
 import com.builddash.backend.application.event.RefundWebhookEvent;
+import com.builddash.backend.domain.exception.AmbiguousGatewayException;
 import com.builddash.backend.domain.model.PaymentReference;
 import com.builddash.backend.domain.model.RefundReference;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,7 +59,8 @@ class DummyPaymentGatewayAdapterTest {
 
     @Test
     void refund_normalAmount_returnsRefundReferenceAndPublishesSuccessEvent() {
-        RefundReference ref = adapter.refund("tx_123", new BigDecimal("50.00"));
+        UUID returnId = UUID.randomUUID();
+        RefundReference ref = adapter.refund("tx_123", new BigDecimal("50.00"), returnId);
 
         assertThat(ref).isNotNull();
         assertThat(ref.gatewayRefundId()).startsWith("dummy_ref_");
@@ -68,11 +70,14 @@ class DummyPaymentGatewayAdapterTest {
         verify(eventPublisher, timeout(3000)).publishEvent(captor.capture());
         assertThat(captor.getValue().gatewayRefundId()).isEqualTo(ref.gatewayRefundId());
         assertThat(captor.getValue().status()).isEqualTo("SUCCESS");
+        // H1.4: returnId is echoed so a lost gatewayRefundId can still be reconciled by return.
+        assertThat(captor.getValue().returnId()).isEqualTo(returnId);
     }
 
     @Test
     void refund_amount9998_publishesFailedEvent() {
-        RefundReference ref = adapter.refund("tx_123", new BigDecimal("9998"));
+        UUID returnId = UUID.randomUUID();
+        RefundReference ref = adapter.refund("tx_123", new BigDecimal("9998"), returnId);
 
         assertThat(ref).isNotNull();
         assertThat(ref.gatewayRefundId()).startsWith("dummy_ref_");
@@ -81,12 +86,13 @@ class DummyPaymentGatewayAdapterTest {
         verify(eventPublisher, timeout(3000)).publishEvent(captor.capture());
         assertThat(captor.getValue().gatewayRefundId()).isEqualTo(ref.gatewayRefundId());
         assertThat(captor.getValue().status()).isEqualTo("FAILED");
+        assertThat(captor.getValue().returnId()).isEqualTo(returnId);
     }
 
     @Test
-    void refund_amount9999_throwsSimulatedTimeout() {
-        assertThatThrownBy(() -> adapter.refund("tx_123", new BigDecimal("9999")))
-                .isInstanceOf(RuntimeException.class)
+    void refund_amount9999_throwsAmbiguousGatewayException() {
+        assertThatThrownBy(() -> adapter.refund("tx_123", new BigDecimal("9999"), UUID.randomUUID()))
+                .isInstanceOf(AmbiguousGatewayException.class)
                 .hasMessageContaining("Simulated gateway connection timeout");
     }
 }
