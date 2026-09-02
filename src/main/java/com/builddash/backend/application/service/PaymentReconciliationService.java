@@ -4,10 +4,18 @@ import java.util.UUID;
 
 public interface PaymentReconciliationService {
 
+    enum ReconciliationOutcome {
+        CONFIRMED,
+        CANCEL_ELIGIBLE,
+        AMBIGUOUS_HOLD
+    }
+
     /**
      * Reconciles a stale PENDING payment with the upstream gateway.
-     * Returns true if the order was confirmed via gateway reconciliation;
-     * returns false if payment failed, is absent, or remains ambiguous.
+     * Returns:
+     * - CONFIRMED if gateway captured payment and order was confirmed;
+     * - CANCEL_ELIGIBLE if gateway confirms payment failed/aborted;
+     * - AMBIGUOUS_HOLD if gateway response is ambiguous, pending, or timed out (preserves order without cancellation).
      */
-    boolean reconcileStalePendingPayment(UUID orderId);
+    ReconciliationOutcome reconcileStalePendingPayment(UUID orderId);
 }

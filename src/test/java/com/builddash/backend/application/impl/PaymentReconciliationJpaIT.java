@@ -83,6 +83,9 @@ class PaymentReconciliationJpaIT extends AbstractIntegrationTest {
     private PaymentWebhookConfig webhookConfig;
 
     @Autowired
+    private com.builddash.backend.infra.gateway.DummyPaymentGatewayAdapter dummyGateway;
+
+    @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     private UUID userId;
@@ -209,5 +212,97 @@ class PaymentReconciliationJpaIT extends AbstractIntegrationTest {
         List<PaymentReconciliation> recs = reconciliationRepository.findByStatus(PaymentReconciliationStatus.FLAGGED_MANUAL);
         long countForOrder = recs.stream().filter(r -> r.orderId().equals(orderId)).count();
         assertThat(countForOrder).isEqualTo(1);
+    }
+
+    @Test
+    void crashWindow_nullTransactionId_reconciledToConfirmedWhenGatewayRecordsSuccess() {
+        UUID orderId = UUID.randomUUID();
+        DeliverySlotLock lock = deliverySlotService.acquireLock(userId, slotId, LocalDate.now(), Duration.ofMinutes(15));
+        jdbcTemplate.update("UPDATE delivery_slot_locks SET expires_at = now() - interval '1 minute' WHERE id = ?", lock.id());
+
+        orderRepository.save(new Order(
+                orderId, userId, addressId, slotId,
+                LocalDate.now(), new BigDecimal("1000.00"), OrderStatus.PAYMENT_PENDING,
+                lock.id(), Instant.now().minus(Duration.ofMinutes(20)), null, null, List.of()
+        ));
+
+        UUID paymentId = UUID.randomUUID();
+        paymentRepository.save(new Payment(
+                paymentId, orderId, null, new BigDecimal("1000.00"),
+                PaymentStatus.PENDING, null
+        ));
+
+        // Simulate gateway provider recognizing the orderId as SUCCESS
+        dummyGateway.setSimulatedOrderStatus(orderId, PaymentStatus.SUCCESS);
+
+        sweepService.sweepStaleOrders();
+
+        Order order = orderRepository.findById(orderId).orElseThrow();
+        assertThat(order.status()).isEqualTo(OrderStatus.CONFIRMED);
+
+        Payment payment = paymentRepository.findLatestByOrderId(orderId).orElseThrow();
+        assertThat(payment.status()).isEqualTo(PaymentStatus.SUCCESS);
+        assertThat(invoiceRepository.findByOrderId(orderId)).isPresent();
+    }
+
+    @Test
+    void crashWindow_nullTransactionId_cancelledWhenGatewayRecordsFailed() {
+        UUID orderId = UUID.randomUUID();
+        DeliverySlotLock lock = deliverySlotService.acquireLock(userId, slotId, LocalDate.now(), Duration.ofMinutes(15));
+        jdbcTemplate.update("UPDATE delivery_slot_locks SET expires_at = now() - interval '1 minute' WHERE id = ?", lock.id());
+
+        orderRepository.save(new Order(
+                orderId, userId, addressId, slotId,
+                LocalDate.now(), new BigDecimal("1000.00"), OrderStatus.PAYMENT_PENDING,
+                lock.id(), Instant.now().minus(Duration.ofMinutes(20)), null, null, List.of()
+        ));
+
+        UUID paymentId = UUID.randomUUID();
+        paymentRepository.save(new Payment(
+                paymentId, orderId, null, new BigDecimal("1000.00"),
+                PaymentStatus.PENDING, null
+        ));
+
+        // Simulate gateway provider recognizing order as FAILED
+        dummyGateway.setSimulatedOrderStatus(orderId, PaymentStatus.FAILED);
+
+        sweepService.sweepStaleOrders();
+
+        Order order = orderRepository.findById(orderId).orElseThrow();
+        assertThat(order.status()).isEqualTo(OrderStatus.CANCELLED);
+
+        Payment payment = paymentRepository.findLatestByOrderId(orderId).orElseThrow();
+        assertThat(payment.status()).isEqualTo(PaymentStatus.FAILED);
+    }
+
+    @Test
+    void crashWindow_nullTransactionId_ambiguousGatewayResponse_leavesPendingWithoutBlindRetryOrCancel() {
+        UUID orderId = UUID.randomUUID();
+        DeliverySlotLock lock = deliverySlotService.acquireLock(userId, slotId, LocalDate.now(), Duration.ofMinutes(15));
+        jdbcTemplate.update("UPDATE delivery_slot_locks SET expires_at = now() - interval '1 minute' WHERE id = ?", lock.id());
+
+        orderRepository.save(new Order(
+                orderId, userId, addressId, slotId,
+                LocalDate.now(), new BigDecimal("1000.00"), OrderStatus.PAYMENT_PENDING,
+                lock.id(), Instant.now().minus(Duration.ofMinutes(20)), null, null, List.of()
+        ));
+
+        UUID paymentId = UUID.randomUUID();
+        paymentRepository.save(new Payment(
+                paymentId, orderId, null, new BigDecimal("1000.00"),
+                PaymentStatus.PENDING, null
+        ));
+
+        // Gateway has no record of this order (ambiguous/unknown session)
+        dummyGateway.setSimulatedOrderStatus(orderId, null);
+
+        sweepService.sweepStaleOrders();
+
+        // Order remains PAYMENT_PENDING — never cancelled or double-charged blindly
+        Order order = orderRepository.findById(orderId).orElseThrow();
+        assertThat(order.status()).isEqualTo(OrderStatus.PAYMENT_PENDING);
+
+        Payment payment = paymentRepository.findLatestByOrderId(orderId).orElseThrow();
+        assertThat(payment.status()).isEqualTo(PaymentStatus.PENDING);
     }
 }

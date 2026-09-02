@@ -25,6 +25,8 @@ public class DummyPaymentGatewayAdapter implements PaymentGateway {
 
     private final ApplicationEventPublisher eventPublisher;
 
+    private final java.util.Map<UUID, PaymentStatus> simulatedOrderStatuses = new java.util.concurrent.ConcurrentHashMap<>();
+
     @Override
     public PaymentReference initiate(UUID orderId, BigDecimal amount) {
         if (amount != null && amount.compareTo(new BigDecimal("9999")) == 0) {
@@ -33,6 +35,7 @@ public class DummyPaymentGatewayAdapter implements PaymentGateway {
 
         String txId = "dummy_tx_" + UUID.randomUUID();
         String url = "https://dummy.gateway.local/pay/" + txId;
+        simulatedOrderStatuses.put(orderId, PaymentStatus.SUCCESS);
 
         // Fire async simulated webhook after a short delay
         CompletableFuture.delayedExecutor(2, TimeUnit.SECONDS).execute(() -> {
@@ -41,6 +44,14 @@ public class DummyPaymentGatewayAdapter implements PaymentGateway {
         });
 
         return new PaymentReference(txId, url);
+    }
+
+    public void setSimulatedOrderStatus(UUID orderId, PaymentStatus status) {
+        if (status == null) {
+            simulatedOrderStatuses.remove(orderId);
+        } else {
+            simulatedOrderStatuses.put(orderId, status);
+        }
     }
 
     @Override
@@ -65,15 +76,21 @@ public class DummyPaymentGatewayAdapter implements PaymentGateway {
 
     @Override
     public Optional<PaymentStatus> queryStatus(String transactionId, UUID orderId) {
-        if (transactionId != null && transactionId.contains("fail")) {
-            return Optional.of(PaymentStatus.FAILED);
+        if (transactionId != null) {
+            if (transactionId.contains("fail")) {
+                return Optional.of(PaymentStatus.FAILED);
+            }
+            if (transactionId.contains("timeout")) {
+                return Optional.empty();
+            }
+            if (transactionId.contains("pending")) {
+                return Optional.of(PaymentStatus.PENDING);
+            }
+            return Optional.of(PaymentStatus.SUCCESS);
         }
-        if (transactionId != null && transactionId.contains("timeout")) {
-            return Optional.empty();
+        if (orderId != null && simulatedOrderStatuses.containsKey(orderId)) {
+            return Optional.ofNullable(simulatedOrderStatuses.get(orderId));
         }
-        if (transactionId != null && transactionId.contains("pending")) {
-            return Optional.of(PaymentStatus.PENDING);
-        }
-        return Optional.of(PaymentStatus.SUCCESS);
+        return Optional.empty();
     }
 }

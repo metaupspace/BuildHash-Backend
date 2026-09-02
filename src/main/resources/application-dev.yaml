@@ -18,4 +18,10 @@ management:
     health:
       show-details: always
 
+springdoc:
+  swagger-ui:
+    enabled: true
+  api-docs:
+    enabled: true
+
 

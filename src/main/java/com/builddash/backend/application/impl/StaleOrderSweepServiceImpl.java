@@ -48,10 +48,14 @@ public class StaleOrderSweepServiceImpl implements StaleOrderSweepService {
 
         for (UUID orderId : staleOrderIds) {
             try {
-                // H9.1: Reconcile in-flight payment with gateway before cancelling
-                boolean reconciled = paymentReconciliationService.reconcileStalePendingPayment(orderId);
-                if (reconciled) {
+                // H10.2: Reconcile in-flight payment with gateway before cancelling
+                PaymentReconciliationService.ReconciliationOutcome outcome =
+                        paymentReconciliationService.reconcileStalePendingPayment(orderId);
+                if (outcome == PaymentReconciliationService.ReconciliationOutcome.CONFIRMED) {
                     log.info("Stale order {} was reconciled to CONFIRMED via gateway, skipping cancellation", orderId);
+                    continue;
+                } else if (outcome == PaymentReconciliationService.ReconciliationOutcome.AMBIGUOUS_HOLD) {
+                    log.info("Stale order {} has ambiguous or pending gateway status, holding without cancellation", orderId);
                     continue;
                 }
                 self.sweepOrder(orderId);

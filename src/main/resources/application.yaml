@@ -174,10 +174,10 @@ management:
 
 springdoc:
   swagger-ui:
-    enabled: ${SWAGGER_ENABLED:true}
+    enabled: ${SWAGGER_ENABLED:false}
     path: /swagger-ui.html
   api-docs:
-    enabled: ${SWAGGER_ENABLED:true}
+    enabled: ${SWAGGER_ENABLED:false}
 
 
 #// jpa hibernate jdbc

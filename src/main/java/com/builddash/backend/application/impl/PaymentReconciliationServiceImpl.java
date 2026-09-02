@@ -38,29 +38,20 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
     private final TransactionTemplate transactionTemplate;
 
     @Override
-    public boolean reconcileStalePendingPayment(UUID orderId) {
+    public ReconciliationOutcome reconcileStalePendingPayment(UUID orderId) {
         Optional<Payment> paymentOpt = paymentRepository.findLatestByOrderId(orderId);
         if (paymentOpt.isEmpty()) {
-            return false;
+            return ReconciliationOutcome.CANCEL_ELIGIBLE;
         }
 
         Payment payment = paymentOpt.get();
         if (payment.status() != PaymentStatus.PENDING) {
-            return false;
+            return payment.status() == PaymentStatus.SUCCESS
+                    ? ReconciliationOutcome.CONFIRMED
+                    : ReconciliationOutcome.CANCEL_ELIGIBLE;
         }
 
         String transactionId = payment.transactionId();
-        if (transactionId == null || transactionId.isBlank()) {
-            // Uninitiated intent that never reached gateway; mark FAILED
-            transactionTemplate.executeWithoutResult(status -> {
-                paymentRepository.findLatestByOrderId(orderId).ifPresent(p -> {
-                    if (p.status() == PaymentStatus.PENDING && p.transactionId() == null) {
-                        paymentRepository.save(p.markFailed(null));
-                    }
-                });
-            });
-            return false;
-        }
 
         // Query upstream payment gateway outside database transaction
         Optional<PaymentStatus> gatewayStatus;
@@ -68,12 +59,13 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
             gatewayStatus = paymentGateway.queryStatus(transactionId, orderId);
         } catch (Exception e) {
             log.warn("Failed to query payment gateway status for order {} tx {}: {}", orderId, transactionId, e.getMessage());
-            return false;
+            return ReconciliationOutcome.AMBIGUOUS_HOLD;
         }
 
         if (gatewayStatus.isEmpty()) {
-            log.info("Gateway status for order {} is ambiguous, leaving pending", orderId);
-            return false;
+            log.info("Gateway status for order {} (tx {}) is ambiguous/unknown, leaving pending on hold",
+                    orderId, transactionId);
+            return ReconciliationOutcome.AMBIGUOUS_HOLD;
         }
 
         PaymentStatus resolvedStatus = gatewayStatus.get();
@@ -86,7 +78,8 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
                 if (order.status() == OrderStatus.PAYMENT_PENDING) {
                     Order confirmed = order.confirm();
                     orderRepository.save(confirmed);
-                    paymentRepository.save(payment.markSuccess(transactionId));
+                    String effectiveTxId = transactionId != null ? transactionId : payment.transactionId();
+                    paymentRepository.save(payment.markSuccess(effectiveTxId));
 
                     if (invoiceRepository.findByOrderId(orderId).isEmpty()) {
                         invoiceRepository.save(new Invoice(
@@ -104,15 +97,18 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
                     paymentRepository.save(payment.markSuccess(transactionId));
                 }
             });
-            return confirmedHolder[0];
+            return confirmedHolder[0] ? ReconciliationOutcome.CONFIRMED : ReconciliationOutcome.AMBIGUOUS_HOLD;
         } else if (resolvedStatus == PaymentStatus.FAILED) {
             transactionTemplate.executeWithoutResult(status -> {
                 paymentRepository.save(payment.markFailed(transactionId));
             });
             log.info("Reconciled payment for order {} to FAILED based on gateway status", orderId);
-            return false;
+            return ReconciliationOutcome.CANCEL_ELIGIBLE;
+        } else if (resolvedStatus == PaymentStatus.PENDING) {
+            log.info("Payment for order {} is still pending on gateway, holding", orderId);
+            return ReconciliationOutcome.AMBIGUOUS_HOLD;
         }
 
-        return false;
+        return ReconciliationOutcome.AMBIGUOUS_HOLD;
     }
 }
