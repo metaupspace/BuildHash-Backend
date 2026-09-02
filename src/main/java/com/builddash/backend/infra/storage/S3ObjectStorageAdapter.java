@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -77,10 +78,16 @@ public class S3ObjectStorageAdapter implements ObjectStorage {
                 .pathStyleAccessEnabled(pathStyleAccess)
                 .build();
 
+        ClientOverrideConfiguration overrideConfiguration = ClientOverrideConfiguration.builder()
+                .apiCallAttemptTimeout(Duration.ofSeconds(15))
+                .apiCallTimeout(Duration.ofSeconds(30))
+                .build();
+
         S3ClientBuilder clientBuilder = S3Client.builder()
                 .region(awsRegion)
                 .credentialsProvider(credentialsProvider)
-                .serviceConfiguration(s3Configuration);
+                .serviceConfiguration(s3Configuration)
+                .overrideConfiguration(overrideConfiguration);
 
         S3Presigner.Builder presignerBuilder = S3Presigner.builder()
                 .region(awsRegion)

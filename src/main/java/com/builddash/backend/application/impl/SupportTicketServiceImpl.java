@@ -43,7 +43,12 @@ public class SupportTicketServiceImpl implements SupportTicketService {
 
     @Override
     public List<SupportTicket> listOwnTickets(UUID userId) {
-        return ticketRepository.findByUserId(userId);
+        return listOwnTickets(userId, 0, 20);
+    }
+
+    @Override
+    public List<SupportTicket> listOwnTickets(UUID userId, int page, int size) {
+        return ticketRepository.findByUserId(userId, page, size);
     }
 
     @Override

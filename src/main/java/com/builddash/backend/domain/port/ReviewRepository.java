@@ -12,6 +12,8 @@ public interface ReviewRepository {
 
     List<Review> findByProductIdAndStatus(UUID productId, ModerationStatus status);
 
+    List<Review> findByProductIdAndStatus(UUID productId, ModerationStatus status, int page, int size);
+
     /** DPDP export: every review the user authored, regardless of moderation status. */
     List<Review> findAllByUserId(UUID userId);
 }

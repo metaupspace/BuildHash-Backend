@@ -122,7 +122,7 @@ class OrderControllerTest {
         Order order = new Order(orderId, userId, UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.CONFIRMED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of());
         OrderResponse response = new OrderResponse(orderId, "CONFIRMED", new BigDecimal("100.00"), null, java.time.Instant.now(), null, null, java.util.List.of());
 
-        when(orderService.listOrders(userId)).thenReturn(java.util.List.of(order));
+        when(orderService.listOrders(userId, 0, 20)).thenReturn(java.util.List.of(order));
         when(orderMapper.toResponse(order)).thenReturn(response);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/orders"))

@@ -45,8 +45,11 @@ public class QnaController {
 
     @GetMapping("/products/{id}/questions")
     @Operation(summary = "List a product's questions with their answers")
-    public List<QuestionResponse> listQuestions(@PathVariable String id) {
-        return qnaMapper.toResponseList(qnaReader.listThreads(parseProductId(id)));
+    public List<QuestionResponse> listQuestions(
+            @PathVariable String id,
+            @org.springframework.web.bind.annotation.RequestParam(name = "page", defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(name = "size", defaultValue = "20") int size) {
+        return qnaMapper.toResponseList(qnaReader.listThreads(parseProductId(id), page, size));
     }
 
     @PostMapping("/products/{id}/questions")

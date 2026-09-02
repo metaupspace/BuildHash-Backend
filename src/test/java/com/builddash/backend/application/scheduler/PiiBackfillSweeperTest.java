@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -59,10 +60,11 @@ class PiiBackfillSweeperTest {
         sweeper.sweep();
 
         verify(userRepository).save(legacy);
+        assertThat(sweeper.isCompleted()).isTrue();
     }
 
     @Test
-    void noLegacyRows_nothingSavedAnywhere() {
+    void noLegacyRows_completesLatchAndSkipsFutureRuns() {
         when(jdbcTemplate.queryForList(anyString(), eq(UUID.class)))
                 .thenReturn(List.of()).thenReturn(List.of()).thenReturn(List.of());
 
@@ -71,6 +73,11 @@ class PiiBackfillSweeperTest {
         verify(userRepository, never()).save(any());
         verify(addressRepository, never()).save(any());
         verify(notificationLogRepository, never()).save(any());
+        assertThat(sweeper.isCompleted()).isTrue();
+
+        // Second run when latched skips DB calls entirely
+        sweeper.sweep();
+        verify(jdbcTemplate, org.mockito.Mockito.times(3)).queryForList(anyString(), eq(UUID.class));
     }
 
     @Test

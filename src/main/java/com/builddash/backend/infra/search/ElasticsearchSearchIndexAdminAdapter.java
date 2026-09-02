@@ -72,6 +72,32 @@ public class ElasticsearchSearchIndexAdminAdapter implements SearchIndexAdmin {
     }
 
     @Override
+    public void indexDocumentsBulk(String indexName, java.util.List<ProductSyncPayload> payloads) {
+        if (payloads == null || payloads.isEmpty()) {
+            return;
+        }
+        try {
+            client.bulk(b -> {
+                b.index(indexName);
+                for (ProductSyncPayload payload : payloads) {
+                    b.operations(op -> op
+                            .index(idx -> idx
+                                    .index(indexName)
+                                    .id(payload.productId().toString())
+                                    .document(payload)
+                                    .versionType(VersionType.External)
+                                    .version(payload.updatedAtEpochMillis())
+                            )
+                    );
+                }
+                return b;
+            });
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to bulk index " + payloads.size() + " products into " + indexName, e);
+        }
+    }
+
+    @Override
     public void swapAlias(String alias, String newIndexName) {
         String currentIndex = resolveAlias(alias);
         try {

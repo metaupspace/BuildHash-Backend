@@ -25,7 +25,15 @@ class ReviewRepositoryAdapter implements ReviewRepository {
 
     @Override
     public List<Review> findByProductIdAndStatus(UUID productId, ModerationStatus status) {
-        return jpaRepository.findByProductIdAndStatus(productId, status).stream()
+        return findByProductIdAndStatus(productId, status, 0, 20);
+    }
+
+    @Override
+    public List<Review> findByProductIdAndStatus(UUID productId, ModerationStatus status, int page, int size) {
+        int boundedPage = Math.max(page, 0);
+        int boundedSize = Math.min(Math.max(size, 1), 50);
+        return jpaRepository.findByProductIdAndStatus(productId, status, org.springframework.data.domain.PageRequest.of(boundedPage, boundedSize))
+                .stream()
                 .map(ReviewMapper::toDomain)
                 .toList();
     }

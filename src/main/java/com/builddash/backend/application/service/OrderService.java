@@ -25,5 +25,6 @@ public interface OrderService {
     OrderResult initiatePaymentForApprovedOrder(UUID orderId);
     Order getOrder(UUID userId, UUID orderId);
     List<Order> listOrders(UUID userId);
+    List<Order> listOrders(UUID userId, int page, int size);
     ReorderResult reorder(UUID userId, UUID orderId);
 }

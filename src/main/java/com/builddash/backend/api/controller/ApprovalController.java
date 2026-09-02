@@ -34,9 +34,12 @@ public class ApprovalController {
 
     @GetMapping
     @Operation(summary = "List the caller's company approval requests (APPROVAL_VIEW, site-scoped)")
-    public List<ApprovalResponse> list(@RequestParam("companyId") UUID companyId,
-                                       @AuthenticationPrincipal AuthenticatedUser user) {
-        return approvalService.list(user.userId(), companyId).stream()
+    public List<ApprovalResponse> list(
+            @RequestParam("companyId") UUID companyId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @AuthenticationPrincipal AuthenticatedUser user) {
+        return approvalService.list(user.userId(), companyId, page, size).stream()
                 .map(ApprovalResponse::from)
                 .toList();
     }

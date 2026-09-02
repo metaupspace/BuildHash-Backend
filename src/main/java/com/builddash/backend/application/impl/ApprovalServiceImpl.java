@@ -81,6 +81,16 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ApprovalRequest> list(UUID userId, UUID companyId, int page, int size) {
+        b2bAuthorizer.authorize(userId, companyId, CompanyPermission.APPROVAL_VIEW, null, false);
+        CompanyMember member = requireMember(userId, companyId);
+        List<UUID> assignedSites = siteAssignmentRepository.findSiteIdsByMemberId(member.id());
+        return approvalRequestRepository.findByCompanyVisibleInSites(
+                companyId, assignedSites.isEmpty() ? null : assignedSites, page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ApprovalDetail get(UUID userId, UUID approvalId) {
         ApprovalRequest request = load(approvalId);
         b2bAuthorizer.authorize(userId, request.companyId(), CompanyPermission.APPROVAL_VIEW,

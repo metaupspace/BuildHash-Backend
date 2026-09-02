@@ -29,14 +29,45 @@ public class PiiBackfillSweeper {
     private final AddressRepository addressRepository;
     private final NotificationLogRepository notificationLogRepository;
 
+    private static final int BATCH_SIZE = 100;
+    private static final int MAX_BATCHES_PER_SWEEP = 50;
+
+    private volatile boolean completed = false;
+
     @Scheduled(fixedDelayString = "${security.pii.backfill-interval-ms:60000}")
     public void sweep() {
-        backfillUsers();
-        backfillAddresses();
-        backfillNotificationLogs();
+        if (completed) {
+            return;
+        }
+
+        int batches = 0;
+        while (batches++ < MAX_BATCHES_PER_SWEEP) {
+            int users = backfillUsers();
+            int addresses = backfillAddresses();
+            int notifications = backfillNotificationLogs();
+
+            if (users == 0 && addresses == 0 && notifications == 0) {
+                completed = true;
+                log.info("PII backfill sweep completed: all rows are encrypted, latching until next restart");
+                break;
+            }
+            if (users < BATCH_SIZE && addresses < BATCH_SIZE && notifications < BATCH_SIZE) {
+                completed = true;
+                log.info("PII backfill sweep completed: all rows are encrypted, latching until next restart");
+                break;
+            }
+        }
     }
 
-    private void backfillUsers() {
+    public boolean isCompleted() {
+        return completed;
+    }
+
+    public void reset() {
+        completed = false;
+    }
+
+    private int backfillUsers() {
         List<UUID> ids = jdbcTemplate.queryForList(
                 "SELECT id FROM users WHERE " +
                         "(phone IS NOT NULL AND phone NOT LIKE 'v1:%') OR " +
@@ -45,7 +76,8 @@ public class PiiBackfillSweeper {
                         "(name IS NOT NULL AND name NOT LIKE 'v1:%') OR " +
                         "(business_name IS NOT NULL AND business_name NOT LIKE 'v1:%') OR " +
                         "(gst_number IS NOT NULL AND gst_number NOT LIKE 'v1:%') OR " +
-                        "(phone_idx IS NULL AND phone IS NOT NULL)",
+                        "(phone_idx IS NULL AND phone IS NOT NULL) " +
+                        "LIMIT 100",
                 UUID.class);
         for (UUID id : ids) {
             try {
@@ -57,15 +89,17 @@ public class PiiBackfillSweeper {
         if (!ids.isEmpty()) {
             log.info("PII backfill: re-encrypted {} user rows", ids.size());
         }
+        return ids.size();
     }
 
-    private void backfillAddresses() {
+    private int backfillAddresses() {
         List<UUID> ids = jdbcTemplate.queryForList(
                 "SELECT id FROM addresses WHERE " +
                         "(line1 IS NOT NULL AND line1 NOT LIKE 'v1:%') OR " +
                         "(line2 IS NOT NULL AND line2 NOT LIKE 'v1:%') OR " +
                         "(lat IS NOT NULL AND lat NOT LIKE 'v1:%') OR " +
-                        "(lng IS NOT NULL AND lng NOT LIKE 'v1:%')",
+                        "(lng IS NOT NULL AND lng NOT LIKE 'v1:%') " +
+                        "LIMIT 100",
                 UUID.class);
         for (UUID id : ids) {
             try {
@@ -77,11 +111,13 @@ public class PiiBackfillSweeper {
         if (!ids.isEmpty()) {
             log.info("PII backfill: re-encrypted {} address rows", ids.size());
         }
+        return ids.size();
     }
 
-    private void backfillNotificationLogs() {
+    private int backfillNotificationLogs() {
         List<UUID> ids = jdbcTemplate.queryForList(
-                "SELECT id FROM notification_logs WHERE recipient_phone IS NOT NULL AND recipient_phone NOT LIKE 'v1:%'",
+                "SELECT id FROM notification_logs WHERE recipient_phone IS NOT NULL AND recipient_phone NOT LIKE 'v1:%' " +
+                        "LIMIT 100",
                 UUID.class);
         for (UUID id : ids) {
             try {
@@ -93,5 +129,6 @@ public class PiiBackfillSweeper {
         if (!ids.isEmpty()) {
             log.info("PII backfill: re-encrypted {} notification log rows", ids.size());
         }
+        return ids.size();
     }
 }

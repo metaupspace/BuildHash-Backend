@@ -12,4 +12,6 @@ import java.util.UUID;
 public interface LoginHistoryReader {
 
     List<LoginEvent> list(UUID userId);
+
+    List<LoginEvent> list(UUID userId, int page, int size);
 }

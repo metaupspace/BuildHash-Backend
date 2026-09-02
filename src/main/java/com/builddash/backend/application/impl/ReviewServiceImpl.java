@@ -24,7 +24,12 @@ public class ReviewServiceImpl implements ReviewReader, ReviewWriter {
 
     @Override
     public List<Review> listApproved(UUID productId) {
-        return reviewRepository.findByProductIdAndStatus(productId, ModerationStatus.APPROVED);
+        return listApproved(productId, 0, 20);
+    }
+
+    @Override
+    public List<Review> listApproved(UUID productId, int page, int size) {
+        return reviewRepository.findByProductIdAndStatus(productId, ModerationStatus.APPROVED, page, size);
     }
 
     /**

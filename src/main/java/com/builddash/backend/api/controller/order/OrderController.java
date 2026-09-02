@@ -86,8 +86,11 @@ public class OrderController {
 
     @GetMapping
     @Operation(summary = "List customer's orders")
-    public List<OrderResponse> listOrders(@AuthenticationPrincipal AuthenticatedUser user) {
-        return orderService.listOrders(user.userId()).stream()
+    public List<OrderResponse> listOrders(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @org.springframework.web.bind.annotation.RequestParam(name = "page", defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(name = "size", defaultValue = "20") int size) {
+        return orderService.listOrders(user.userId(), page, size).stream()
                 .map(orderMapper::toResponse)
                 .toList();
     }

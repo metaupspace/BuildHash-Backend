@@ -19,6 +19,8 @@ public interface SupportTicketService {
 
     List<SupportTicket> listOwnTickets(UUID userId);
 
+    List<SupportTicket> listOwnTickets(UUID userId, int page, int size);
+
     SupportTicket getTicket(UUID userId, List<String> roles, UUID ticketId);
 
     List<SupportTicketMessage> listMessages(UUID userId, List<String> roles, UUID ticketId);

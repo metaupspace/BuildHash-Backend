@@ -26,7 +26,14 @@ class LoginEventRepositoryAdapter implements LoginEventRepository {
 
     @Override
     public List<LoginEvent> findByUserIdOrderByCreatedAtDesc(UUID userId) {
-        return jpaRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+        return findByUserIdOrderByCreatedAtDesc(userId, 0, 20);
+    }
+
+    @Override
+    public List<LoginEvent> findByUserIdOrderByCreatedAtDesc(UUID userId, int page, int size) {
+        int boundedPage = Math.max(page, 0);
+        int boundedSize = Math.min(Math.max(size, 1), 50);
+        return jpaRepository.findByUserIdOrderByCreatedAtDesc(userId, org.springframework.data.domain.PageRequest.of(boundedPage, boundedSize)).stream()
                 .map(LoginEventMapper::toDomain)
                 .toList();
     }

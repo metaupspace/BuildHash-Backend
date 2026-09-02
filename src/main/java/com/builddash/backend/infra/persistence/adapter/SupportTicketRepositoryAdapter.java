@@ -1,7 +1,5 @@
 package com.builddash.backend.infra.persistence.adapter;
 
-import org.springframework.transaction.annotation.Transactional;
-
 import com.builddash.backend.domain.model.SupportTicket;
 import com.builddash.backend.domain.port.SupportTicketRepository;
 import com.builddash.backend.infra.persistence.mapper.SupportTicketMapper;
@@ -32,7 +30,14 @@ class SupportTicketRepositoryAdapter implements SupportTicketRepository {
 
     @Override
     public List<SupportTicket> findByUserId(UUID userId) {
-        return jpaRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+        return findByUserId(userId, 0, 20);
+    }
+
+    @Override
+    public List<SupportTicket> findByUserId(UUID userId, int page, int size) {
+        int boundedPage = Math.max(page, 0);
+        int boundedSize = Math.min(Math.max(size, 1), 50);
+        return jpaRepository.findByUserIdOrderByCreatedAtDesc(userId, org.springframework.data.domain.PageRequest.of(boundedPage, boundedSize)).stream()
                 .map(SupportTicketMapper::toDomain)
                 .toList();
     }

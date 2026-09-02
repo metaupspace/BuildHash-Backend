@@ -2,6 +2,8 @@ package com.builddash.backend.domain.port;
 
 import com.builddash.backend.domain.model.ProductSyncPayload;
 
+import java.util.List;
+
 /**
  * Index-lifecycle concern (blue-green reindex), separate from SearchIndex (live-sync, per
  * document, alias-targeted, external-versioned) — different caller (CatalogReindexer vs. the
@@ -15,6 +17,9 @@ public interface SearchIndexAdmin {
 
     /** Writes into a specific index by name — never the alias. Used only during backfill. */
     void indexDocument(String indexName, ProductSyncPayload payload);
+
+    /** Bulk writes into a specific index by name. Used for efficient batch backfill during reindex. */
+    void indexDocumentsBulk(String indexName, List<ProductSyncPayload> payloads);
 
     /** Atomically repoints alias to newIndexName (remove old + add new in one call). */
     void swapAlias(String alias, String newIndexName);

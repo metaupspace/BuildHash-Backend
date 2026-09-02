@@ -28,6 +28,11 @@ class PiiBackfillJpaIT extends AbstractIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        sweeper.reset();
+    }
+
     private String storedColumn(String column, UUID id) {
         return jdbcTemplate.queryForObject("SELECT " + column + " FROM users WHERE id = ?", String.class, id);
     }
@@ -35,7 +40,7 @@ class PiiBackfillJpaIT extends AbstractIntegrationTest {
     @Test
     void plaintextRow_backfilledToCiphertextAndIdx_findByPhoneStillResolves_resweepNoop() {
         UUID userId = UUID.randomUUID();
-        String phone = "+9188" + String.format("%08d", userId.hashCode() & 0x7fffffff % 100000000);
+        String phone = "+9188" + String.format("%08d", Math.abs(userId.hashCode() % 100000000));
         jdbcTemplate.update("INSERT INTO users (id, phone) VALUES (?, ?)", userId, phone);
 
         // Pre-sweep: plaintext column, NULL idx, plaintext lookup impossible via idx path.

@@ -36,6 +36,8 @@ class RateLimitIT extends AbstractIntegrationTest {
         registry.add("security.rate-limit.rules.search.window", () -> "5s");
         registry.add("security.rate-limit.rules.google.limit", () -> "2");
         registry.add("security.rate-limit.rules.google.window", () -> "5s");
+        registry.add("security.rate-limit.rules.ticket-create.limit", () -> "2");
+        registry.add("security.rate-limit.rules.ticket-create.window", () -> "5s");
     }
 
     @BeforeEach
@@ -48,6 +50,36 @@ class RateLimitIT extends AbstractIntegrationTest {
 
     private int status(MvcResult result) {
         return result.getResponse().getStatus();
+    }
+
+    @Test
+    void supportTicketCreate_rateLimitedAfterLimitReached() throws Exception {
+        String ip = "198.51.100.20";
+        String payload = """
+                {
+                    "category": "ORDER_ISSUE",
+                    "subject": "Missing items",
+                    "message": "My order is missing items"
+                }
+                """;
+
+        for (int i = 0; i < 2; i++) {
+            MvcResult res = mockMvc.perform(post("/support/tickets")
+                            .header("X-Forwarded-For", ip)
+                            .contentType(APPLICATION_JSON)
+                            .content(payload))
+                    .andReturn();
+            // Unauthorized 401 (no JWT) is fine — shows the filter allowed it to reach security layer
+            assertThat(status(res)).isNotEqualTo(429);
+        }
+
+        MvcResult blocked = mockMvc.perform(post("/support/tickets")
+                        .header("X-Forwarded-For", ip)
+                        .contentType(APPLICATION_JSON)
+                        .content(payload))
+                .andReturn();
+        assertThat(status(blocked)).isEqualTo(429);
+        assertThat(blocked.getResponse().getContentAsString()).contains("RATE_LIMITED");
     }
 
     @Test

@@ -28,6 +28,9 @@ public interface OrderJpaRepository extends JpaRepository<OrderEntity, UUID> {
 
     @org.springframework.data.jpa.repository.Query("SELECT o FROM OrderEntity o LEFT JOIN FETCH o.lineItems WHERE o.userId = :userId ORDER BY o.placedAt DESC")
     List<OrderEntity> findAllByUserIdOrderByPlacedAtDesc(UUID userId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT o FROM OrderEntity o LEFT JOIN FETCH o.lineItems WHERE o.userId = :userId ORDER BY o.placedAt DESC")
+    List<OrderEntity> findAllByUserIdOrderByPlacedAtDesc(UUID userId, org.springframework.data.domain.Pageable pageable);
     boolean existsByAddressId(UUID addressId);
 
     @Query("SELECT count(o) FROM OrderEntity o WHERE o.siteId = :siteId AND o.status <> :cancelled")

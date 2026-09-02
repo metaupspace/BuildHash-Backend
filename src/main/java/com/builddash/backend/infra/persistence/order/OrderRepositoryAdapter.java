@@ -51,7 +51,14 @@ public class OrderRepositoryAdapter implements OrderRepository {
 
     @Override
     public List<Order> findAllByUserId(UUID userId) {
-        return jpaRepository.findAllByUserIdOrderByPlacedAtDesc(userId).stream()
+        return findAllByUserId(userId, 0, 20);
+    }
+
+    @Override
+    public List<Order> findAllByUserId(UUID userId, int page, int size) {
+        int boundedPage = Math.max(page, 0);
+        int boundedSize = Math.min(Math.max(size, 1), 50);
+        return jpaRepository.findAllByUserIdOrderByPlacedAtDesc(userId, org.springframework.data.domain.PageRequest.of(boundedPage, boundedSize)).stream()
                 .map(mapper::toDomain)
                 .toList();
     }

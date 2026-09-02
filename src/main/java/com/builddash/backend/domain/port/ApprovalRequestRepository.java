@@ -31,4 +31,6 @@ public interface ApprovalRequestRepository {
      * without a site are invisible to site-scoped members).
      */
     List<ApprovalRequest> findByCompanyVisibleInSites(UUID companyId, Collection<UUID> siteIds);
+
+    List<ApprovalRequest> findByCompanyVisibleInSites(UUID companyId, Collection<UUID> siteIds, int page, int size);
 }

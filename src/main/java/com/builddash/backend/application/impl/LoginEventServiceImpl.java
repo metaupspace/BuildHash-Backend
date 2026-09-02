@@ -32,6 +32,11 @@ public class LoginEventServiceImpl implements LoginEventRecorder, LoginHistoryRe
 
     @Override
     public List<LoginEvent> list(UUID userId) {
-        return loginEventRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        return list(userId, 0, 20);
+    }
+
+    @Override
+    public List<LoginEvent> list(UUID userId, int page, int size) {
+        return loginEventRepository.findByUserIdOrderByCreatedAtDesc(userId, page, size);
     }
 }

@@ -41,8 +41,11 @@ public class ReviewController {
 
     @GetMapping("/products/{id}/reviews")
     @Operation(summary = "List a product's approved reviews")
-    public List<ReviewResponse> listReviews(@PathVariable String id) {
-        return reviewMapper.toResponseList(reviewReader.listApproved(parseProductId(id)));
+    public List<ReviewResponse> listReviews(
+            @PathVariable String id,
+            @org.springframework.web.bind.annotation.RequestParam(name = "page", defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(name = "size", defaultValue = "20") int size) {
+        return reviewMapper.toResponseList(reviewReader.listApproved(parseProductId(id), page, size));
     }
 
     @PostMapping("/products/{id}/reviews")

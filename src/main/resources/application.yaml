@@ -26,6 +26,20 @@ spring:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:builddash}
     username: ${DB_USER:builddash}
     password: ${DB_PASSWORD:builddash}
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}
+      minimum-idle: ${HIKARI_MIN_IDLE:10}
+      connection-timeout: ${HIKARI_CONNECTION_TIMEOUT:20000}
+      idle-timeout: 300000
+      max-lifetime: 1800000
+
+  mail:
+    properties:
+      mail:
+        smtp:
+          connectiontimeout: 5000
+          timeout: 10000
+          writetimeout: 10000
 
   jpa:
     hibernate:
@@ -71,8 +85,13 @@ security:
     master-key: ${PII_MASTER_KEY}
   rate-limit:
     rules:
-      search:    { path: /search/**,  limit: 30, window: 1m }
-      google:    { path: /auth/google, method: POST, limit: 10, window: 1m }
+      search:          { path: "/search/**", limit: 30, window: 1m }
+      google:          { path: "/auth/google", method: POST, limit: 10, window: 1m }
+      review-create:   { path: "/products/{id}/reviews", method: POST, limit: 10, window: 1m }
+      question-create: { path: "/products/{id}/questions", method: POST, limit: 10, window: 1m }
+      answer-create:   { path: "/questions/{id}/answers", method: POST, limit: 10, window: 1m }
+      ticket-create:   { path: "/support/tickets", method: POST, limit: 10, window: 1m }
+      return-create:   { path: "/orders/{id}/return", method: POST, limit: 10, window: 1m }
 
 payment:
   webhook-secret: ${PAYMENT_WEBHOOK_SECRET}

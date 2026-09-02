@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface QnaReader {
 
     List<QuestionThread> listThreads(UUID productId);
+
+    List<QuestionThread> listThreads(UUID productId, int page, int size);
 }

@@ -35,7 +35,12 @@ public class QnaServiceImpl implements QnaReader, QnaWriter {
      */
     @Override
     public List<QuestionThread> listThreads(UUID productId) {
-        List<Question> questions = questionRepository.findByProductId(productId);
+        return listThreads(productId, 0, 20);
+    }
+
+    @Override
+    public List<QuestionThread> listThreads(UUID productId, int page, int size) {
+        List<Question> questions = questionRepository.findByProductId(productId, page, size);
         if (questions.isEmpty()) {
             return List.of();
         }

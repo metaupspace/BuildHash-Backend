@@ -14,5 +14,6 @@ public record CreateSupportTicketRequest(
         String subject,
 
         @NotBlank(message = "Message is required")
+        @Size(max = 5000, message = "Message must be at most 5000 characters")
         String message
 ) {}

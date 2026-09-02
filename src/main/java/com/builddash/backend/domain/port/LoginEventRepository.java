@@ -11,6 +11,8 @@ public interface LoginEventRepository {
 
     List<LoginEvent> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
+    List<LoginEvent> findByUserIdOrderByCreatedAtDesc(UUID userId, int page, int size);
+
     /** DPDP hard-delete (PLAN_PHASE8 5(d)). */
     void deleteByUserId(UUID userId);
 }

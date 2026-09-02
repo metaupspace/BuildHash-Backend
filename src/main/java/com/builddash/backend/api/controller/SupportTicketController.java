@@ -42,8 +42,11 @@ public class SupportTicketController {
 
     @GetMapping("/support/tickets")
     @Operation(summary = "List the caller's own support tickets")
-    public List<SupportTicketResponse> listOwnTickets(@AuthenticationPrincipal AuthenticatedUser user) {
-        return supportTicketService.listOwnTickets(user.userId()).stream()
+    public List<SupportTicketResponse> listOwnTickets(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @org.springframework.web.bind.annotation.RequestParam(name = "page", defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(name = "size", defaultValue = "20") int size) {
+        return supportTicketService.listOwnTickets(user.userId(), page, size).stream()
                 .map(supportDtoMapper::toResponse)
                 .toList();
     }

@@ -29,7 +29,16 @@ public class RecordingSearchIndexAdmin implements SearchIndexAdmin {
 
     @Override
     public void indexDocument(String indexName, ProductSyncPayload payload) {
-        indices.get(indexName).put(payload.productId(), payload);
+        indices.computeIfAbsent(indexName, k -> new ConcurrentHashMap<>()).put(payload.productId(), payload);
+    }
+
+    @Override
+    public void indexDocumentsBulk(String indexName, List<ProductSyncPayload> payloads) {
+        if (payloads == null) return;
+        Map<UUID, ProductSyncPayload> index = indices.computeIfAbsent(indexName, k -> new ConcurrentHashMap<>());
+        for (ProductSyncPayload payload : payloads) {
+            index.put(payload.productId(), payload);
+        }
     }
 
     @Override

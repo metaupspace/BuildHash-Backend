@@ -38,7 +38,10 @@ public class LoginHistoryController {
             @ApiResponse(responseCode = "401", description = "Missing/invalid/expired access token",
                     content = @Content(schema = @Schema(implementation = ApiError.class)))
     })
-    public List<LoginEventResponse> getLoginHistory(@AuthenticationPrincipal AuthenticatedUser principal) {
-        return loginEventMapper.toResponseList(loginHistoryReader.list(principal.userId()));
+    public List<LoginEventResponse> getLoginHistory(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @org.springframework.web.bind.annotation.RequestParam(name = "page", defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(name = "size", defaultValue = "20") int size) {
+        return loginEventMapper.toResponseList(loginHistoryReader.list(principal.userId(), page, size));
     }
 }

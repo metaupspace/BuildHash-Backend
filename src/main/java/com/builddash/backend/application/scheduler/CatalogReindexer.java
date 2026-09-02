@@ -86,11 +86,13 @@ public class CatalogReindexer {
             boolean hasNext = page.size() > PAGE_SIZE;
             List<Product> items = hasNext ? page.subList(0, PAGE_SIZE) : page;
 
-            for (Product product : items) {
-                Category category = categoriesById.get(product.getCategoryId());
-                ProductSyncPayload payload = productSyncProjectionBuilder.build(product, category);
-                searchIndexAdmin.indexDocument(indexName, payload);
-            }
+            List<ProductSyncPayload> payloads = items.stream()
+                    .map(product -> {
+                        Category category = categoriesById.get(product.getCategoryId());
+                        return productSyncProjectionBuilder.build(product, category);
+                    })
+                    .toList();
+            searchIndexAdmin.indexDocumentsBulk(indexName, payloads);
 
             if (!hasNext) {
                 return;

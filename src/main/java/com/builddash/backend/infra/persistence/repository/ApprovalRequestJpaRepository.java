@@ -37,6 +37,11 @@ public interface ApprovalRequestJpaRepository extends JpaRepository<ApprovalRequ
 
     List<ApprovalRequestEntity> findByCompanyIdOrderByCreatedAtDesc(UUID companyId);
 
+    List<ApprovalRequestEntity> findByCompanyIdOrderByCreatedAtDesc(UUID companyId, org.springframework.data.domain.Pageable pageable);
+
     List<ApprovalRequestEntity> findByCompanyIdAndSiteIdInOrderByCreatedAtDesc(
             UUID companyId, Collection<UUID> siteIds);
+
+    List<ApprovalRequestEntity> findByCompanyIdAndSiteIdInOrderByCreatedAtDesc(
+            UUID companyId, Collection<UUID> siteIds, org.springframework.data.domain.Pageable pageable);
 }

@@ -15,6 +15,7 @@ public interface OrderRepository {
     Optional<UUID> findOrderOwnerId(UUID orderId);
     List<UUID> findStalePaymentPendingOrderIds(Instant cutoff);
     List<Order> findAllByUserId(UUID userId);
+    List<Order> findAllByUserId(UUID userId, int page, int size);
     boolean existsByAddressId(UUID addressId);
     /** Non-CANCELLED order count referencing a company site — the site deactivation guard (9-A). */
     long countActiveOrdersForSite(UUID siteId);

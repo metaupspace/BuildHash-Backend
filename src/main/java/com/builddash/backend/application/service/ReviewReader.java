@@ -11,4 +11,6 @@ import java.util.UUID;
 public interface ReviewReader {
 
     List<Review> listApproved(UUID productId);
+
+    List<Review> listApproved(UUID productId, int page, int size);
 }

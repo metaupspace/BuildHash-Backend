@@ -368,6 +368,12 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Order> listOrders(UUID userId, int page, int size) {
+        return orderRepository.findAllByUserId(userId, page, size);
+    }
+
+    @Override
     @Transactional
     public ReorderResult reorder(UUID userId, UUID orderId) {
         Order order = orderRepository.findById(orderId)

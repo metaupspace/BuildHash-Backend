@@ -77,9 +77,17 @@ class ApprovalRequestRepositoryAdapter implements ApprovalRequestRepository {
 
     @Override
     public List<ApprovalRequest> findByCompanyVisibleInSites(UUID companyId, Collection<UUID> siteIds) {
+        return findByCompanyVisibleInSites(companyId, siteIds, 0, 20);
+    }
+
+    @Override
+    public List<ApprovalRequest> findByCompanyVisibleInSites(UUID companyId, Collection<UUID> siteIds, int page, int size) {
+        int boundedPage = Math.max(page, 0);
+        int boundedSize = Math.min(Math.max(size, 1), 50);
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(boundedPage, boundedSize);
         List<ApprovalRequestEntity> entities = siteIds == null
-                ? jpaRepository.findByCompanyIdOrderByCreatedAtDesc(companyId)
-                : jpaRepository.findByCompanyIdAndSiteIdInOrderByCreatedAtDesc(companyId, siteIds);
+                ? jpaRepository.findByCompanyIdOrderByCreatedAtDesc(companyId, pageable)
+                : jpaRepository.findByCompanyIdAndSiteIdInOrderByCreatedAtDesc(companyId, siteIds, pageable);
         return entities.stream().map(this::toDomain).toList();
     }
 

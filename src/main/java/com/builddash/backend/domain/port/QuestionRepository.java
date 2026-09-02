@@ -12,6 +12,8 @@ public interface QuestionRepository {
 
     List<Question> findByProductId(UUID productId);
 
+    List<Question> findByProductId(UUID productId, int page, int size);
+
     Optional<Question> findById(UUID id);
 
     /** DPDP export: every question the user authored. */

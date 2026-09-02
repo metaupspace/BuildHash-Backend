@@ -49,6 +49,11 @@ public abstract class AbstractIntegrationTest {
         // precedence, own cached context) to exercise the real configured limits.
         System.setProperty("security.rate-limit.rules.search.limit", "10000");
         System.setProperty("security.rate-limit.rules.google.limit", "10000");
+        System.setProperty("security.rate-limit.rules.review-create.limit", "10000");
+        System.setProperty("security.rate-limit.rules.question-create.limit", "10000");
+        System.setProperty("security.rate-limit.rules.answer-create.limit", "10000");
+        System.setProperty("security.rate-limit.rules.ticket-create.limit", "10000");
+        System.setProperty("security.rate-limit.rules.return-create.limit", "10000");
 
         try {
             REDIS_SERVER = RedisServer.newRedisServer();
@@ -69,6 +74,8 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.hikari.maximum-pool-size", () -> "10");
+        registry.add("spring.datasource.hikari.minimum-idle", () -> "2");
     }
 
     @DynamicPropertySource

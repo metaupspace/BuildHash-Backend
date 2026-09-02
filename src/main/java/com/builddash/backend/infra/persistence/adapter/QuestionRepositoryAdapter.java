@@ -25,7 +25,14 @@ class QuestionRepositoryAdapter implements QuestionRepository {
 
     @Override
     public List<Question> findByProductId(UUID productId) {
-        return jpaRepository.findByProductId(productId).stream()
+        return findByProductId(productId, 0, 20);
+    }
+
+    @Override
+    public List<Question> findByProductId(UUID productId, int page, int size) {
+        int boundedPage = Math.max(page, 0);
+        int boundedSize = Math.min(Math.max(size, 1), 50);
+        return jpaRepository.findByProductId(productId, org.springframework.data.domain.PageRequest.of(boundedPage, boundedSize)).stream()
                 .map(QuestionMapper::toDomain)
                 .toList();
     }

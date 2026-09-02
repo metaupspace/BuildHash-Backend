@@ -13,6 +13,9 @@ public interface ApprovalService {
     /** APPROVAL_VIEW + company + site scope. Null-site requests: all-site members only. */
     List<ApprovalRequest> list(UUID userId, UUID companyId);
 
+    /** APPROVAL_VIEW + company + site scope with pagination. */
+    List<ApprovalRequest> list(UUID userId, UUID companyId, int page, int size);
+
     /** Same visibility rules as list, per resource. */
     ApprovalDetail get(UUID userId, UUID approvalId);
 
