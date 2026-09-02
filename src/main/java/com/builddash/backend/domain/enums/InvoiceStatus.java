@@ -4,5 +4,6 @@ public enum InvoiceStatus {
     PENDING,
     GENERATING,
     READY,
-    DLQ_RETRY
+    DLQ_RETRY,
+    FAILED
 }

@@ -41,4 +41,6 @@ public interface NotificationLogRepository {
 
     /** DPDP hard-delete (PLAN_PHASE8 5(d)). */
     void deleteByUserId(UUID userId);
+
+    int deleteTerminalLogsOlderThan(Instant cutoff);
 }

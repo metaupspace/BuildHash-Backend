@@ -47,9 +47,8 @@ class StaleOrderSweepRollbackJpaIT extends AbstractIntegrationTest {
     @SpyBean
     private DeliverySlotService deliverySlotService;
 
-    private UUID seedStalePaymentPendingOrder(UUID userId, UUID lockId) {
+    private UUID seedStalePaymentPendingOrder(UUID userId, UUID lockId, UUID slotId) {
         UUID addressId = ApprovalTestFixtures.seedAddress(jdbc, userId);
-        UUID slotId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(1);
         Order order = transactionTemplate.execute(status -> orderRepository.save(new Order(
                 UUID.randomUUID(), userId, addressId, slotId, date, new BigDecimal("150.00"),
@@ -66,7 +65,7 @@ class StaleOrderSweepRollbackJpaIT extends AbstractIntegrationTest {
         UUID lockId = ApprovalTestFixtures.seedActiveLock(jdbc, userId, slotId, date);
         // The stale selector requires an expired lock; the release underneath it fails.
         jdbc.update("UPDATE delivery_slot_locks SET expires_at = now() - interval '5 minutes' WHERE id = ?", lockId);
-        UUID orderId = seedStalePaymentPendingOrder(userId, lockId);
+        UUID orderId = seedStalePaymentPendingOrder(userId, lockId, slotId);
         doThrow(new RuntimeException("simulated release failure"))
                 .when(deliverySlotService).releaseLock(any(UUID.class), any(UUID.class));
 
@@ -85,7 +84,7 @@ class StaleOrderSweepRollbackJpaIT extends AbstractIntegrationTest {
         UUID slotId = seedCounter(jdbc, date, 10, 1);
         UUID lockId = ApprovalTestFixtures.seedActiveLock(jdbc, userId, slotId, date);
         jdbc.update("UPDATE delivery_slot_locks SET expires_at = now() - interval '5 minutes' WHERE id = ?", lockId);
-        UUID orderId = seedStalePaymentPendingOrder(userId, lockId);
+        UUID orderId = seedStalePaymentPendingOrder(userId, lockId, slotId);
 
         sweepService.sweepStaleOrders();
 

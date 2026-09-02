@@ -30,5 +30,8 @@ public class CatalogOutboxEvent {
     private String payload;
 
     private OutboxStatus status = OutboxStatus.PENDING;
+    private int attemptCount;
+    private Instant lastAttemptAt;
+    private String errorMessage;
     private Instant createdAt;
 }

@@ -119,9 +119,9 @@ class InvoiceRepositoryAdapterTest {
         Invoice domain = sampleInvoice();
         InvoiceEntity entity = mapper.toEntity(domain);
         Instant cutoff = Instant.now().minusSeconds(900);
-        when(jpaRepository.findDlqClaimableInvoices(3, cutoff)).thenReturn(List.of(entity));
+        when(jpaRepository.findDlqClaimableInvoices(3, 6, cutoff)).thenReturn(List.of(entity));
 
-        List<Invoice> results = adapter.findDlqClaimableInvoices(3, cutoff);
+        List<Invoice> results = adapter.findDlqClaimableInvoices(3, 6, cutoff);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).id()).isEqualTo(domain.id());

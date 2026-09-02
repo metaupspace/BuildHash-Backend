@@ -72,9 +72,11 @@ public class AccountDeletionSweeper {
     private final SupportTicketRepository supportTicketRepository;
     private final SupportTicketMessageRepository supportTicketMessageRepository;
 
+    private static final int BATCH_SIZE = 50;
+
     @Scheduled(cron = "${account.deletion.sweep-cron:0 30 2 * * *}")
     public void sweep() {
-        for (DeleteRequest request : deleteRequestRepository.findDue(Instant.now())) {
+        for (DeleteRequest request : deleteRequestRepository.findDue(Instant.now(), BATCH_SIZE)) {
             try {
                 process(request);
             } catch (Exception e) {

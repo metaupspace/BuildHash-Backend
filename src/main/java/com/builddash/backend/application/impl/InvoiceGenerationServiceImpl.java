@@ -30,7 +30,7 @@ public class InvoiceGenerationServiceImpl implements InvoiceGenerationService {
     public void processInvoice(UUID invoiceId) {
         // Phase 1: Claim phase (short transaction inside InvoiceClaimService)
         Invoice claimed = invoiceClaimService.claim(invoiceId);
-        if (claimed.status() == InvoiceStatus.READY) {
+        if (claimed.status() == InvoiceStatus.READY || claimed.status() == InvoiceStatus.FAILED) {
             return;
         }
 

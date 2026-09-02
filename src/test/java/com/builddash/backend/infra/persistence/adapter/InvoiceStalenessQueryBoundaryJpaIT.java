@@ -82,7 +82,7 @@ class InvoiceStalenessQueryBoundaryJpaIT extends AbstractIntegrationTest {
 
         // Execute queries
         List<InvoiceEntity> schedulerResults = invoiceJpaRepository.findSchedulerClaimableInvoices(3, cutoff);
-        List<InvoiceEntity> dlqResults = invoiceJpaRepository.findDlqClaimableInvoices(3, cutoff);
+        List<InvoiceEntity> dlqResults = invoiceJpaRepository.findDlqClaimableInvoices(3, 6, cutoff);
 
         Set<UUID> schedulerIds = schedulerResults.stream().map(InvoiceEntity::getId).collect(Collectors.toSet());
         Set<UUID> dlqIds = dlqResults.stream().map(InvoiceEntity::getId).collect(Collectors.toSet());

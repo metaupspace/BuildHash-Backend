@@ -4,45 +4,52 @@ import com.builddash.backend.domain.enums.OutboxStatus;
 import com.builddash.backend.domain.model.CatalogOutboxEvent;
 import com.builddash.backend.domain.port.CatalogEventPublisher;
 import com.builddash.backend.domain.port.CatalogOutboxEventRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 /**
- * No separate interface — single workflow, single caller (the scheduler), same judgment as
- * OtpSendService. Per-row try/catch so one failing publish never blocks the batch or loses a
- * sibling row still PENDING.
+ * H5.2: Bounded batch relay (50 items) with finite retry (5 attempts) and terminal FAILED status.
+ * Poison rows never block sibling events.
  */
 @RequiredArgsConstructor
 @Slf4j
 @Service
 public class CatalogOutboxRelay {
 
+    private static final int BATCH_SIZE = 50;
+    private static final int MAX_ATTEMPTS = 5;
+
     private final CatalogOutboxEventRepository catalogOutboxEventRepository;
     private final CatalogEventPublisher catalogEventPublisher;
 
-
     @Scheduled(fixedDelayString = "${catalog.outbox.relay-interval-ms:5000}")
     public void relay() {
-        List<CatalogOutboxEvent> pending = catalogOutboxEventRepository.findByStatus(OutboxStatus.PENDING);
+        List<CatalogOutboxEvent> pending = catalogOutboxEventRepository.findPendingForRelay(MAX_ATTEMPTS, BATCH_SIZE);
         for (CatalogOutboxEvent event : pending) {
             relayOne(event);
         }
     }
 
     private void relayOne(CatalogOutboxEvent event) {
+        int nextAttempt = event.getAttemptCount() + 1;
         try {
             boolean acked = catalogEventPublisher.publishProductChanged(event.getId(), event.getPayload());
             if (acked) {
                 catalogOutboxEventRepository.markPublished(event.getId());
             } else {
-                log.warn("Publish nacked/timed out for outbox event {}, will retry next poll", event.getId());
+                log.warn("Publish nacked/timed out for outbox event {}, attempt {}", event.getId(), nextAttempt);
+                OutboxStatus nextStatus = nextAttempt >= MAX_ATTEMPTS ? OutboxStatus.FAILED : OutboxStatus.PENDING;
+                catalogOutboxEventRepository.recordAttempt(event.getId(), nextAttempt, Instant.now(), "Publish nacked or timed out", nextStatus);
             }
         } catch (Exception e) {
-            log.error("Failed to relay outbox event {}, will retry next poll", event.getId(), e);
+            log.error("Failed to relay outbox event {}, attempt {}", event.getId(), nextAttempt, e);
+            OutboxStatus nextStatus = nextAttempt >= MAX_ATTEMPTS ? OutboxStatus.FAILED : OutboxStatus.PENDING;
+            catalogOutboxEventRepository.recordAttempt(event.getId(), nextAttempt, Instant.now(), e.getMessage(), nextStatus);
         }
     }
 }

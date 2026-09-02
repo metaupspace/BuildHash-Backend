@@ -4,6 +4,7 @@ import com.builddash.backend.infra.persistence.entity.DeliverySlotCounterEntity;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -23,4 +24,12 @@ public interface DeliverySlotCounterJpaRepository extends JpaRepository<Delivery
     List<DeliverySlotCounterEntity> findBySlotDate(LocalDate slotDate);
 
     boolean existsBySlotIdAndSlotDate(UUID slotId, LocalDate slotDate);
+
+    @Modifying
+    @Query(value = "INSERT INTO delivery_slot_counters (id, slot_id, slot_date, capacity, current_count, created_at, updated_at) "
+            + "VALUES (:id, :slotId, :slotDate, :capacity, 0, now(), now()) "
+            + "ON CONFLICT (slot_id, slot_date) DO NOTHING",
+            nativeQuery = true)
+    void insertIfNotExists(@Param("id") UUID id, @Param("slotId") UUID slotId,
+                          @Param("slotDate") LocalDate slotDate, @Param("capacity") int capacity);
 }

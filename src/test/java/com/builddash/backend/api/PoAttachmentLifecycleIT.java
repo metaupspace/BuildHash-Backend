@@ -186,11 +186,12 @@ class PoAttachmentLifecycleIT extends AbstractIntegrationTest {
 
     private UUID insertOrder(UUID owner, UUID company, UUID site) {
         UUID orderId = UUID.randomUUID();
+        UUID validSlotId = UUID.fromString("11111111-1111-1111-1111-111111111101");
         jdbcTemplate.update(
                 "INSERT INTO orders (id, user_id, address_id, slot_id, slot_date, total_amount, "
                         + "status, company_id, site_id, delivery_slot_lock_id) VALUES (?, ?, ?, ?, ?, 100.00, "
                         + "'PAYMENT_PENDING', ?, ?, ?)",
-                orderId, owner, addressId, UUID.randomUUID(), LocalDate.now(), company, site, UUID.randomUUID());
+                orderId, owner, addressId, validSlotId, LocalDate.now(), company, site, UUID.randomUUID());
         return orderId;
     }
 

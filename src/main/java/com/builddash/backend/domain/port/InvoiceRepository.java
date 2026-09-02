@@ -13,5 +13,5 @@ public interface InvoiceRepository {
     Optional<Invoice> findByIdForUpdate(UUID id);
     Optional<Invoice> findByOrderId(UUID orderId);
     List<Invoice> findSchedulerClaimableInvoices(int maxAttempts, Instant cutoff);
-    List<Invoice> findDlqClaimableInvoices(int maxAttempts, Instant cutoff);
+    List<Invoice> findDlqClaimableInvoices(int maxAttempts, int maxDlqAttempts, Instant cutoff);
 }

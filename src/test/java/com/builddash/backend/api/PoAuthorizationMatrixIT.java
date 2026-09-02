@@ -311,11 +311,12 @@ class PoAuthorizationMatrixIT extends AbstractIntegrationTest {
 
     private UUID b2bOrder(UUID siteId) {
         UUID orderId = UUID.randomUUID();
+        UUID validSlotId = UUID.fromString("11111111-1111-1111-1111-111111111101");
         jdbcTemplate.update(
                 "INSERT INTO orders (id, user_id, address_id, slot_id, slot_date, total_amount, "
                         + "status, company_id, site_id, delivery_slot_lock_id) VALUES (?, ?, ?, ?, ?, 100.00, "
                         + "'PAYMENT_PENDING', ?, ?, ?)",
-                orderId, ownerUserId, addressId, UUID.randomUUID(), LocalDate.now(), companyId, siteId, UUID.randomUUID());
+                orderId, ownerUserId, addressId, validSlotId, LocalDate.now(), companyId, siteId, UUID.randomUUID());
         return orderId;
     }
 

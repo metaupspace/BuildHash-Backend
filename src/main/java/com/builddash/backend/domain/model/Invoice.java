@@ -32,4 +32,8 @@ public record Invoice(
     public Invoice markPending() {
         return new Invoice(id, orderId, number, InvoiceStatus.PENDING, storageKey, contentType, generatedAt, attemptCount, createdAt, Instant.now());
     }
+
+    public Invoice markFailed() {
+        return new Invoice(id, orderId, number, InvoiceStatus.FAILED, storageKey, contentType, generatedAt, attemptCount, createdAt, Instant.now());
+    }
 }

@@ -57,7 +57,7 @@ class OrderControllerIT extends AbstractIntegrationTest {
         UUID orderId = UUID.randomUUID();
         UUID addressId = UUID.randomUUID();
         jdbcTemplate.update("INSERT INTO addresses (id, user_id, type, line1, city, state, zip_code, created_at, updated_at) VALUES (?, ?, 'HOME', 'Line 1', 'City', 'MH', '400000', now(), now())", addressId, userId);
-        Order order = new Order(orderId, userId, addressId, UUID.fromString("33333333-3333-3333-3333-333333333333"), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.CONFIRMED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of());
+        Order order = new Order(orderId, userId, addressId, UUID.fromString("11111111-1111-1111-1111-111111111101"), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.CONFIRMED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of());
         orderRepository.save(order);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/orders/{id}", orderId)
@@ -76,7 +76,7 @@ class OrderControllerIT extends AbstractIntegrationTest {
         UUID otherUserId = UUID.randomUUID();
         jdbcTemplate.update("INSERT INTO users (id, phone, created_at, updated_at) VALUES (?, ?, now(), now()) ON CONFLICT DO NOTHING", otherUserId, "+919999999998");
         jdbcTemplate.update("INSERT INTO addresses (id, user_id, type, line1, city, state, zip_code, created_at, updated_at) VALUES (?, ?, 'HOME', 'Line 1', 'City', 'MH', '400000', now(), now())", addressId, otherUserId);
-        Order order = new Order(orderId, otherUserId, addressId, UUID.fromString("33333333-3333-3333-3333-333333333333"), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.CONFIRMED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of());
+        Order order = new Order(orderId, otherUserId, addressId, UUID.fromString("11111111-1111-1111-1111-111111111101"), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.CONFIRMED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of());
         orderRepository.save(order);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/orders/{id}", orderId)
@@ -98,7 +98,7 @@ class OrderControllerIT extends AbstractIntegrationTest {
         jdbcTemplate.update("INSERT INTO product_base_prices (product_id, price, created_at, updated_at) VALUES (?, 60.00, now(), now())", productId);
         jdbcTemplate.update("INSERT INTO hsn_gst_rates (hsn_code, description, gst_rate_percent, category, created_at, updated_at) VALUES ('1234', 'Desc', 18.00, 'Cat', now(), now()) ON CONFLICT DO NOTHING");
 
-        Order order = new Order(orderId, userId, addressId, UUID.fromString("33333333-3333-3333-3333-333333333333"), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.DELIVERED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of(
+        Order order = new Order(orderId, userId, addressId, UUID.fromString("11111111-1111-1111-1111-111111111101"), LocalDate.now(), new BigDecimal("100.00"), OrderStatus.DELIVERED, UUID.randomUUID(), java.time.Instant.now(), null, null, java.util.List.of(
             new com.builddash.backend.domain.model.OrderLineItem(UUID.randomUUID(), productId, 2, new BigDecimal("50.00"), BigDecimal.ZERO, new BigDecimal("100.00"))
         ));
         orderRepository.save(order);
@@ -120,7 +120,7 @@ class OrderControllerIT extends AbstractIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(resultingCart.finalTotal()).isEqualByComparingTo("141.60");
     }
 
-    
+
     @Test
     void retryPayment_happyPath_returnsPendingOrder() throws Exception {
         UUID orderId = UUID.randomUUID();
@@ -132,7 +132,7 @@ class OrderControllerIT extends AbstractIntegrationTest {
                 orderId,
                 userId,
                 addressId,
-                UUID.fromString("33333333-3333-3333-3333-333333333333"),
+                UUID.fromString("11111111-1111-1111-1111-111111111101"),
                 LocalDate.now(),
                 new BigDecimal("100.00"),
                 OrderStatus.PAYMENT_PENDING,

@@ -13,4 +13,5 @@ public interface DeliverySlotCounterRepository {
     List<DeliverySlotCounter> findBySlotDate(LocalDate slotDate);
     DeliverySlotCounter save(DeliverySlotCounter counter);
     boolean existsBySlotIdAndSlotDate(UUID slotId, LocalDate slotDate);
+    void insertIfNotExists(UUID id, UUID slotId, LocalDate slotDate, int capacity);
 }

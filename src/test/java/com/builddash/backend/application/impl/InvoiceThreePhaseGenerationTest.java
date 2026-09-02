@@ -132,7 +132,11 @@ class InvoiceThreePhaseGenerationTest {
         assertThat(currentInvoice.number()).isNull();
         verify(gstSequenceService, never()).nextNumber(any());
 
-        // Attempt 2: S3 upload succeeds
+        // Attempt 2: Stale claim reclaimed by scheduler after 15m and S3 upload succeeds
+        currentInvoice = new Invoice(currentInvoice.id(), currentInvoice.orderId(), currentInvoice.number(),
+                currentInvoice.status(), currentInvoice.storageKey(), currentInvoice.contentType(),
+                currentInvoice.generatedAt(), currentInvoice.attemptCount(), currentInvoice.createdAt(),
+                Instant.now().minus(java.time.Duration.ofMinutes(16)));
         doReturn("invoices/" + orderId + "/" + invoiceId + ".pdf")
                 .when(objectStorage).store(any(), any(), any());
         when(gstSequenceService.nextNumber(GstSequenceType.INVOICE))

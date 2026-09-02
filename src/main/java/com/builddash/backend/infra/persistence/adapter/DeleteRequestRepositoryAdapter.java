@@ -5,8 +5,9 @@ import com.builddash.backend.domain.model.DeleteRequest;
 import com.builddash.backend.domain.port.DeleteRequestRepository;
 import com.builddash.backend.infra.persistence.mapper.DeleteRequestMapper;
 import com.builddash.backend.infra.persistence.repository.DeleteRequestJpaRepository;
-import org.springframework.stereotype.Repository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
@@ -33,6 +34,13 @@ class DeleteRequestRepositoryAdapter implements DeleteRequestRepository {
     @Override
     public List<DeleteRequest> findDue(Instant now) {
         return jpaRepository.findByStatusAndDeletionScheduledAtLessThanEqual(DeleteRequestStatus.PENDING, now).stream()
+                .map(DeleteRequestMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<DeleteRequest> findDue(Instant now, int limit) {
+        return jpaRepository.findDuePaged(DeleteRequestStatus.PENDING, now, PageRequest.of(0, limit)).stream()
                 .map(DeleteRequestMapper::toDomain)
                 .toList();
     }

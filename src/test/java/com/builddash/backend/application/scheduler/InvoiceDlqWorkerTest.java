@@ -74,7 +74,7 @@ class InvoiceDlqWorkerTest {
         Invoice inv1 = sampleInvoice(id1, InvoiceStatus.DLQ_RETRY, 3);
         Invoice inv2 = sampleInvoice(id2, InvoiceStatus.GENERATING, 4);
 
-        when(invoiceRepository.findDlqClaimableInvoices(eq(3), any(Instant.class)))
+        when(invoiceRepository.findDlqClaimableInvoices(eq(3), eq(6), any(Instant.class)))
                 .thenReturn(List.of(inv1, inv2));
 
         dlqWorker.runTwoHourDlqSweep();

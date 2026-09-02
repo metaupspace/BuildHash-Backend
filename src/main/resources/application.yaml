@@ -5,6 +5,12 @@ spring:
   application:
     name: builddash-backend
 
+  task:
+    scheduling:
+      pool:
+        size: 5
+      thread-name-prefix: "scheduled-task-"
+
   # 9-C locked resource limits: PO uploads are XLSX files capped at 2MB (the
   # business rule is also enforced in the application layer, so these servlet
   # bounds are the outer fence, not the rule itself).

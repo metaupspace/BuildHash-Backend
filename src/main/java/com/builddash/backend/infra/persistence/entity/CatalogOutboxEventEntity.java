@@ -39,6 +39,15 @@ public class CatalogOutboxEventEntity {
     @Enumerated(EnumType.STRING)
     private OutboxStatus status = OutboxStatus.PENDING;
 
+    @Column(name = "attempt_count", nullable = false)
+    private int attemptCount;
+
+    @Column(name = "last_attempt_at")
+    private Instant lastAttemptAt;
+
+    @Column(name = "error_message")
+    private String errorMessage;
+
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 

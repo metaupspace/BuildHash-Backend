@@ -6,6 +6,7 @@ import com.builddash.backend.infra.persistence.entity.NotificationLogEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
@@ -29,7 +30,11 @@ public interface NotificationLogJpaRepository extends JpaRepository<Notification
     @Query("update NotificationLogEntity n set n.status = com.builddash.backend.domain.enums.NotificationStatus.FAILED where n.id = :id")
     void markFailed(UUID id);
 
-    java.util.List<NotificationLogEntity> findByUserId(UUID userId);
+    List<NotificationLogEntity> findByUserId(UUID userId);
 
     void deleteByUserId(UUID userId);
+
+    @Modifying
+    @Query("DELETE FROM NotificationLogEntity n WHERE n.status IN (com.builddash.backend.domain.enums.NotificationStatus.SENT, com.builddash.backend.domain.enums.NotificationStatus.FAILED) AND n.createdAt < :cutoff")
+    int deleteTerminalLogsOlderThan(@Param("cutoff") Instant cutoff);
 }

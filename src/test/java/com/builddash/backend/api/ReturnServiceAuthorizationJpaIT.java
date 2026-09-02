@@ -176,7 +176,7 @@ class ReturnServiceAuthorizationJpaIT extends AbstractIntegrationTest {
         jdbc.update("INSERT INTO addresses (id, user_id, type, line1, city, state, zip_code, created_at, updated_at) "
                         + "VALUES (?, ?, 'HOME', 'Street 1', 'City', 'MH', '400001', now(), now())",
                 addressId, customerId);
-        UUID slotId = UUID.randomUUID();
+        UUID slotId = UUID.fromString("11111111-1111-1111-1111-111111111101");
         UUID orderId = UUID.randomUUID();
         jdbc.update("INSERT INTO orders (id, user_id, address_id, slot_id, slot_date, total_amount, status, created_at, updated_at) "
                         + "VALUES (?, ?, ?, ?, CURRENT_DATE, 1050.00, 'DELIVERED', now(), now())",

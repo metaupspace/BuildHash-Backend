@@ -20,7 +20,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class InvoiceDlqWorker {
 
-    private static final int MAX_INITIAL_ATTEMPTS = 3;
+    public static final int MAX_INITIAL_ATTEMPTS = 3;
+    public static final int MAX_TOTAL_ATTEMPTS = 6;
     private static final Duration STALENESS_THRESHOLD = Duration.ofMinutes(15);
 
     private final InvoiceRepository invoiceRepository;
@@ -43,7 +44,7 @@ public class InvoiceDlqWorker {
     @Scheduled(cron = "${invoice.dlq.sweep.cron:0 0 */2 * * *}")
     public void runTwoHourDlqSweep() {
         Instant cutoff = Instant.now().minus(STALENESS_THRESHOLD);
-        List<Invoice> claimable = invoiceRepository.findDlqClaimableInvoices(MAX_INITIAL_ATTEMPTS, cutoff);
+        List<Invoice> claimable = invoiceRepository.findDlqClaimableInvoices(MAX_INITIAL_ATTEMPTS, MAX_TOTAL_ATTEMPTS, cutoff);
         log.info("Running 2-hour DLQ sweep for {} invoices", claimable.size());
 
         for (Invoice invoice : claimable) {

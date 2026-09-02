@@ -32,6 +32,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -138,7 +139,7 @@ class AccountDeletionSweeperTest {
 
     @Test
     void noDueRequests_nothingHappens() {
-        when(deleteRequestRepository.findDue(any(Instant.class))).thenReturn(List.of());
+        when(deleteRequestRepository.findDue(any(Instant.class), eq(50))).thenReturn(List.of());
 
         sweeper.sweep();
 
@@ -149,7 +150,7 @@ class AccountDeletionSweeperTest {
     @Test
     void fullyProcessed_requestMarkedProcessed_idempotentOnResweep() {
         DeleteRequest request = dueRequest();
-        when(deleteRequestRepository.findDue(any(Instant.class))).thenReturn(List.of(request)).thenReturn(List.of());
+        when(deleteRequestRepository.findDue(any(Instant.class), eq(50))).thenReturn(List.of(request)).thenReturn(List.of());
 
         sweeper.sweep();
         ArgumentCaptor<DeleteRequest> saved = ArgumentCaptor.forClass(DeleteRequest.class);

@@ -1,6 +1,5 @@
 package com.builddash.backend.application.scheduler;
 
-import com.builddash.backend.domain.model.DeliverySlotCounter;
 import com.builddash.backend.domain.model.SlotConfiguration;
 import com.builddash.backend.domain.port.DeliverySlotCounterRepository;
 import com.builddash.backend.domain.port.SlotConfigurationRepository;
@@ -18,7 +17,7 @@ import java.util.UUID;
 /**
  * Pre-creates DeliverySlotCounter rows for rolling future dates (e.g. next 7 days).
  * Runs nightly or on startup.
- * Idempotency guaranteed by existsBySlotIdAndSlotDate check and DB unique constraint (slot_id, slot_date).
+ * Multi-instance concurrency safe: uses atomic INSERT ... ON CONFLICT (slot_id, slot_date) DO NOTHING (H5.8).
  */
 @Service
 @RequiredArgsConstructor
@@ -49,17 +48,13 @@ public class DeliverySlotGenerator {
         LocalDate current = startDate;
         while (!current.isAfter(endDate)) {
             for (SlotConfiguration slot : activeSlots) {
-                if (!deliverySlotCounterRepository.existsBySlotIdAndSlotDate(slot.id(), current)) {
-                    DeliverySlotCounter counter = new DeliverySlotCounter(
-                            UUID.randomUUID(),
-                            slot.id(),
-                            current,
-                            slot.capacity(),
-                            0
-                    );
-                    deliverySlotCounterRepository.save(counter);
-                    log.debug("Created delivery slot counter for slot {} on {}", slot.id(), current);
-                }
+                deliverySlotCounterRepository.insertIfNotExists(
+                        UUID.randomUUID(),
+                        slot.id(),
+                        current,
+                        slot.capacity()
+                );
+                log.debug("Ensured delivery slot counter exists for slot {} on {}", slot.id(), current);
             }
             current = current.plusDays(1);
         }

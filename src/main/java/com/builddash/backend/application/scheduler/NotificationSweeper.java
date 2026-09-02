@@ -20,6 +20,8 @@ import java.util.List;
  * consumer never acked), so it is re-enqueued — NOT marked FAILED, which stays the DLQ
  * listener's call. Rows settle when the consumer's markSent lands; re-enqueue may
  * duplicate a send (at-least-once), accepted for a best-effort nudge channel.
+ *
+ * H5.8: Daily retention cleanup of terminal (SENT/FAILED) logs older than 30 days.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,7 +33,6 @@ public class NotificationSweeper {
 
     @Value("${notification.sweep.stuck-after-minutes:10}")
     private long stuckAfterMinutes;
-
 
     @Scheduled(fixedDelayString = "${notification.sweep.interval-ms:60000}")
     public void sweep() {
@@ -48,6 +49,15 @@ public class NotificationSweeper {
         } catch (Exception e) {
             // Will retry next poll — one failing enqueue never blocks sibling rows.
             log.error("Failed to re-enqueue stuck notification {}, will retry next poll", row.getId(), e);
+        }
+    }
+
+    @Scheduled(cron = "${notification.cleanup.cron:0 0 3 * * *}")
+    public void cleanupOldLogs() {
+        Instant cutoff = Instant.now().minus(Duration.ofDays(30));
+        int deleted = logRepository.deleteTerminalLogsOlderThan(cutoff);
+        if (deleted > 0) {
+            log.info("Cleaned up {} terminal notification logs older than 30 days", deleted);
         }
     }
 }

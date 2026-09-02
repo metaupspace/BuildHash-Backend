@@ -47,8 +47,8 @@ class InvoiceRepositoryAdapter implements InvoiceRepository {
     }
 
     @Override
-    public List<Invoice> findDlqClaimableInvoices(int maxAttempts, Instant cutoff) {
-        return jpaRepository.findDlqClaimableInvoices(maxAttempts, cutoff).stream()
+    public List<Invoice> findDlqClaimableInvoices(int maxAttempts, int maxDlqAttempts, Instant cutoff) {
+        return jpaRepository.findDlqClaimableInvoices(maxAttempts, maxDlqAttempts, cutoff).stream()
                 .map(mapper::toDomain)
                 .toList();
     }

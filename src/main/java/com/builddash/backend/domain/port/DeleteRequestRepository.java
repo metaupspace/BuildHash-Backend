@@ -16,4 +16,6 @@ public interface DeleteRequestRepository {
 
     /** Due = PENDING and deletionScheduledAt <= now. */
     List<DeleteRequest> findDue(Instant now);
+
+    List<DeleteRequest> findDue(Instant now, int limit);
 }

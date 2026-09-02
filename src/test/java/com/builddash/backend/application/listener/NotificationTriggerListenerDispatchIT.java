@@ -98,7 +98,7 @@ class NotificationTriggerListenerDispatchIT extends AbstractIntegrationTest {
         UUID addressId = addressRepository.save(new com.builddash.backend.domain.model.Address(
                 UUID.randomUUID(), userId, "HOME", "123 Street", null, "City", "State", "12345", 12.34, 56.78, true)).id();
 
-        orderRepository.save(new Order(orderId, userId, addressId, UUID.randomUUID(),
+        orderRepository.save(new Order(orderId, userId, addressId, UUID.fromString("11111111-1111-1111-1111-111111111101"),
                 LocalDate.now(), BigDecimal.TEN, OrderStatus.CONFIRMED,
                 UUID.randomUUID(), Instant.now(), null, null, List.of()));
 

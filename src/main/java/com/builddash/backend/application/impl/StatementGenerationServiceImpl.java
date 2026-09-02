@@ -123,6 +123,16 @@ public class StatementGenerationServiceImpl implements StatementGenerationServic
                 log.warn("Statement recovery failed for {}: {}", id, e.getMessage());
             }
         }
+        for (UUID id : statementRepository.findDlqClaimableStatements(
+                properties.getGeneration().getMaxAttempts(), staleCutoff)) {
+            try {
+                if (process(id)) {
+                    processed++;
+                }
+            } catch (Exception e) {
+                log.warn("Statement DLQ recovery failed for {}: {}", id, e.getMessage());
+            }
+        }
         return processed;
     }
 

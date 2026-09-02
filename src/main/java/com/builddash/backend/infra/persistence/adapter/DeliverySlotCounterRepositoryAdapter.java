@@ -7,6 +7,7 @@ import com.builddash.backend.infra.persistence.mapper.DeliverySlotMapper;
 import com.builddash.backend.infra.persistence.repository.DeliverySlotCounterJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -47,5 +48,11 @@ class DeliverySlotCounterRepositoryAdapter implements DeliverySlotCounterReposit
     @Override
     public boolean existsBySlotIdAndSlotDate(UUID slotId, LocalDate slotDate) {
         return jpaRepository.existsBySlotIdAndSlotDate(slotId, slotDate);
+    }
+
+    @Override
+    @Transactional
+    public void insertIfNotExists(UUID id, UUID slotId, LocalDate slotDate, int capacity) {
+        jpaRepository.insertIfNotExists(id, slotId, slotDate, capacity);
     }
 }

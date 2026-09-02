@@ -6,20 +6,19 @@ import com.builddash.backend.domain.model.NotificationLog;
 import com.builddash.backend.domain.port.NotificationLogRepository;
 import com.builddash.backend.infra.persistence.mapper.NotificationLogMapper;
 import com.builddash.backend.infra.persistence.repository.NotificationLogJpaRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
 class NotificationLogRepositoryAdapter implements NotificationLogRepository {
 
     private final NotificationLogJpaRepository jpaRepository;
-
 
     @Override
     public NotificationLog save(NotificationLog log) {
@@ -76,5 +75,11 @@ class NotificationLogRepositoryAdapter implements NotificationLogRepository {
     @Transactional
     public void deleteByUserId(UUID userId) {
         jpaRepository.deleteByUserId(userId);
+    }
+
+    @Override
+    @Transactional
+    public int deleteTerminalLogsOlderThan(Instant cutoff) {
+        return jpaRepository.deleteTerminalLogsOlderThan(cutoff);
     }
 }

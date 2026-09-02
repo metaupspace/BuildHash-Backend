@@ -273,11 +273,12 @@ class PoConcurrencyJpaIT extends AbstractIntegrationTest {
 
     private UUID b2bOrder() {
         UUID orderId = UUID.randomUUID();
+        UUID validSlotId = UUID.fromString("11111111-1111-1111-1111-111111111101");
         jdbcTemplate.update(
                 "INSERT INTO orders (id, user_id, address_id, slot_id, slot_date, total_amount, "
                         + "status, company_id, delivery_slot_lock_id) VALUES (?, ?, ?, ?, ?, 100.00, "
                         + "'PAYMENT_PENDING', ?, ?)",
-                orderId, userId, addressId, UUID.randomUUID(), LocalDate.now(), companyId, UUID.randomUUID());
+                orderId, userId, addressId, validSlotId, LocalDate.now(), companyId, UUID.randomUUID());
         return orderId;
     }
 

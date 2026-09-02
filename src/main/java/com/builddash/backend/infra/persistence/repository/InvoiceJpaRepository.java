@@ -25,6 +25,6 @@ public interface InvoiceJpaRepository extends JpaRepository<InvoiceEntity, UUID>
     @Query("SELECT i FROM InvoiceEntity i WHERE (i.status = 'PENDING' AND i.attemptCount < :maxAttempts) OR (i.status = 'GENERATING' AND i.attemptCount < :maxAttempts AND i.updatedAt < :cutoff) ORDER BY i.createdAt ASC")
     List<InvoiceEntity> findSchedulerClaimableInvoices(@Param("maxAttempts") int maxAttempts, @Param("cutoff") Instant cutoff);
 
-    @Query("SELECT i FROM InvoiceEntity i WHERE i.status = 'DLQ_RETRY' OR (i.status = 'GENERATING' AND i.attemptCount >= :maxAttempts AND i.updatedAt < :cutoff) ORDER BY i.updatedAt ASC")
-    List<InvoiceEntity> findDlqClaimableInvoices(@Param("maxAttempts") int maxAttempts, @Param("cutoff") Instant cutoff);
+    @Query("SELECT i FROM InvoiceEntity i WHERE (i.status = 'DLQ_RETRY' AND i.attemptCount <= :maxDlqAttempts) OR (i.status = 'GENERATING' AND i.attemptCount >= :maxAttempts AND i.attemptCount <= :maxDlqAttempts AND i.updatedAt < :cutoff) ORDER BY i.updatedAt ASC")
+    List<InvoiceEntity> findDlqClaimableInvoices(@Param("maxAttempts") int maxAttempts, @Param("maxDlqAttempts") int maxDlqAttempts, @Param("cutoff") Instant cutoff);
 }
