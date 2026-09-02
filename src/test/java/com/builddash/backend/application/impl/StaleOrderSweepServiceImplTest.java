@@ -93,11 +93,16 @@ class StaleOrderSweepServiceImplTest {
         com.builddash.backend.domain.model.DeliverySlotCounter counter =
                 new com.builddash.backend.domain.model.DeliverySlotCounter(UUID.randomUUID(), slotId, date, 5, 3);
         when(deliverySlotCounterRepository.findBySlotIdAndSlotDateForUpdate(slotId, date)).thenReturn(Optional.of(counter));
+        when(deliverySlotLockRepository.tryTransitionStatus(lockId,
+                com.builddash.backend.domain.enums.DeliverySlotLockStatus.ACTIVE,
+                com.builddash.backend.domain.enums.DeliverySlotLockStatus.EXPIRED)).thenReturn(1);
 
         sweepService.sweepExpiredLocks();
 
         verify(deliverySlotCounterRepository).save(any(com.builddash.backend.domain.model.DeliverySlotCounter.class)); // decremented
-        verify(deliverySlotLockRepository).updateStatus(lockId, com.builddash.backend.domain.enums.DeliverySlotLockStatus.EXPIRED);
+        verify(deliverySlotLockRepository).tryTransitionStatus(lockId,
+                com.builddash.backend.domain.enums.DeliverySlotLockStatus.ACTIVE,
+                com.builddash.backend.domain.enums.DeliverySlotLockStatus.EXPIRED);
     }
 
     @Test
@@ -109,10 +114,17 @@ class StaleOrderSweepServiceImplTest {
                 new com.builddash.backend.domain.model.DeliverySlotLock(lockId, UUID.randomUUID(), slotId, date, Instant.now().minusSeconds(60), com.builddash.backend.domain.enums.DeliverySlotLockStatus.ACTIVE);
         when(deliverySlotLockRepository.findExpiredActiveLocks(any())).thenReturn(List.of(expiredLock));
         when(deliverySlotCounterRepository.findBySlotIdAndSlotDateForUpdate(slotId, date)).thenReturn(Optional.empty());
+        when(deliverySlotLockRepository.tryTransitionStatus(lockId,
+                com.builddash.backend.domain.enums.DeliverySlotLockStatus.ACTIVE,
+                com.builddash.backend.domain.enums.DeliverySlotLockStatus.EXPIRED)).thenReturn(1);
 
         sweepService.sweepExpiredLocks();
 
-        verify(deliverySlotLockRepository).updateStatus(lockId, com.builddash.backend.domain.enums.DeliverySlotLockStatus.EXPIRED);
+        // H2.4: still expires (pre-existing behavior for a vanished counter row), but
+        // the decrement never happens — nothing to reconcile against.
+        verify(deliverySlotLockRepository).tryTransitionStatus(lockId,
+                com.builddash.backend.domain.enums.DeliverySlotLockStatus.ACTIVE,
+                com.builddash.backend.domain.enums.DeliverySlotLockStatus.EXPIRED);
         verify(deliverySlotCounterRepository, org.mockito.Mockito.never()).save(any());
     }
 }

@@ -133,6 +133,7 @@ class DeliverySlotServiceImplTest {
         when(deliverySlotCounterRepository.findBySlotIdAndSlotDateForUpdate(newSlotId, date)).thenReturn(Optional.of(newCounter));
         when(deliverySlotCounterRepository.findBySlotIdAndSlotDateForUpdate(oldSlotId, date)).thenReturn(Optional.of(oldCounter));
         when(deliverySlotLockRepository.save(any(DeliverySlotLock.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(deliverySlotLockRepository.tryTransitionStatus(oldLock.id(), DeliverySlotLockStatus.ACTIVE, DeliverySlotLockStatus.RELEASED)).thenReturn(1);
 
         DeliverySlotLock newLock = deliverySlotService.acquireOrSwapLock(userId, newSlotId, date, Duration.ofMinutes(15));
 
@@ -140,10 +141,19 @@ class DeliverySlotServiceImplTest {
 
         // Verifies old counter decremented
         verify(deliverySlotCounterRepository).save(new DeliverySlotCounter(oldCounter.id(), oldSlotId, date, 50, 9));
-        // Verifies old lock released
-        verify(deliverySlotLockRepository).updateStatus(oldLock.id(), DeliverySlotLockStatus.RELEASED);
+        // Verifies old lock released via CAS (H2.4)
+        verify(deliverySlotLockRepository).tryTransitionStatus(oldLock.id(), DeliverySlotLockStatus.ACTIVE, DeliverySlotLockStatus.RELEASED);
         // Verifies new counter incremented
         verify(deliverySlotCounterRepository).save(new DeliverySlotCounter(newCounter.id(), newSlotId, date, 50, 1));
+
+        // H2.5: both counters must be fetched in one canonical order — slotId compared
+        // first — whichever direction the swap goes. The real-Postgres deadlock proof is
+        // DeliverySlotSwapDeadlockJpaIT; this pins the fetch order itself.
+        UUID first = oldSlotId.compareTo(newSlotId) < 0 ? oldSlotId : newSlotId;
+        UUID second = first.equals(oldSlotId) ? newSlotId : oldSlotId;
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(deliverySlotCounterRepository);
+        inOrder.verify(deliverySlotCounterRepository).findBySlotIdAndSlotDateForUpdate(first, date);
+        inOrder.verify(deliverySlotCounterRepository).findBySlotIdAndSlotDateForUpdate(second, date);
     }
 
     @Test
@@ -152,23 +162,29 @@ class DeliverySlotServiceImplTest {
         UUID userId = UUID.randomUUID();
         DeliverySlotLock lock = new DeliverySlotLock(lockId, userId, UUID.randomUUID(), LocalDate.now(), Instant.now().plusSeconds(60), DeliverySlotLockStatus.ACTIVE);
         when(deliverySlotLockRepository.findById(lockId)).thenReturn(Optional.of(lock));
+        when(deliverySlotLockRepository.tryTransitionStatus(lockId, DeliverySlotLockStatus.ACTIVE, DeliverySlotLockStatus.CONSUMED)).thenReturn(1);
 
-        deliverySlotService.consumeLock(lockId, userId);
+        boolean consumed = deliverySlotService.consumeLock(lockId, userId);
 
-        verify(deliverySlotLockRepository).updateStatus(lockId, DeliverySlotLockStatus.CONSUMED);
+        assertThat(consumed).isTrue();
+        verify(deliverySlotLockRepository).tryTransitionStatus(lockId, DeliverySlotLockStatus.ACTIVE, DeliverySlotLockStatus.CONSUMED);
         verify(deliverySlotCounterRepository, never()).save(any());
     }
 
     @Test
-    void consumeLock_alreadyReleased_noop() {
+    void consumeLock_notActive_returnsFalseNoTransitionSideEffects() {
         UUID lockId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
+        // H2.7: the DB row, not the in-memory snapshot, is the truth — the CAS attempts
+        // ACTIVE -> CONSUMED and loses (row already RELEASED), which callers must see.
         DeliverySlotLock lock = new DeliverySlotLock(lockId, userId, UUID.randomUUID(), LocalDate.now(), Instant.now().plusSeconds(60), DeliverySlotLockStatus.RELEASED);
         when(deliverySlotLockRepository.findById(lockId)).thenReturn(Optional.of(lock));
+        when(deliverySlotLockRepository.tryTransitionStatus(lockId, DeliverySlotLockStatus.ACTIVE, DeliverySlotLockStatus.CONSUMED)).thenReturn(0);
 
-        deliverySlotService.consumeLock(lockId, userId);
+        boolean consumed = deliverySlotService.consumeLock(lockId, userId);
 
-        verify(deliverySlotLockRepository, org.mockito.Mockito.never()).updateStatus(any(), any());
+        assertThat(consumed).isFalse();
+        verify(deliverySlotCounterRepository, never()).save(any());
     }
 
     @Test

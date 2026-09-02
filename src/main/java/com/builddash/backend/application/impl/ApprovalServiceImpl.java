@@ -113,7 +113,12 @@ public class ApprovalServiceImpl implements ApprovalService {
                 requirePending(request, order);
                 CompanyMember actor = requireDecisionEligible(actorUserId, request, order);
 
-                DeliverySlotLock lock = deliverySlotService.acquireOrSwapLock(order.userId(),
+                // H2.6: plain acquire, NOT acquireOrSwapLock. The gated order's own lock
+                // was already released when approval opened, so there is no prior lock to
+                // swap away from — and a swap here would release whatever OTHER active
+                // lock the user happens to hold (a concurrent B2C checkout's), silently
+                // freeing capacity that isn't ours.
+                DeliverySlotLock lock = deliverySlotService.acquireLock(order.userId(),
                         order.slotId(), order.slotDate(), REACQUIRE_TTL);          // SLOT_COUNTER
 
                 Order resumed = orderRepository.save(order.resumePayment(lock.id()));
@@ -124,7 +129,7 @@ public class ApprovalServiceImpl implements ApprovalService {
                 return new ApprovalDetail(approved, resumed, List.of());
             });
         } catch (SlotUnavailableException e) {
-            // acquireOrSwapLock is a nested @Transactional join — its exception marks the
+            // acquireLock is a nested @Transactional join — its exception marks the
             // shared tx rollback-only, so the cancellation CANNOT ride on that transaction.
             // Cancel in a fresh one instead (sweep-precedent system path: order row lock,
             // request row lock, no company lock), re-checking state under those locks in

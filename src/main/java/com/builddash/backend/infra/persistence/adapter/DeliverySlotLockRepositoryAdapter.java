@@ -48,8 +48,15 @@ class DeliverySlotLockRepositoryAdapter implements DeliverySlotLockRepository {
     }
 
     @Override
-    public void updateStatus(UUID lockId, DeliverySlotLockStatus status) {
-        jpaRepository.updateStatus(lockId, status);
+    public int tryTransitionStatus(UUID lockId, DeliverySlotLockStatus from, DeliverySlotLockStatus to) {
+        return jpaRepository.tryTransitionStatus(lockId, from, to);
+    }
+
+    @Override
+    public List<DeliverySlotLock> findAllActiveByUserId(UUID userId) {
+        return jpaRepository.findAllActiveByUserId(userId).stream()
+                .map(DeliverySlotMapper::toDomain)
+                .toList();
     }
 
     @Override

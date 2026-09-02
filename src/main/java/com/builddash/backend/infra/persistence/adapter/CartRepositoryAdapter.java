@@ -80,4 +80,9 @@ class CartRepositoryAdapter implements CartRepository {
                 .map(this::toDomain)
                 .toList();
     }
+
+    @Override
+    public boolean claimForCheckout(UUID cartId) {
+        return jpaRepository.claimForCheckout(cartId) == 1;
+    }
 }

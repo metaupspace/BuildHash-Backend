@@ -36,17 +36,10 @@ class CartLineItemRepositoryAdapter implements CartLineItemRepository {
     @Override
     @org.springframework.transaction.annotation.Transactional
     public CartLineItem save(CartLineItem item) {
-        CartLineItemEntity entity = jpaRepository.findByCartIdAndProductId(item.cartId(), item.productId())
-                .orElseGet(() -> {
-                    CartLineItemEntity e = new CartLineItemEntity();
-                    e.setId(item.id() != null ? item.id() : UUID.randomUUID());
-                    e.setCart(cartJpaRepository.getReferenceById(item.cartId()));
-                    e.setProductId(item.productId());
-                    return e;
-                });
-        entity.setQuantity(item.quantity());
-        entity.setAppliedItemCoupon(item.appliedItemCoupon());
-        CartLineItemEntity saved = jpaRepository.save(entity);
+        UUID id = item.id() != null ? item.id() : UUID.randomUUID();
+        jpaRepository.upsert(id, item.cartId(), item.productId(), item.quantity(), item.appliedItemCoupon());
+        CartLineItemEntity saved = jpaRepository.findByCartIdAndProductId(item.cartId(), item.productId())
+                .orElseThrow();
 
         // Keep the bidirectional collection consistent within the session — a cart
         // read later in the same transaction maps from CartEntity.items and must

@@ -157,6 +157,12 @@ public class CartServiceImpl implements CartService {
         return cartPricingCalculator.calculate(refreshed, userId);
     }
 
+    @Override
+    @Transactional
+    public boolean claimForCheckout(UUID cartId) {
+        return cartRepository.claimForCheckout(cartId);
+    }
+
     private Cart getOrCreateCart(UUID userId, UUID projectId) {
         return cartRepository.findByUserIdAndProjectId(userId, projectId)
                 .orElseGet(() -> {

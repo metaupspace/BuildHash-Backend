@@ -59,6 +59,7 @@ class AccountDeletionSweeperTest {
     @Mock private LoginEventRepository loginEventRepository;
     @Mock private NotificationLogRepository notificationLogRepository;
     @Mock private DeliverySlotLockRepository deliverySlotLockRepository;
+    @Mock private com.builddash.backend.application.service.DeliverySlotService deliverySlotService;
     @Mock private SupportTicketRepository supportTicketRepository;
     @Mock private SupportTicketMessageRepository supportTicketMessageRepository;
 
@@ -75,7 +76,7 @@ class AccountDeletionSweeperTest {
                 userRepository, returnRepository, addressRepository, cartRepository, cartLineItemRepository,
                 wishlistRepository, notifyMeSubscriptionRepository, couponRedemptionRepository,
                 searchQueryLogRepository, deviceRepository, loginEventRepository, notificationLogRepository,
-                deliverySlotLockRepository, supportTicketRepository, supportTicketMessageRepository);
+                deliverySlotLockRepository, deliverySlotService, supportTicketRepository, supportTicketMessageRepository);
     }
 
     private DeleteRequest dueRequest() {

@@ -68,6 +68,7 @@ public class AccountDeletionSweeper {
     private final LoginEventRepository loginEventRepository;
     private final NotificationLogRepository notificationLogRepository;
     private final DeliverySlotLockRepository deliverySlotLockRepository;
+    private final com.builddash.backend.application.service.DeliverySlotService deliverySlotService;
     private final SupportTicketRepository supportTicketRepository;
     private final SupportTicketMessageRepository supportTicketMessageRepository;
 
@@ -103,6 +104,7 @@ public class AccountDeletionSweeper {
         hardDelete("devices", userId, () -> deviceRepository.deleteByUserId(userId), allOk);
         hardDelete("login_events", userId, () -> loginEventRepository.deleteByUserId(userId), allOk);
         hardDelete("notification_logs", userId, () -> notificationLogRepository.deleteByUserId(userId), allOk);
+        releaseActiveSlotLocks(userId);
         hardDelete("delivery_slot_locks", userId, () -> deliverySlotLockRepository.deleteByUserId(userId), allOk);
         if (properties.getSupportTickets() == AccountDeletionProperties.SupportTicketDeletion.HARD_DELETE) {
             hardDelete("support_messages+tickets", userId, () -> deleteSupportThreads(userId), allOk);
@@ -116,6 +118,25 @@ public class AccountDeletionSweeper {
             log.info("Delete request {} processed: user {} tombstoned", request.id(), userId);
         } else {
             log.warn("Delete request {} partially processed — staying PENDING for retry", request.id());
+        }
+    }
+
+    /**
+     * H2.8: deleting an ACTIVE lock row without transitioning it leaks its held capacity
+     * forever. Release every ACTIVE lock through the hardened CAS path first (each on its
+     * own transaction); already-terminal locks skip this and contribute no second
+     * decrement. Best-effort per lock — per the H2 decisions, deletion must never be
+     * blocked by slot locks — but the normal path must not leak capacity.
+     */
+    private void releaseActiveSlotLocks(UUID userId) {
+        for (com.builddash.backend.domain.model.DeliverySlotLock lock
+                : deliverySlotLockRepository.findAllActiveByUserId(userId)) {
+            try {
+                deliverySlotService.releaseLock(lock.id(), userId);
+            } catch (Exception e) {
+                log.error("Failed to release slot lock {} for user {} before deletion — "
+                        + "slot {}/{} capacity not returned", lock.id(), userId, lock.slotId(), lock.slotDate(), e);
+            }
         }
     }
 

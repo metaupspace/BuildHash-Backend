@@ -18,4 +18,9 @@ public interface CartRepository {
 
     /** DPDP export: every cart (any type) owned by the user, with items. */
     List<Cart> findAllByUserId(UUID userId);
+
+    /** H2.1: atomic one-time consumption claim. True iff this call performed the
+     *  transition (cart existed, was not already consumed) — the concurrency guard for
+     *  B2B draft checkout, not a courtesy status read. */
+    boolean claimForCheckout(UUID cartId);
 }

@@ -14,7 +14,18 @@ public interface DeliverySlotLockRepository {
     Optional<DeliverySlotLock> findActiveByUserId(UUID userId, Instant asOf);
     Optional<DeliverySlotLock> findById(UUID lockId);
     List<DeliverySlotLock> findExpiredActiveLocks(Instant asOf);
-    void updateStatus(UUID lockId, DeliverySlotLockStatus status);
+
+    /**
+     * H2.4/H2.7: compare-and-swap status transition. Returns rows affected (0 or 1) so
+     * callers can decrement capacity only on an actual transition, not on every call —
+     * this is what makes release/consume/expiry/deletion-cleanup idempotent against a
+     * concurrent writer racing the same lock.
+     */
+    int tryTransitionStatus(UUID lockId, DeliverySlotLockStatus from, DeliverySlotLockStatus to);
+
+    /** H2.8: every ACTIVE lock a user holds — not just the most recent one, since H2.6
+     *  lets a user legitimately hold more than one concurrently. */
+    List<DeliverySlotLock> findAllActiveByUserId(UUID userId);
 
     /** DPDP hard-delete (PLAN_PHASE8 5(d)): transient rows, swept with the account anyway. */
     void deleteByUserId(UUID userId);

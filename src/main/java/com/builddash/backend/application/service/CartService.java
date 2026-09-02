@@ -30,4 +30,11 @@ public interface CartService {
     PricedCart createB2bDraftCart(UUID companyId, UUID userId, UUID sourceId,
                                   java.util.List<com.builddash.backend.domain.model.CartLineItem> items);
     void mergeGuestCart(UUID guestUserId, UUID realUserId);
+
+    /**
+     * H2.1: atomic one-time consumption claim for a B2B draft cart's checkout. True iff
+     * this call claimed it (not already consumed) — the concurrency guard that makes two
+     * concurrent checkouts against the same draft produce exactly one winner.
+     */
+    boolean claimForCheckout(UUID cartId);
 }

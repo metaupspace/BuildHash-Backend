@@ -55,6 +55,11 @@ public class CartEntity {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    /** H2.1: one-time consumption claim for B2B draft checkout — set exactly once, via
+     *  the atomic claimForCheckout UPDATE, never via the entity setter directly. */
+    @Column(name = "consumed_at")
+    private Instant consumedAt;
+
     @PrePersist
     void prePersist() {
         createdAt = Instant.now();

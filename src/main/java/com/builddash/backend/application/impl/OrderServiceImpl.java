@@ -71,6 +71,9 @@ public class OrderServiceImpl implements OrderService {
         // (handled below before this is even read) or an idempotent retry that resolved
         // to an already-existing order — never "no claim was needed".
         Payment[] pendingClaim = new Payment[1];
+        // H2.1: true only once a fresh B2B draft checkout actually claims its cart in
+        // this call — never set on the idempotent-retry early-return paths.
+        boolean[] isB2bDraftCheckout = new boolean[1];
         Order savedOrder = transactionTemplate.execute(status -> {
             // Rolling window (PLAN_PHASE8 decision 10): an expired key reads as absent —
             // the caller gets a genuinely new order, not the stale one.
@@ -87,6 +90,19 @@ public class OrderServiceImpl implements OrderService {
             PricedCart preRead = cartId != null ? cartService.getCartById(userId, cartId) : null;
             UUID b2bCompanyId = preRead != null ? preRead.companyId() : null;
             draftProjectId[0] = preRead != null ? preRead.projectId() : null;
+
+            if (cartId != null && b2bCompanyId != null) {
+                // H2.1: atomic one-time consumption claim IS the concurrency guard — a
+                // second concurrent checkout against the same draft loses here, before
+                // any site/approval/gateway work, and a checkout that fails later in
+                // this same transaction rolls the claim back with everything else.
+                isB2bDraftCheckout[0] = true;
+                if (!cartService.claimForCheckout(cartId)) {
+                    throw new BadRequestException("CART_ALREADY_CONSUMED",
+                            "This draft cart has already been checked out: " + cartId);
+                }
+            }
+
             UUID b2bSiteId = null;
             if (b2bCompanyId != null) {
                 // H0.5: site context is mandatory for company checkout — an optional
@@ -178,7 +194,11 @@ public class OrderServiceImpl implements OrderService {
 
         if (savedOrder.status() == OrderStatus.PENDING_APPROVAL) {
             // No gateway, no Payment row, paymentUrl null — approval resumes payment.
-            cartService.clearCart(userId, draftProjectId[0]);
+            // H2.1: a claimed B2B draft is already consumed via consumed_at — clearCart
+            // only resolves PRIMARY carts and would otherwise create a junk PRIMARY cart.
+            if (!isB2bDraftCheckout[0]) {
+                cartService.clearCart(userId, draftProjectId[0]);
+            }
             return new OrderResult(savedOrder, null);
         }
 
@@ -201,7 +221,10 @@ public class OrderServiceImpl implements OrderService {
         // transaction, then a short transaction records the outcome.
         PaymentReference ref = completePaymentInitiation(pendingClaim[0]);
 
-        cartService.clearCart(userId, cartId != null ? draftProjectId[0] : null);
+        // H2.1: skip for a claimed B2B draft — see the PENDING_APPROVAL branch above.
+        if (!isB2bDraftCheckout[0]) {
+            cartService.clearCart(userId, cartId != null ? draftProjectId[0] : null);
+        }
 
         return new OrderResult(savedOrder, ref.paymentUrl());
     }
@@ -349,6 +372,14 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .filter(o -> o.userId().equals(userId))
                 .orElseThrow(() -> new com.builddash.backend.domain.exception.NotFoundException("Order", orderId.toString()));
+
+        if (order.companyId() != null) {
+            // H2.2: reorder() builds a companyId=null REORDER_SCRATCH cart with no way to
+            // carry B2B scope — silently re-entering the B2C path would bypass approval
+            // and contract pricing. Reject explicitly instead.
+            throw new BadRequestException("B2B_REORDER_UNSUPPORTED",
+                    "B2B orders cannot be reordered; re-create via RFQ/PO conversion instead");
+        }
 
         List<CartLineItem> cartItems = order.lineItems().stream()
                 .map(li -> new CartLineItem(

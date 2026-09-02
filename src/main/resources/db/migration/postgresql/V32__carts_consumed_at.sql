@@ -1,0 +1,1 @@
+ALTER TABLE carts ADD COLUMN consumed_at TIMESTAMPTZ NULL;

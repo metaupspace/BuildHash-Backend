@@ -146,7 +146,7 @@ class ApprovalServiceImplTest {
         DeliverySlotLock lock = new DeliverySlotLock(UUID.randomUUID(), placerUserId, order.slotId(),
                 order.slotDate(), Instant.now().plus(Duration.ofMinutes(15)),
                 com.builddash.backend.domain.enums.DeliverySlotLockStatus.ACTIVE);
-        when(deliverySlotService.acquireOrSwapLock(eq(placerUserId), eq(order.slotId()),
+        when(deliverySlotService.acquireLock(eq(placerUserId), eq(order.slotId()),
                 eq(order.slotDate()), any(Duration.class))).thenReturn(lock);
 
         ApprovalService.ApprovalDetail result = approvalService.approve(approverUserId, approvalId);
@@ -256,7 +256,7 @@ class ApprovalServiceImplTest {
         ApprovalRequest request = pendingRequest();
         Order order = pendingApprovalOrder();
         stubHappyPath(request, order);
-        when(deliverySlotService.acquireOrSwapLock(any(), any(), any(), any()))
+        when(deliverySlotService.acquireLock(any(), any(), any(), any()))
                 .thenThrow(new SlotUnavailableException("SLOT_CAPACITY_EXCEEDED", "no capacity"));
 
         assertThatThrownBy(() -> approvalService.approve(approverUserId, approvalId))
@@ -301,7 +301,7 @@ class ApprovalServiceImplTest {
         assertThat(requestCaptor.getValue().status()).isEqualTo(ApprovalRequestStatus.REJECTED);
 
         verify(approvalActionRepository).save(any(ApprovalAction.class));
-        verify(deliverySlotService, never()).acquireOrSwapLock(any(), any(), any(), any());
+        verify(deliverySlotService, never()).acquireLock(any(), any(), any(), any());
         verifyNoInteractions(orderService);
 
         var events = org.mockito.Mockito.mockingDetails(eventPublisher).getInvocations().stream()

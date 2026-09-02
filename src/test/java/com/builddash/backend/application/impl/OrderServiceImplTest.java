@@ -561,6 +561,7 @@ class OrderServiceImplTest {
         when(draft.companyId()).thenReturn(companyId);
         when(draft.projectId()).thenReturn(sourceId);
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+        when(cartService.claimForCheckout(cartId)).thenReturn(true);
         when(companySiteRepository.findById(siteId)).thenReturn(Optional.of(
                 new com.builddash.backend.domain.model.CompanySite(siteId, companyId, "Main", null, true, null, null)));
 
@@ -591,7 +592,9 @@ class OrderServiceImplTest {
         verify(approvalGateService).openApproval(savedOrder, gated, lockId);
         verify(paymentGateway, never()).initiate(any(), any());
         verify(paymentRepository, never()).save(any());
-        verify(cartService).clearCart(userId, sourceId);
+        // H2.1: a claimed B2B draft is consumed via carts.consumed_at — clearCart only
+        // resolves PRIMARY carts and would create a junk PRIMARY cart here.
+        verify(cartService, never()).clearCart(any(), any());
     }
 
     @Test
@@ -605,6 +608,7 @@ class OrderServiceImplTest {
         when(draft.companyId()).thenReturn(companyId);
         when(draft.projectId()).thenReturn(UUID.randomUUID());
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+        when(cartService.claimForCheckout(cartId)).thenReturn(true);
         when(companySiteRepository.findById(siteId)).thenReturn(Optional.of(
                 new com.builddash.backend.domain.model.CompanySite(siteId, companyId, "Main", null, true, null, null)));
 
@@ -642,6 +646,7 @@ class OrderServiceImplTest {
         PricedCart draft = mock(PricedCart.class);
         when(draft.companyId()).thenReturn(companyId);
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+        when(cartService.claimForCheckout(cartId)).thenReturn(true);
 
         assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, cartId, null, idempotencyKey))
                 .isInstanceOf(com.builddash.backend.domain.exception.BadRequestException.class)
@@ -660,6 +665,7 @@ class OrderServiceImplTest {
         PricedCart draft = mock(PricedCart.class);
         when(draft.companyId()).thenReturn(companyId);
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+        when(cartService.claimForCheckout(cartId)).thenReturn(true);
         when(companySiteRepository.findById(foreignSiteId)).thenReturn(Optional.of(
                 new com.builddash.backend.domain.model.CompanySite(foreignSiteId, UUID.randomUUID(),
                         "Foreign", null, true, null, null)));
@@ -680,6 +686,7 @@ class OrderServiceImplTest {
         PricedCart draft = mock(PricedCart.class);
         when(draft.companyId()).thenReturn(companyId);
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
+        when(cartService.claimForCheckout(cartId)).thenReturn(true);
         when(companySiteRepository.findById(siteId)).thenReturn(Optional.of(
                 new com.builddash.backend.domain.model.CompanySite(siteId, companyId,
                         "Main", null, false, null, null)));

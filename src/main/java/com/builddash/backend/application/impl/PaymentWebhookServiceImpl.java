@@ -78,8 +78,17 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
             orderRepository.save(confirmed);
             eventPublisher.publishEvent(new OrderConfirmedEvent(orderId));
             paymentRepository.save(payment.get().markSuccess(payment.get().transactionId()));
-            // Consume, not release: the confirmed order still occupies delivery capacity
-            deliverySlotService.consumeLock(confirmed.deliverySlotLockId(), confirmed.userId());
+            // Consume, not release: the confirmed order still occupies delivery capacity.
+            // H2.7: a false return means the lock was no longer ACTIVE (expired and swept,
+            // or released by a racing path) — the order IS paid and confirmed, so rolling
+            // back is wrong; surface a CRITICAL capacity-reconciliation signal instead,
+            // same discipline as the H1 captured-payment-on-cancelled-order path.
+            boolean consumed = deliverySlotService.consumeLock(confirmed.deliverySlotLockId(), confirmed.userId());
+            if (!consumed) {
+                log.error("CRITICAL: order {} confirmed but its delivery-slot lock {} was no longer ACTIVE — "
+                        + "delivery capacity may have been returned while the order is still scheduled, "
+                        + "manual capacity reconciliation required", orderId, confirmed.deliverySlotLockId());
+            }
             log.info("Order {} confirmed successfully", orderId);
         } else if ("FAILED".equalsIgnoreCase(status)) {
             updatePaymentStatus(orderId, PaymentStatus.FAILED);
