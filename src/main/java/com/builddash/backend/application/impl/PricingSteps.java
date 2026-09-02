@@ -6,6 +6,7 @@ import com.builddash.backend.domain.model.BulkPricingTier;
 import com.builddash.backend.domain.model.Coupon;
 import com.builddash.backend.domain.model.MarginRule;
 import com.builddash.backend.domain.model.PriceCalculationResult;
+import com.builddash.backend.domain.service.CouponValidator;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -25,6 +26,14 @@ class PricingSteps {
     }
 
     static PriceCalculationResult applyBulkTier(PriceCalculationResult running, PricingContext ctx) {
+        if (ctx.unitPriceOverride() != null) {
+            BigDecimal tierAdjustedTotal = ctx.unitPriceOverride().multiply(BigDecimal.valueOf(running.quantity()));
+            return copy(running)
+                    .tierUnitPrice(ctx.unitPriceOverride())
+                    .tierAdjustedTotal(tierAdjustedTotal)
+                    .build();
+        }
+
         Optional<BulkPricingTier> matchedTier = ctx.bulkPricingTiers().stream()
                 .filter(tier -> tier.getMinQuantity() <= running.quantity())
                 .max(Comparator.comparingInt(BulkPricingTier::getMinQuantity));
@@ -43,6 +52,13 @@ class PricingSteps {
     }
 
     static PriceCalculationResult applyContractOverride(PriceCalculationResult running, PricingContext ctx) {
+        if (ctx.unitPriceOverride() != null) {
+            return copy(running)
+                    .contractUnitPrice(running.tierUnitPrice())
+                    .contractAdjustedTotal(running.tierAdjustedTotal())
+                    .build();
+        }
+
         if (ctx.activeContract() == null) {
             return copy(running).contractAdjustedTotal(running.tierAdjustedTotal()).build();
         }
@@ -69,16 +85,18 @@ class PricingSteps {
         }
 
         Coupon coupon = ctx.coupon();
-        if (coupon == null || !coupon.isActive()
-                || coupon.getExpiresAt().isBefore(ctx.asOf())
-                || (coupon.getMaxUsesPerUser() != null
-                        && ctx.couponRedemptionCountForUser() >= coupon.getMaxUsesPerUser())
-                || (!coupon.getEligibleCategoryIds().isEmpty()
-                        && !coupon.getEligibleCategoryIds().contains(ctx.product().getCategoryId()))
-                || (coupon.getMinOrderValue() != null
-                        && running.contractAdjustedTotal().compareTo(coupon.getMinOrderValue()) < 0)) {
-            log.warn("Skipping item coupon {}: not applicable (inactive/expired/limit/category/min-order)",
-                    ctx.requestedCouponCode());
+        CouponValidator.ValidationResult validation = CouponValidator.validate(
+                coupon,
+                ctx.product() != null ? ctx.product().getCategoryId() : null,
+                running.contractAdjustedTotal(),
+                ctx.couponRedemptionCountForUser(),
+                false,
+                ctx.asOf()
+        );
+
+        if (!validation.valid()) {
+            log.warn("Skipping item coupon {}: not applicable ({})",
+                    ctx.requestedCouponCode(), validation.dropReason());
             return copy(running).couponDiscountAmount(BigDecimal.ZERO).build();
         }
 

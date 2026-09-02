@@ -35,6 +35,10 @@ class GstSequenceJpaIT extends AbstractIntegrationTest {
 
     @Test
     void concurrentSequenceAllocation_allocatesGaplessAndUniqueNumbers() throws Exception {
+        Long initialVal = jdbcTemplate.queryForObject(
+                "SELECT current_val FROM gst_sequences WHERE sequence_type = 'INVOICE' AND fiscal_year = '2026-2027'", Long.class);
+        int base = initialVal != null ? initialVal.intValue() : 0;
+
         int threadCount = 10;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         CountDownLatch startLatch = new CountDownLatch(1);
@@ -66,7 +70,7 @@ class GstSequenceJpaIT extends AbstractIntegrationTest {
                 .toList();
 
         for (int i = 0; i < sequenceNumbers.size(); i++) {
-            assertThat(sequenceNumbers.get(i)).isEqualTo(i + 1);
+            assertThat(sequenceNumbers.get(i)).isEqualTo(base + i + 1);
         }
     }
 
@@ -75,7 +79,7 @@ class GstSequenceJpaIT extends AbstractIntegrationTest {
         TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
 
         Long currentVal = jdbcTemplate.queryForObject(
-                "SELECT current_val FROM gst_sequences WHERE sequence_type = 'CREDIT_NOTE'", Long.class);
+                "SELECT current_val FROM gst_sequences WHERE sequence_type = 'CREDIT_NOTE' AND fiscal_year = '2026-2027'", Long.class);
         long base = currentVal != null ? currentVal : 0L;
         String expectedNum = String.format("CRN-2627-%06d", base + 1);
 

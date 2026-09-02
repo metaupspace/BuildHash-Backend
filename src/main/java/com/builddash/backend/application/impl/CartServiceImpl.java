@@ -126,7 +126,8 @@ public class CartServiceImpl implements CartService {
                     cart.id(),
                     inputItem.productId(),
                     inputItem.quantity(),
-                    null
+                    inputItem.appliedItemCoupon(),
+                    inputItem.unitPriceOverride()
             );
             cartLineItemRepository.save(lineItem);
         }
@@ -150,7 +151,8 @@ public class CartServiceImpl implements CartService {
                 throw new NotFoundException("PRODUCT_NOT_FOUND", "Product not found: " + inputItem.productId());
             }
             cartLineItemRepository.save(new CartLineItem(
-                    UUID.randomUUID(), cart.id(), inputItem.productId(), inputItem.quantity(), null));
+                    UUID.randomUUID(), cart.id(), inputItem.productId(), inputItem.quantity(),
+                    inputItem.appliedItemCoupon(), inputItem.unitPriceOverride()));
         }
 
         Cart refreshed = cartRepository.findById(cart.id()).orElseThrow();
@@ -217,7 +219,8 @@ public class CartServiceImpl implements CartService {
                             existing.cartId(),
                             existing.productId(),
                             existing.quantity() + guestItem.quantity(),
-                            existing.appliedItemCoupon()
+                            existing.appliedItemCoupon(),
+                            existing.unitPriceOverride() != null ? existing.unitPriceOverride() : guestItem.unitPriceOverride()
                     );
                     cartLineItemRepository.save(updated);
                 } else {
@@ -226,7 +229,8 @@ public class CartServiceImpl implements CartService {
                             realCart.id(),
                             guestItem.productId(),
                             guestItem.quantity(),
-                            guestItem.appliedItemCoupon()
+                            guestItem.appliedItemCoupon(),
+                            guestItem.unitPriceOverride()
                     );
                     cartLineItemRepository.save(newItem);
                 }

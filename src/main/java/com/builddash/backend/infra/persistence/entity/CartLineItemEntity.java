@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -41,6 +42,9 @@ public class CartLineItemEntity {
 
     @Column(name = "applied_item_coupon")
     private String appliedItemCoupon;
+
+    @Column(name = "unit_price_override")
+    private BigDecimal unitPriceOverride;
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

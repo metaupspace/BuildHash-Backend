@@ -136,7 +136,8 @@ public class OrderServiceImpl implements OrderService {
                             item.quantity(),
                             item.unitFinalPrice(),
                             item.lineGst(),
-                            item.lineFinalTotal()
+                            item.lineFinalTotal(),
+                            item.taxRatePercent()
                     )).collect(Collectors.toList());
 
             ApprovalGateService.GateDecision gate = b2bCompanyId != null

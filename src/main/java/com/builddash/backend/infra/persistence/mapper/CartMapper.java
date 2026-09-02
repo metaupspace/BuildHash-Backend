@@ -34,7 +34,8 @@ public final class CartMapper {
                 entity.getCart() != null ? entity.getCart().getId() : null,
                 entity.getProductId(),
                 entity.getQuantity(),
-                entity.getAppliedItemCoupon()
+                entity.getAppliedItemCoupon(),
+                entity.getUnitPriceOverride()
         );
     }
 
@@ -67,6 +68,7 @@ public final class CartMapper {
         entity.setProductId(domain.productId());
         entity.setQuantity(domain.quantity());
         entity.setAppliedItemCoupon(domain.appliedItemCoupon());
+        entity.setUnitPriceOverride(domain.unitPriceOverride());
         return entity;
     }
 }

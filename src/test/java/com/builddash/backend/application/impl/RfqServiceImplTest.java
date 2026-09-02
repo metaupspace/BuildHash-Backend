@@ -54,6 +54,7 @@ class RfqServiceImplTest {
     private RfqRouteRepository rfqRouteRepository;
     private VendorRepository vendorRepository;
     private ProductRepository productRepository;
+    private com.builddash.backend.domain.port.ProductBasePriceRepository productBasePriceRepository;
     private RfqService rfqService;
 
     private UUID userId;
@@ -72,8 +73,9 @@ class RfqServiceImplTest {
         rfqRouteRepository = mock(RfqRouteRepository.class);
         vendorRepository = mock(VendorRepository.class);
         productRepository = mock(ProductRepository.class);
+        productBasePriceRepository = mock(com.builddash.backend.domain.port.ProductBasePriceRepository.class);
         rfqService = new RfqServiceImpl(b2bAuthorizer, cartService, rfqRepository, rfqItemRepository,
-                rfqQuoteRepository, rfqRouteRepository, vendorRepository, productRepository);
+                rfqQuoteRepository, rfqRouteRepository, vendorRepository, productRepository, productBasePriceRepository);
 
         userId = UUID.randomUUID();
         companyId = UUID.randomUUID();
@@ -83,6 +85,8 @@ class RfqServiceImplTest {
 
         lenient().when(productRepository.findById(productId))
                 .thenReturn(Optional.of(mock(Product.class)));
+        lenient().when(productBasePriceRepository.findByProductId(productId))
+                .thenReturn(Optional.of(new BigDecimal("100.00")));
         lenient().when(rfqItemRepository.save(any(RfqItem.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
     }
@@ -279,7 +283,9 @@ class RfqServiceImplTest {
         verify(cartService).createB2bDraftCart(eq(companyId), eq(userId), eq(rfq.id()),
                 argThat(items -> items.size() == 1
                         && ((CartLineItem) items.get(0)).productId().equals(productId)
-                        && ((CartLineItem) items.get(0)).quantity() == 5));
+                        && ((CartLineItem) items.get(0)).quantity() == 5
+                        && ((CartLineItem) items.get(0)).unitPriceOverride() != null
+                        && ((CartLineItem) items.get(0)).unitPriceOverride().compareTo(new BigDecimal("2.00")) == 0));
         verify(b2bAuthorizer).authorize(userId, companyId, CompanyPermission.RFQ_CONVERT, null, true);
     }
 

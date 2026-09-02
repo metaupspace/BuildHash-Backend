@@ -18,6 +18,9 @@ import java.util.List;
  * activeContract is the single contract-override WINNER (company tier beats user tier —
  * resolution happens in loadContext, decision 7), exposed as a ResolvedContract so the
  * pure steps carry no knowledge of contract tiers or persistence.
+ *
+ * unitPriceOverride is set when negotiated commercial pricing (e.g. converted RFQ quote)
+ * overrides catalog base pricing.
  */
 public record PricingContext(
         Product product,
@@ -29,6 +32,22 @@ public record PricingContext(
         int couponRedemptionCountForUser,
         MarginRule marginRule,
         BigDecimal gstRatePercent,
-        Instant asOf
+        Instant asOf,
+        BigDecimal unitPriceOverride
 ) {
+    public PricingContext(
+            Product product,
+            Category category,
+            List<BulkPricingTier> bulkPricingTiers,
+            ResolvedContract activeContract,
+            String requestedCouponCode,
+            Coupon coupon,
+            int couponRedemptionCountForUser,
+            MarginRule marginRule,
+            BigDecimal gstRatePercent,
+            Instant asOf
+    ) {
+        this(product, category, bulkPricingTiers, activeContract, requestedCouponCode,
+                coupon, couponRedemptionCountForUser, marginRule, gstRatePercent, asOf, null);
+    }
 }

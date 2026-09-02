@@ -12,6 +12,7 @@ import com.builddash.backend.domain.model.PricingRequest;
 import com.builddash.backend.domain.port.CartPricingCalculator;
 import com.builddash.backend.domain.port.CouponRedemptionRepository;
 import com.builddash.backend.domain.port.CouponRepository;
+import com.builddash.backend.domain.service.CouponValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +20,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,10 +35,28 @@ public class CartPricingCalculatorImpl implements CartPricingCalculator {
 
     @Override
     public PricedCart calculate(Cart cart, UUID userId) {
-        List<PricedCartLineItem> pricedItems = new ArrayList<>();
+        if (cart == null || cart.items() == null || cart.items().isEmpty()) {
+            return new PricedCart(
+                    cart != null ? cart.id() : null,
+                    cart != null ? cart.userId() : null,
+                    cart != null ? cart.projectId() : null,
+                    List.of(),
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    null,
+                    null,
+                    cart != null ? cart.companyId() : null
+            );
+        }
+
+        List<PriceCalculationResult> itemResults = new ArrayList<>();
+        List<BigDecimal> lineTaxableBases = new ArrayList<>();
         BigDecimal subtotal = BigDecimal.ZERO;
         BigDecimal itemDiscountsTotal = BigDecimal.ZERO;
-        BigDecimal totalGst = BigDecimal.ZERO;
+        boolean hasItemCoupons = false;
 
         for (CartLineItem item : cart.items()) {
             PricingRequest request = new PricingRequest(
@@ -44,36 +64,29 @@ public class CartPricingCalculatorImpl implements CartPricingCalculator {
                     item.quantity(),
                     userId,
                     item.appliedItemCoupon(),
-                    cart.companyId()
+                    cart.companyId(),
+                    item.unitPriceOverride()
             );
 
             PriceCalculationResult itemResult = pricingCalculator.calculate(request);
+            itemResults.add(itemResult);
 
             BigDecimal lineSubtotal = itemResult.basePriceTotal();
             BigDecimal lineDiscount = itemResult.basePriceTotal().subtract(itemResult.subtotal());
-            BigDecimal lineGst = itemResult.gstAmount() != null ? itemResult.gstAmount() : BigDecimal.ZERO;
-            BigDecimal lineFinalTotal = itemResult.finalPrice() != null ? itemResult.finalPrice() : itemResult.subtotal().add(lineGst);
+            BigDecimal lineTaxableBase = itemResult.subtotal();
 
-            PricedCartLineItem pricedItem = new PricedCartLineItem(
-                    item.productId(),
-                    item.quantity(),
-                    itemResult.hsnCode(),
-                    itemResult.basePrice(),
-                    itemResult.finalPrice() != null ? itemResult.finalPrice().divide(BigDecimal.valueOf(item.quantity()), 2, RoundingMode.HALF_UP) : itemResult.basePrice(),
-                    lineSubtotal,
-                    lineDiscount,
-                    lineGst,
-                    lineFinalTotal,
-                    item.appliedItemCoupon()
-            );
-
-            pricedItems.add(pricedItem);
             subtotal = subtotal.add(lineSubtotal);
             itemDiscountsTotal = itemDiscountsTotal.add(lineDiscount);
-            totalGst = totalGst.add(lineGst);
+            lineTaxableBases.add(lineTaxableBase);
+
+            if (item.appliedItemCoupon() != null && !item.appliedItemCoupon().isBlank()) {
+                hasItemCoupons = true;
+            }
         }
 
-        // Cart-level coupon evaluation
+        BigDecimal cartEligibleAmount = subtotal.subtract(itemDiscountsTotal).max(BigDecimal.ZERO);
+
+        // Cart-level coupon evaluation via canonical CouponValidator (H4.1)
         BigDecimal cartDiscountTotal = BigDecimal.ZERO;
         String couponDroppedReason = null;
         String appliedCartCoupon = cart.appliedCartCoupon();
@@ -84,23 +97,22 @@ public class CartPricingCalculatorImpl implements CartPricingCalculator {
                 couponDroppedReason = "COUPON_NOT_FOUND";
             } else {
                 Coupon coupon = couponOpt.get();
-                Instant now = Instant.now();
+                int userRedemptions = (userId != null)
+                        ? couponRedemptionRepository.countByUserAndCoupon(userId, coupon.getId())
+                        : 0;
 
-                if (!coupon.isActive()) {
-                    couponDroppedReason = "COUPON_INACTIVE";
-                } else if (coupon.getExpiresAt().isBefore(now)) {
-                    couponDroppedReason = "COUPON_EXPIRED";
-                } else if (userId != null && coupon.getMaxUsesPerUser() != null &&
-                        couponRedemptionRepository.countByUserAndCoupon(userId, coupon.getId()) >= coupon.getMaxUsesPerUser()) {
-                    couponDroppedReason = "MAX_USES_EXCEEDED";
-                } else if (coupon.getMinOrderValue() != null && subtotal.subtract(itemDiscountsTotal).compareTo(coupon.getMinOrderValue()) < 0) {
-                    couponDroppedReason = "MIN_ORDER_VALUE_NOT_MET";
-                } else if (!coupon.isStackable() && cart.items().stream()
-                        .anyMatch(item -> item.appliedItemCoupon() != null && !item.appliedItemCoupon().isBlank())) {
-                    couponDroppedReason = "NON_STACKABLE";
+                CouponValidator.ValidationResult validation = CouponValidator.validate(
+                        coupon,
+                        null,
+                        cartEligibleAmount,
+                        userRedemptions,
+                        hasItemCoupons,
+                        Instant.now()
+                );
+
+                if (!validation.valid()) {
+                    couponDroppedReason = validation.dropReason().name();
                 } else {
-                    // Valid coupon, compute discount
-                    BigDecimal cartEligibleAmount = subtotal.subtract(itemDiscountsTotal);
                     if (coupon.getDiscountType() == DiscountType.PERCENT) {
                         cartDiscountTotal = cartEligibleAmount.multiply(coupon.getDiscountValue())
                                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
@@ -111,8 +123,90 @@ public class CartPricingCalculatorImpl implements CartPricingCalculator {
             }
         }
 
-        BigDecimal netBeforeGst = subtotal.subtract(itemDiscountsTotal).subtract(cartDiscountTotal).max(BigDecimal.ZERO);
-        BigDecimal finalTotal = netBeforeGst.add(totalGst);
+        // H4.2: Pro-rata cart coupon discount allocation (largest-remainder method)
+        int itemCount = cart.items().size();
+        BigDecimal[] allocatedDiscounts = new BigDecimal[itemCount];
+        for (int i = 0; i < itemCount; i++) {
+            allocatedDiscounts[i] = BigDecimal.ZERO;
+        }
+
+        if (cartDiscountTotal.compareTo(BigDecimal.ZERO) > 0 && cartEligibleAmount.compareTo(BigDecimal.ZERO) > 0) {
+            record AllocationRemainder(int index, long floorCents, double fraction) {}
+            List<AllocationRemainder> remainders = new ArrayList<>();
+            long totalFloorCents = 0;
+
+            for (int i = 0; i < itemCount; i++) {
+                BigDecimal lineBase = lineTaxableBases.get(i);
+                if (lineBase.compareTo(BigDecimal.ZERO) <= 0) {
+                    remainders.add(new AllocationRemainder(i, 0, 0.0));
+                    continue;
+                }
+
+                // exact cents = (cartDiscountTotal * lineBase / cartEligibleAmount) * 100
+                BigDecimal exactCents = cartDiscountTotal.multiply(lineBase)
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(cartEligibleAmount, 8, RoundingMode.HALF_UP);
+
+                long floorCents = exactCents.longValue();
+                double fraction = exactCents.subtract(BigDecimal.valueOf(floorCents)).doubleValue();
+
+                remainders.add(new AllocationRemainder(i, floorCents, fraction));
+                totalFloorCents += floorCents;
+            }
+
+            long targetTotalCents = cartDiscountTotal.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValue();
+            long remCents = targetTotalCents - totalFloorCents;
+
+            // Sort lines in descending order of fractional remainder (stable tie-break by index)
+            remainders.sort(Comparator.comparingDouble(AllocationRemainder::fraction).reversed()
+                    .thenComparingInt(AllocationRemainder::index));
+
+            for (int r = 0; r < remainders.size(); r++) {
+                AllocationRemainder ar = remainders.get(r);
+                long cents = ar.floorCents + (r < remCents ? 1 : 0);
+                allocatedDiscounts[ar.index] = BigDecimal.valueOf(cents).divide(BigDecimal.valueOf(100), 2, RoundingMode.UNNECESSARY);
+            }
+        }
+
+        // Construct PricedCartLineItems with exact line taxable bases, line GST, and line totals
+        List<PricedCartLineItem> pricedItems = new ArrayList<>();
+        BigDecimal totalGst = BigDecimal.ZERO;
+        BigDecimal finalTotal = BigDecimal.ZERO;
+
+        for (int i = 0; i < itemCount; i++) {
+            CartLineItem item = cart.items().get(i);
+            PriceCalculationResult itemResult = itemResults.get(i);
+
+            BigDecimal lineSubtotal = itemResult.basePriceTotal();
+            BigDecimal lineDiscount = itemResult.basePriceTotal().subtract(itemResult.subtotal());
+            BigDecimal allocatedDiscount = allocatedDiscounts[i];
+
+            BigDecimal netLineTaxableBase = itemResult.subtotal().subtract(allocatedDiscount).max(BigDecimal.ZERO);
+            BigDecimal gstRatePercent = itemResult.gstRatePercent() != null ? itemResult.gstRatePercent() : BigDecimal.ZERO;
+            BigDecimal lineGst = netLineTaxableBase.multiply(gstRatePercent)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            BigDecimal lineFinalTotal = netLineTaxableBase.add(lineGst);
+            BigDecimal unitFinalPrice = lineFinalTotal.divide(BigDecimal.valueOf(item.quantity()), 2, RoundingMode.HALF_UP);
+
+            PricedCartLineItem pricedItem = new PricedCartLineItem(
+                    item.productId(),
+                    item.quantity(),
+                    itemResult.hsnCode(),
+                    itemResult.basePrice(),
+                    unitFinalPrice,
+                    lineSubtotal,
+                    lineDiscount,
+                    lineGst,
+                    lineFinalTotal,
+                    item.appliedItemCoupon(),
+                    gstRatePercent,
+                    allocatedDiscount
+            );
+
+            pricedItems.add(pricedItem);
+            totalGst = totalGst.add(lineGst);
+            finalTotal = finalTotal.add(lineFinalTotal);
+        }
 
         return new PricedCart(
                 cart.id(),

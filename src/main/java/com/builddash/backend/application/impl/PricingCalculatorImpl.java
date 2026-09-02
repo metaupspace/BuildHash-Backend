@@ -118,7 +118,8 @@ public class PricingCalculatorImpl implements PricingCalculator {
                 redemptionCount,
                 marginRule,
                 gstRatePercent,
-                asOf
+                asOf,
+                request.unitPriceOverride()
         );
     }
 }

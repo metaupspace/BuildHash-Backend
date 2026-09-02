@@ -16,6 +16,7 @@ import com.builddash.backend.domain.port.ProductRepository;
 import com.builddash.backend.domain.port.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ public class InvoiceSnapshotBuilderImpl implements InvoiceSnapshotBuilder {
     private final HsnGstRateRepository hsnGstRateRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public OrderInvoiceSnapshot build(UUID orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "Order not found: " + orderId));
@@ -54,9 +56,12 @@ public class InvoiceSnapshotBuilderImpl implements InvoiceSnapshotBuilder {
             String productName = product != null ? product.getName() : "Product " + item.productId();
             String hsnCode = product != null && product.getHsnCode() != null ? product.getHsnCode() : "N/A";
 
-            BigDecimal taxRate = hsnGstRateRepository.findByHsnCode(hsnCode)
-                    .map(HsnGstRate::getGstRatePercent)
-                    .orElse(new BigDecimal("18.00"));
+            // H4.4: Use immutable persisted line snapshot; fallback to HSN master only for legacy rows
+            BigDecimal taxRate = item.taxRatePercent() != null
+                    ? item.taxRatePercent()
+                    : hsnGstRateRepository.findByHsnCode(hsnCode)
+                            .map(HsnGstRate::getGstRatePercent)
+                            .orElse(new BigDecimal("18.00"));
 
             BigDecimal lineSubTotal = item.lineTotal().subtract(item.taxAmount());
             subTotal = subTotal.add(lineSubTotal);

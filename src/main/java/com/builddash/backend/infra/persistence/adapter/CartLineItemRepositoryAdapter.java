@@ -37,7 +37,7 @@ class CartLineItemRepositoryAdapter implements CartLineItemRepository {
     @org.springframework.transaction.annotation.Transactional
     public CartLineItem save(CartLineItem item) {
         UUID id = item.id() != null ? item.id() : UUID.randomUUID();
-        jpaRepository.upsert(id, item.cartId(), item.productId(), item.quantity(), item.appliedItemCoupon());
+        jpaRepository.upsert(id, item.cartId(), item.productId(), item.quantity(), item.appliedItemCoupon(), item.unitPriceOverride());
         CartLineItemEntity saved = jpaRepository.findByCartIdAndProductId(item.cartId(), item.productId())
                 .orElseThrow();
 

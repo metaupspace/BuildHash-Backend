@@ -34,15 +34,16 @@ public class OrderMapper {
             lineEntity.setUnitPrice(item.unitPrice());
             lineEntity.setTaxAmount(item.taxAmount());
             lineEntity.setLineTotal(item.lineTotal());
+            lineEntity.setTaxRatePercent(item.taxRatePercent());
             entity.addLineItem(lineEntity);
         });
-        
+
         return entity;
     }
 
     public Order toDomain(OrderEntity entity) {
         var items = entity.getLineItems().stream()
-                .map(e -> new OrderLineItem(e.getId(), e.getProductId(), e.getQuantity(), e.getUnitPrice(), e.getTaxAmount(), e.getLineTotal()))
+                .map(e -> new OrderLineItem(e.getId(), e.getProductId(), e.getQuantity(), e.getUnitPrice(), e.getTaxAmount(), e.getLineTotal(), e.getTaxRatePercent()))
                 .collect(Collectors.toList());
                 
         return new Order(

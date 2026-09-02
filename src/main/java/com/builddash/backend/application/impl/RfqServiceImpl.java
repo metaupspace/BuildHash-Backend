@@ -16,6 +16,7 @@ import com.builddash.backend.domain.model.Rfq;
 import com.builddash.backend.domain.model.RfqItem;
 import com.builddash.backend.domain.model.RfqQuote;
 import com.builddash.backend.domain.model.Vendor;
+import com.builddash.backend.domain.port.ProductBasePriceRepository;
 import com.builddash.backend.domain.port.ProductRepository;
 import com.builddash.backend.domain.port.RfqItemRepository;
 import com.builddash.backend.domain.port.RfqQuoteRepository;
@@ -27,8 +28,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -50,6 +53,7 @@ public class RfqServiceImpl implements RfqService {
     private final RfqRouteRepository rfqRouteRepository;
     private final VendorRepository vendorRepository;
     private final ProductRepository productRepository;
+    private final ProductBasePriceRepository productBasePriceRepository;
 
     @Override
     @Transactional
@@ -147,9 +151,63 @@ public class RfqServiceImpl implements RfqService {
             throw QuoteValidationException.quoteExpired();
         }
 
-        List<CartLineItem> items = locked.items().stream()
-                .map(item -> new CartLineItem(null, null, item.productId(), item.quantity(), null))
-                .toList();
+        // H4.3: Preserve accepted RFQ quote total by distributing deterministically across lines
+        List<RfqItem> rfqItems = locked.items();
+        int itemCount = rfqItems.size();
+        List<BigDecimal> catalogLineTotals = new ArrayList<>();
+        BigDecimal catalogSubtotal = BigDecimal.ZERO;
+
+        for (RfqItem item : rfqItems) {
+            BigDecimal basePrice = productBasePriceRepository.findByProductId(item.productId())
+                    .orElse(BigDecimal.ONE);
+            BigDecimal lineTotal = basePrice.multiply(BigDecimal.valueOf(item.quantity()));
+            catalogLineTotals.add(lineTotal);
+            catalogSubtotal = catalogSubtotal.add(lineTotal);
+        }
+
+        BigDecimal[] allocatedLineTotals = new BigDecimal[itemCount];
+        if (catalogSubtotal.compareTo(BigDecimal.ZERO) > 0) {
+            record LineRemainder(int index, long floorCents, double fraction) {}
+            List<LineRemainder> remainders = new ArrayList<>();
+            long totalFloorCents = 0;
+
+            for (int i = 0; i < itemCount; i++) {
+                BigDecimal catalogLine = catalogLineTotals.get(i);
+                BigDecimal exactCents = quote.totalAmount().multiply(catalogLine)
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(catalogSubtotal, 8, RoundingMode.HALF_UP);
+                long floorCents = exactCents.longValue();
+                double fraction = exactCents.subtract(BigDecimal.valueOf(floorCents)).doubleValue();
+                remainders.add(new LineRemainder(i, floorCents, fraction));
+                totalFloorCents += floorCents;
+            }
+
+            long targetTotalCents = quote.totalAmount().multiply(BigDecimal.valueOf(100))
+                    .setScale(0, RoundingMode.HALF_UP).longValue();
+            long remCents = targetTotalCents - totalFloorCents;
+
+            remainders.sort(Comparator.comparingDouble(LineRemainder::fraction).reversed()
+                    .thenComparingInt(LineRemainder::index));
+
+            for (int r = 0; r < remainders.size(); r++) {
+                LineRemainder lr = remainders.get(r);
+                long cents = lr.floorCents + (r < remCents ? 1 : 0);
+                allocatedLineTotals[lr.index] = BigDecimal.valueOf(cents).divide(BigDecimal.valueOf(100), 2, RoundingMode.UNNECESSARY);
+            }
+        } else {
+            BigDecimal share = quote.totalAmount().divide(BigDecimal.valueOf(itemCount), 2, RoundingMode.HALF_UP);
+            for (int i = 0; i < itemCount; i++) {
+                allocatedLineTotals[i] = share;
+            }
+        }
+
+        List<CartLineItem> items = new ArrayList<>();
+        for (int i = 0; i < itemCount; i++) {
+            RfqItem rfqItem = rfqItems.get(i);
+            BigDecimal unitPriceOverride = allocatedLineTotals[i].divide(BigDecimal.valueOf(rfqItem.quantity()), 2, RoundingMode.HALF_UP);
+            items.add(new CartLineItem(null, null, rfqItem.productId(), rfqItem.quantity(), null, unitPriceOverride));
+        }
+
         UUID cartId = cartService
                 .createB2bDraftCart(locked.companyId(), userId, locked.id(), items)
                 .id();

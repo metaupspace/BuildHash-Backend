@@ -33,11 +33,12 @@ public interface CartLineItemJpaRepository extends JpaRepository<CartLineItemEnt
      * uq_cart_line_item_product and surfacing a raw DataIntegrityViolationException.
      */
     @Modifying
-    @Query(value = "INSERT INTO cart_line_items (id, cart_id, product_id, quantity, applied_item_coupon, created_at, updated_at) "
-            + "VALUES (:id, :cartId, :productId, :quantity, :appliedItemCoupon, now(), now()) "
+    @Query(value = "INSERT INTO cart_line_items (id, cart_id, product_id, quantity, applied_item_coupon, unit_price_override, created_at, updated_at) "
+            + "VALUES (:id, :cartId, :productId, :quantity, :appliedItemCoupon, :unitPriceOverride, now(), now()) "
             + "ON CONFLICT (cart_id, product_id) DO UPDATE SET "
-            + "quantity = EXCLUDED.quantity, applied_item_coupon = EXCLUDED.applied_item_coupon, updated_at = now()",
+            + "quantity = EXCLUDED.quantity, applied_item_coupon = EXCLUDED.applied_item_coupon, unit_price_override = EXCLUDED.unit_price_override, updated_at = now()",
             nativeQuery = true)
     void upsert(@Param("id") UUID id, @Param("cartId") UUID cartId, @Param("productId") UUID productId,
-                @Param("quantity") int quantity, @Param("appliedItemCoupon") String appliedItemCoupon);
+                @Param("quantity") int quantity, @Param("appliedItemCoupon") String appliedItemCoupon,
+                @Param("unitPriceOverride") java.math.BigDecimal unitPriceOverride);
 }

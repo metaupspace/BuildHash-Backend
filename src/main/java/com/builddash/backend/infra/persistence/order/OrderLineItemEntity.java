@@ -43,4 +43,7 @@ public class OrderLineItemEntity {
 
     @Column(name = "line_total", nullable = false)
     private BigDecimal lineTotal;
+
+    @Column(name = "tax_rate_percent")
+    private BigDecimal taxRatePercent;
 }
