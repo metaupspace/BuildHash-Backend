@@ -1,6 +1,8 @@
 package com.builddash.backend.api;
 
 import com.builddash.backend.api.dto.ApiError;
+import com.builddash.backend.domain.exception.NotFoundException;
+import com.builddash.backend.domain.exception.PaymentGatewayException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class GlobalExceptionHandlerTest {
@@ -24,6 +28,36 @@ class GlobalExceptionHandlerTest {
     void setUp() {
         handler = new GlobalExceptionHandler();
         request = new MockHttpServletRequest("POST", "/orders");
+    }
+
+    static class CustomEntityNotFoundException extends NotFoundException {
+        public CustomEntityNotFoundException(String message) {
+            super("CUSTOM_NOT_FOUND", message);
+        }
+    }
+
+    @Test
+    void domainExceptionSubclass_inheritsParentHttpStatus() {
+        CustomEntityNotFoundException ex = new CustomEntityNotFoundException("Custom entity 123 not found");
+
+        ResponseEntity<ApiError> response = handler.handleDomainException(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody().code()).isEqualTo("CUSTOM_NOT_FOUND");
+        assertThat(response.getBody().message()).isEqualTo("Custom entity 123 not found");
+    }
+
+    @Test
+    void paymentGatewayException_mapsTo502AndSanitizesMessage() {
+        UUID orderId = UUID.randomUUID();
+        PaymentGatewayException ex = new PaymentGatewayException(orderId, "Connection timeout to https://secret-gw.com/api");
+
+        ResponseEntity<ApiError> response = handler.handleDomainException(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(response.getBody().code()).isEqualTo("PAYMENT_GATEWAY_DOWN");
+        assertThat(response.getBody().message()).doesNotContain("secret-gw.com");
+        assertThat(response.getBody().message()).contains("Payment gateway communication failed");
     }
 
     @Test

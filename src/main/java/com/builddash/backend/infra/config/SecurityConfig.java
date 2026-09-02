@@ -26,58 +26,74 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ObjectMapper objectMapper;
 
+    @org.springframework.beans.factory.annotation.Value("${springdoc.swagger-ui.enabled:true}")
+    private boolean swaggerEnabled;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/auth/**",
-                                "/api/webhooks/**",
-                                "/ws/**",
-                                "/actuator/health",
+                .authorizeHttpRequests(auth -> {
+                    var authRegistry = auth
+                            .requestMatchers(
+                                    "/auth/**",
+                                    "/api/webhooks/**",
+                                    "/ws/**",
+                                    "/actuator/health"
+                            ).permitAll();
+
+                    if (swaggerEnabled) {
+                        authRegistry.requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
-                        ).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/categories/**", "/products/**").permitAll()
-                        .requestMatchers(HttpMethod.PUT, "/orders/*/status").permitAll()
-                        // GET-scoped (8.1-B): method-agnostic permitAll let anonymous POST
-                        // /search/image through — now it falls to the POST USER rule below.
-                        .requestMatchers(HttpMethod.GET, "/search/**").permitAll()
-                        // Application-admin surface (9-B): vendor management and controlled
-                        // quote submission. ROLE_ADMIN only — B2B company roles/permissions
-                        // never apply here, and an ADMIN gets no /rfq/** without membership.
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        // H0.4: status transitions are service-checked app-ADMIN authority;
-                        // the matcher must not filter-block an ADMIN-only principal first.
-                        .requestMatchers(HttpMethod.PATCH, "/companies/*/status").hasAnyRole("USER", "ADMIN")
-                        .requestMatchers("/users/**").hasRole("USER")
-                        .requestMatchers("/cart/**").hasAnyRole("GUEST", "USER")
-                        // Support: customers own their tickets; VENDOR/ADMIN reach any ticket by id.
-                        // Agents are the same Phase 6 role stub returns-approvers are (OQ-6).
-                        .requestMatchers(HttpMethod.POST, "/support/tickets", "/support/chat").hasRole("USER")
-                        .requestMatchers(HttpMethod.GET, "/support/tickets").hasRole("USER")
-                        .requestMatchers(HttpMethod.GET, "/support/tickets/*").hasAnyRole("USER", "VENDOR", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/support/tickets/*/messages").hasAnyRole("USER", "VENDOR", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/support/tickets/*/escalate").hasAnyRole("VENDOR", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/orders/*/return").hasRole("USER")
-                        .requestMatchers(HttpMethod.GET, "/orders/*/invoice").hasRole("USER")
-                        .requestMatchers(HttpMethod.GET, "/returns/*").hasAnyRole("USER", "VENDOR", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/returns/*/approve", "/returns/*/schedule-pickup", "/returns/*/pickup", "/returns/*/reject", "/returns/*/qc-pass").hasAnyRole("VENDOR", "ADMIN")
-                        // Q&A answers: customers, vendors and staff all answer (feature doc §3);
-                        // answer.source is resolved from issuance-controlled role claims, never
-                        // client-supplied. Explicit gate, not blanket-rule fall-through.
-                        .requestMatchers(HttpMethod.POST, "/questions/*/answers").hasAnyRole("USER", "VENDOR", "ADMIN")
-                        // Guest tokens may browse (GET) but never write
-                        .requestMatchers(HttpMethod.POST, "/**").hasRole("USER")
-                        .requestMatchers(HttpMethod.PUT, "/**").hasRole("USER")
-                        .requestMatchers(HttpMethod.PATCH, "/**").hasRole("USER")
-                        .requestMatchers(HttpMethod.DELETE, "/**").hasRole("USER")
-                        .anyRequest().authenticated()
-                )
+                        ).permitAll();
+                    } else {
+                        authRegistry.requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).hasRole("ADMIN");
+                    }
+
+                    authRegistry
+                            .requestMatchers(HttpMethod.GET, "/categories/**", "/products/**").permitAll()
+                            .requestMatchers(HttpMethod.PUT, "/orders/*/status").permitAll()
+                            // GET-scoped (8.1-B): method-agnostic permitAll let anonymous POST
+                            // /search/image through — now it falls to the POST USER rule below.
+                            .requestMatchers(HttpMethod.GET, "/search/**").permitAll()
+                            // Application-admin surface (9-B): vendor management and controlled
+                            // quote submission. ROLE_ADMIN only — B2B company roles/permissions
+                            // never apply here, and an ADMIN gets no /rfq/** without membership.
+                            .requestMatchers("/admin/**").hasRole("ADMIN")
+                            // H0.4: status transitions are service-checked app-ADMIN authority;
+                            // the matcher must not filter-block an ADMIN-only principal first.
+                            .requestMatchers(HttpMethod.PATCH, "/companies/*/status").hasAnyRole("USER", "ADMIN")
+                            .requestMatchers("/users/**").hasRole("USER")
+                            .requestMatchers("/cart/**").hasAnyRole("GUEST", "USER")
+                            // Support: customers own their tickets; VENDOR/ADMIN reach any ticket by id.
+                            // Agents are the same Phase 6 role stub returns-approvers are (OQ-6).
+                            .requestMatchers(HttpMethod.POST, "/support/tickets", "/support/chat").hasRole("USER")
+                            .requestMatchers(HttpMethod.GET, "/support/tickets").hasRole("USER")
+                            .requestMatchers(HttpMethod.GET, "/support/tickets/*").hasAnyRole("USER", "VENDOR", "ADMIN")
+                            .requestMatchers(HttpMethod.POST, "/support/tickets/*/messages").hasAnyRole("USER", "VENDOR", "ADMIN")
+                            .requestMatchers(HttpMethod.POST, "/support/tickets/*/escalate").hasAnyRole("VENDOR", "ADMIN")
+                            .requestMatchers(HttpMethod.POST, "/orders/*/return").hasRole("USER")
+                            .requestMatchers(HttpMethod.GET, "/orders/*/invoice").hasRole("USER")
+                            .requestMatchers(HttpMethod.GET, "/returns/*").hasAnyRole("USER", "VENDOR", "ADMIN")
+                            .requestMatchers(HttpMethod.POST, "/returns/*/approve", "/returns/*/schedule-pickup", "/returns/*/pickup", "/returns/*/reject", "/returns/*/qc-pass").hasAnyRole("VENDOR", "ADMIN")
+                            // Q&A answers: customers, vendors and staff all answer (feature doc §3);
+                            // answer.source is resolved from issuance-controlled role claims, never
+                            // client-supplied. Explicit gate, not blanket-rule fall-through.
+                            .requestMatchers(HttpMethod.POST, "/questions/*/answers").hasAnyRole("USER", "VENDOR", "ADMIN")
+                            // Guest tokens may browse (GET) but never write
+                            .requestMatchers(HttpMethod.POST, "/**").hasRole("USER")
+                            .requestMatchers(HttpMethod.PUT, "/**").hasRole("USER")
+                            .requestMatchers(HttpMethod.PATCH, "/**").hasRole("USER")
+                            .requestMatchers(HttpMethod.DELETE, "/**").hasRole("USER")
+                            .anyRequest().authenticated();
+                })
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) ->
                                 writeError(request, response, HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "Authentication is required"))

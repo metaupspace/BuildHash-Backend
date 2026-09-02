@@ -98,13 +98,30 @@ public class GlobalExceptionHandler {
             Map.entry(PoImportValidationException.class, HttpStatus.BAD_REQUEST),
             // Phase 9-D: order approval gate
             Map.entry(InvalidApprovalStateException.class, HttpStatus.CONFLICT),
-            Map.entry(ApprovalPolicyValidationException.class, HttpStatus.BAD_REQUEST)
+            Map.entry(ApprovalPolicyValidationException.class, HttpStatus.BAD_REQUEST),
+            // Payment gateway communication failure
+            Map.entry(com.builddash.backend.domain.exception.PaymentGatewayException.class, HttpStatus.BAD_GATEWAY)
     );
 
     @ExceptionHandler(DomainException.class)
     public ResponseEntity<ApiError> handleDomainException(DomainException ex, HttpServletRequest request) {
-        HttpStatus status = STATUS_BY_EXCEPTION.getOrDefault(ex.getClass(), HttpStatus.INTERNAL_SERVER_ERROR);
-        return build(status, ex.getCode(), ex.getMessage(), request);
+        HttpStatus status = resolveStatus(ex.getClass());
+        String message = ex instanceof com.builddash.backend.domain.exception.PaymentGatewayException
+                ? "Payment gateway communication failed. Please retry payment initiation."
+                : ex.getMessage();
+        return build(status, ex.getCode(), message, request);
+    }
+
+    private HttpStatus resolveStatus(Class<?> exClass) {
+        Class<?> current = exClass;
+        while (current != null && DomainException.class.isAssignableFrom(current)) {
+            HttpStatus status = STATUS_BY_EXCEPTION.get(current);
+            if (status != null) {
+                return status;
+            }
+            current = current.getSuperclass();
+        }
+        return HttpStatus.INTERNAL_SERVER_ERROR;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

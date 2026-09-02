@@ -58,6 +58,7 @@ class OrderControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(orderController)
+                .setControllerAdvice(new com.builddash.backend.api.GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
@@ -158,9 +159,7 @@ class OrderControllerTest {
                         .header("Idempotency-Key", "key-1")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.orderId").value(orderId.toString()))
-                .andExpect(jsonPath("$.orderStatus").value("PAYMENT_PENDING"))
                 .andExpect(jsonPath("$.code").value("PAYMENT_GATEWAY_DOWN"))
-                .andExpect(jsonPath("$.message").value("Order created but payment gateway failed: Connection timeout"));
+                .andExpect(jsonPath("$.message").value("Payment gateway communication failed. Please retry payment initiation."));
     }
 }

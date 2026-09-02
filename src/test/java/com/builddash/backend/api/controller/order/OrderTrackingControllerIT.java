@@ -111,8 +111,9 @@ class OrderTrackingControllerIT extends AbstractIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, validToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DISPATCHED"))
-                .andExpect(jsonPath("$.driver.id").value("driver-42"))
-                .andExpect(jsonPath("$.driver.phone").value("+919988776655"))
+                .andExpect(jsonPath("$.driver.name").value("Delivery Driver"))
+                .andExpect(jsonPath("$.driver.maskedPhone").value("+91 ******6655"))
+                .andExpect(jsonPath("$.driver.callProxyAvailable").value(true))
                 .andExpect(jsonPath("$.location.lat").value(12.9716))
                 .andExpect(jsonPath("$.location.lng").value(77.5946))
                 .andExpect(jsonPath("$.updatedAt").exists());

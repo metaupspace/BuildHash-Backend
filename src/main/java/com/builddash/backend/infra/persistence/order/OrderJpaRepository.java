@@ -17,8 +17,11 @@ import java.util.UUID;
 public interface OrderJpaRepository extends JpaRepository<OrderEntity, UUID> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT o FROM OrderEntity o WHERE o.id = :id")
+    @Query("SELECT o FROM OrderEntity o LEFT JOIN FETCH o.lineItems WHERE o.id = :id")
     Optional<OrderEntity> findByIdForUpdate(@Param("id") UUID id);
+
+    @Query("SELECT o FROM OrderEntity o LEFT JOIN FETCH o.lineItems WHERE o.id = :id")
+    Optional<OrderEntity> findByIdWithLineItems(@Param("id") UUID id);
 
     @Query("SELECT o.userId FROM OrderEntity o WHERE o.id = :id")
     Optional<UUID> findOrderOwnerId(@Param("id") UUID id);

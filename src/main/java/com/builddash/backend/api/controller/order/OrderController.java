@@ -14,17 +14,14 @@ import com.builddash.backend.application.service.OrderService;
 import com.builddash.backend.application.service.OrderTrackingService;
 import com.builddash.backend.application.service.ReorderResult;
 import com.builddash.backend.common.AuthenticatedUser;
-import com.builddash.backend.domain.exception.PaymentGatewayException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,9 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -164,19 +159,5 @@ public class OrderController {
             @AuthenticationPrincipal AuthenticatedUser user) {
         orderTrackingService.callDriver(user.userId(), orderId);
         return new CallDriverResponse("CALL_INITIATED");
-    }
-
-    @ExceptionHandler(PaymentGatewayException.class)
-    public ResponseEntity<Map<String, Object>> handleGatewayDown(PaymentGatewayException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
-                "timestamp", Instant.now(),
-                "status", HttpStatus.BAD_GATEWAY.value(),
-                "error", HttpStatus.BAD_GATEWAY.getReasonPhrase(),
-                "code", ex.getCode(),
-                "message", "Order created but payment gateway failed: " + ex.getMessage(),
-                "path", request.getRequestURI(),
-                "orderId", ex.getOrderId(),
-                "orderStatus", "PAYMENT_PENDING"
-        ));
     }
 }

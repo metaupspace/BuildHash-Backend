@@ -174,6 +174,24 @@ class StatementEmailServiceImplTest {
         assertThat(captor.getValue().emailAttemptCount()).isEqualTo(1);
     }
 
+    @Test
+    void deliver_oversizedAttachments_marksFailedWithoutCallingSender() {
+        Statement statement = ready(6_000_000L, 5_000_000L); // 11MB > 10MB cap
+        when(statementRepository.findById(statementId)).thenReturn(Optional.of(statement));
+        stored.set(statement);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company("a@b.c")));
+
+        assertThatThrownBy(() -> emailService.deliver(statementId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exceed configured limit");
+
+        verify(emailSender, never()).send(any());
+        verify(objectStorage, never()).get(anyString());
+        ArgumentCaptor<Statement> captor = ArgumentCaptor.forClass(Statement.class);
+        verify(statementRepository).save(captor.capture());
+        assertThat(captor.getValue().emailStatus()).isEqualTo(StatementEmailStatus.FAILED);
+    }
+
     private Company company(String email) {
         return new Company(companyId, "Acme", null, email, "Asia/Kolkata",
                 com.builddash.backend.domain.enums.CompanyStatus.ACTIVE, null, null);

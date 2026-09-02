@@ -26,7 +26,7 @@ public class OrderRepositoryAdapter implements OrderRepository {
 
     @Override
     public Optional<Order> findById(UUID id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
+        return jpaRepository.findByIdWithLineItems(id).map(mapper::toDomain);
     }
 
     @Override
