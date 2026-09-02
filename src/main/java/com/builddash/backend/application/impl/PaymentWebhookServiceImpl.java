@@ -7,6 +7,8 @@ import com.builddash.backend.domain.enums.OrderStatus;
 import com.builddash.backend.domain.enums.PaymentStatus;
 import com.builddash.backend.domain.model.Order;
 import com.builddash.backend.domain.model.Payment;
+import com.builddash.backend.domain.model.Invoice;
+import com.builddash.backend.domain.port.InvoiceRepository;
 import com.builddash.backend.domain.port.OrderRepository;
 import com.builddash.backend.domain.exception.UnauthorizedException;
 import com.builddash.backend.domain.port.PaymentRepository;
@@ -22,6 +24,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,6 +39,7 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
     private final DeliverySlotService deliverySlotService;
     private final PaymentWebhookConfig webhookConfig;
     private final ApplicationEventPublisher eventPublisher;
+    private final InvoiceRepository invoiceRepository;
 
     @Override
     @Transactional
@@ -76,8 +80,25 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
 
             Order confirmed = order.confirm();
             orderRepository.save(confirmed);
-            eventPublisher.publishEvent(new OrderConfirmedEvent(orderId));
             paymentRepository.save(payment.get().markSuccess(payment.get().transactionId()));
+
+            // H8.2: Atomic invoice initialization in the same transaction as order confirmation
+            if (invoiceRepository.findByOrderId(orderId).isEmpty()) {
+                invoiceRepository.save(new Invoice(
+                        UUID.randomUUID(),
+                        orderId,
+                        null,
+                        com.builddash.backend.domain.enums.InvoiceStatus.PENDING,
+                        null,
+                        "application/pdf",
+                        null,
+                        0,
+                        Instant.now(),
+                        Instant.now()
+                ));
+            }
+
+            eventPublisher.publishEvent(new OrderConfirmedEvent(orderId));
             // Consume, not release: the confirmed order still occupies delivery capacity.
             // H2.7: a false return means the lock was no longer ACTIVE (expired and swept,
             // or released by a racing path) — the order IS paid and confirmed, so rolling

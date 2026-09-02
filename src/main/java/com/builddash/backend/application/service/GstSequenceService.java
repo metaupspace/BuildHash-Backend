@@ -4,6 +4,7 @@ import com.builddash.backend.domain.enums.GstSequenceType;
 import com.builddash.backend.infra.persistence.entity.GstSequenceEntity;
 import com.builddash.backend.infra.persistence.repository.GstSequenceJpaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ public class GstSequenceService {
     private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final GstSequenceJpaRepository sequenceJpaRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Transactional
     public String nextNumber(GstSequenceType sequenceType) {
@@ -41,6 +43,23 @@ public class GstSequenceService {
             case CREDIT_NOTE -> String.format("CRN-%s-", shortFy);
             case DEBIT_NOTE -> String.format("DBN-%s-", shortFy);
         };
+
+        if (jdbcTemplate != null) {
+            try {
+                Long nextVal = jdbcTemplate.queryForObject(
+                        "INSERT INTO gst_sequences (sequence_type, fiscal_year, prefix, current_val, updated_at) " +
+                                "VALUES (?, ?, ?, 1, now()) " +
+                                "ON CONFLICT (sequence_type, fiscal_year) " +
+                                "DO UPDATE SET current_val = gst_sequences.current_val + 1, updated_at = now() " +
+                                "RETURNING current_val",
+                        Long.class,
+                        sequenceType.name(), fiscalYear, prefix
+                );
+                return String.format("%s%06d", prefix, nextVal != null ? nextVal : 1L);
+            } catch (Exception e) {
+                // Fallback to JPA row-locked path if native upsert unavailable (e.g. mocked jdbcTemplate in unit tests)
+            }
+        }
 
         Optional<GstSequenceEntity> sequenceOpt = sequenceJpaRepository
                 .findBySequenceTypeAndFiscalYearForUpdate(sequenceType, fiscalYear);

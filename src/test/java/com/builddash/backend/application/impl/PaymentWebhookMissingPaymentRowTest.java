@@ -38,6 +38,7 @@ class PaymentWebhookMissingPaymentRowTest {
     private OrderRepository orderRepository;
     private PaymentRepository paymentRepository;
     private DeliverySlotService deliverySlotService;
+    private com.builddash.backend.domain.port.InvoiceRepository invoiceRepository;
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
     private PaymentWebhookServiceImpl webhookService;
 
@@ -46,9 +47,10 @@ class PaymentWebhookMissingPaymentRowTest {
         orderRepository = mock(OrderRepository.class);
         paymentRepository = mock(PaymentRepository.class);
         deliverySlotService = mock(DeliverySlotService.class);
+        invoiceRepository = mock(com.builddash.backend.domain.port.InvoiceRepository.class);
         eventPublisher = mock(org.springframework.context.ApplicationEventPublisher.class);
         webhookService = new PaymentWebhookServiceImpl(
-                orderRepository, paymentRepository, deliverySlotService, () -> SECRET, eventPublisher);
+                orderRepository, paymentRepository, deliverySlotService, () -> SECRET, eventPublisher, invoiceRepository);
     }
 
     private static String sign(UUID orderId, String status) {

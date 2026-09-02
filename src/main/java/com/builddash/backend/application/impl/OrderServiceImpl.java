@@ -74,124 +74,127 @@ public class OrderServiceImpl implements OrderService {
         // H2.1: true only once a fresh B2B draft checkout actually claims its cart in
         // this call — never set on the idempotent-retry early-return paths.
         boolean[] isB2bDraftCheckout = new boolean[1];
-        Order savedOrder = transactionTemplate.execute(status -> {
-            // Rolling window (PLAN_PHASE8 decision 10): an expired key reads as absent —
-            // the caller gets a genuinely new order, not the stale one.
-            Instant idempotencyCutoff = Instant.now()
-                    .minus(Duration.ofHours(idempotencyProperties.getIdempotencyWindowHours()));
-            Optional<UUID> existingOrderId = idempotencyKeyRepository.findOrderId(idempotencyKey, idempotencyCutoff);
-            if (existingOrderId.isPresent()) {
-                return existingOrderForKey(idempotencyKey, userId);
-            }
-
-            // B2B branch (9-D): a draft cart carries the company scope. Authorization runs
-            // BEFORE createIntent so the COMPANY row precedes the delivery counter in the
-            // global lock order — authorizing after the counter would invert it.
-            PricedCart preRead = cartId != null ? cartService.getCartById(userId, cartId) : null;
-            UUID b2bCompanyId = preRead != null ? preRead.companyId() : null;
-            draftProjectId[0] = preRead != null ? preRead.projectId() : null;
-
-            if (cartId != null && b2bCompanyId != null) {
-                // H2.1: atomic one-time consumption claim IS the concurrency guard — a
-                // second concurrent checkout against the same draft loses here, before
-                // any site/approval/gateway work, and a checkout that fails later in
-                // this same transaction rolls the claim back with everything else.
-                isB2bDraftCheckout[0] = true;
-                if (!cartService.claimForCheckout(cartId)) {
-                    throw new BadRequestException("CART_ALREADY_CONSUMED",
-                            "This draft cart has already been checked out: " + cartId);
+        Order savedOrder;
+        try {
+            savedOrder = transactionTemplate.execute(status -> {
+                // Rolling window (PLAN_PHASE8 decision 10): an expired key reads as absent —
+                // the caller gets a genuinely new order, not the stale one.
+                Instant idempotencyCutoff = Instant.now()
+                        .minus(Duration.ofHours(idempotencyProperties.getIdempotencyWindowHours()));
+                Optional<UUID> existingOrderId = idempotencyKeyRepository.findOrderId(idempotencyKey, idempotencyCutoff);
+                if (existingOrderId.isPresent()) {
+                    return existingOrderForKey(idempotencyKey, userId);
                 }
-            }
 
-            UUID b2bSiteId = null;
-            if (b2bCompanyId != null) {
-                // H0.5: site context is mandatory for company checkout — an optional
-                // siteId defeats site scoping and lets a site-only approval policy
-                // pass unmatched. B2C (no company) never enters this branch.
-                if (siteId == null) {
-                    throw new BadRequestException("SITE_REQUIRED",
-                            "siteId is required for company checkout");
+                // B2B branch (9-D): a draft cart carries the company scope. Authorization runs
+                // BEFORE createIntent so the COMPANY row precedes the delivery counter in the
+                // global lock order — authorizing after the counter would invert it.
+                PricedCart preRead = cartId != null ? cartService.getCartById(userId, cartId) : null;
+                UUID b2bCompanyId = preRead != null ? preRead.companyId() : null;
+                draftProjectId[0] = preRead != null ? preRead.projectId() : null;
+
+                if (cartId != null && b2bCompanyId != null) {
+                    // H2.1: atomic one-time consumption claim IS the concurrency guard — a
+                    // second concurrent checkout against the same draft loses here, before
+                    // any site/approval/gateway work, and a checkout that fails later in
+                    // this same transaction rolls the claim back with everything else.
+                    isB2bDraftCheckout[0] = true;
+                    if (!cartService.claimForCheckout(cartId)) {
+                        throw new BadRequestException("CART_ALREADY_CONSUMED",
+                                "This draft cart has already been checked out: " + cartId);
+                    }
                 }
-                b2bAuthorizer.authorize(userId, b2bCompanyId, CompanyPermission.ORDER_CREATE, siteId, true);
-                CompanySite site = companySiteRepository.findById(siteId)
-                        .orElseThrow(() -> new BadRequestException("SITE_INVALID",
-                                "Unknown delivery site: " + siteId));
-                if (!site.companyId().equals(b2bCompanyId)) {
-                    throw new BadRequestException("SITE_INVALID",
-                            "Site " + siteId + " does not belong to the order's company");
+
+                UUID b2bSiteId = null;
+                if (b2bCompanyId != null) {
+                    // H0.5: site context is mandatory for company checkout — an optional
+                    // siteId defeats site scoping and lets a site-only approval policy
+                    // pass unmatched. B2C (no company) never enters this branch.
+                    if (siteId == null) {
+                        throw new BadRequestException("SITE_REQUIRED",
+                                "siteId is required for company checkout");
+                    }
+                    b2bAuthorizer.authorize(userId, b2bCompanyId, CompanyPermission.ORDER_CREATE, siteId, true);
+                    CompanySite site = companySiteRepository.findById(siteId)
+                            .orElseThrow(() -> new BadRequestException("SITE_INVALID",
+                                    "Unknown delivery site: " + siteId));
+                    if (!site.companyId().equals(b2bCompanyId)) {
+                        throw new BadRequestException("SITE_INVALID",
+                                "Site " + siteId + " does not belong to the order's company");
+                    }
+                    if (!site.active()) {
+                        throw new BadRequestException("SITE_INACTIVE",
+                                "Site " + siteId + " is inactive");
+                    }
+                    b2bSiteId = siteId;
                 }
-                if (!site.active()) {
-                    throw new BadRequestException("SITE_INACTIVE",
-                            "Site " + siteId + " is inactive");
-                }
-                b2bSiteId = siteId;
-            }
 
-            CheckoutIntent intent = checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal, cartId);
+                CheckoutIntent intent = checkoutIntentService.createIntent(userId, addressId, slotId, slotDate, expectedTotal, cartId);
 
-            List<OrderLineItem> lineItems = intent.pricedCart().items().stream()
-                    .map(item -> new OrderLineItem(
-                            UUID.randomUUID(),
-                            item.productId(),
-                            item.quantity(),
-                            item.unitFinalPrice(),
-                            item.lineGst(),
-                            item.lineFinalTotal(),
-                            item.taxRatePercent()
-                    )).collect(Collectors.toList());
+                List<OrderLineItem> lineItems = intent.pricedCart().items().stream()
+                        .map(item -> new OrderLineItem(
+                                UUID.randomUUID(),
+                                item.productId(),
+                                item.quantity(),
+                                item.unitFinalPrice(),
+                                item.lineGst(),
+                                item.lineFinalTotal(),
+                                item.taxRatePercent()
+                        )).collect(Collectors.toList());
 
-            ApprovalGateService.GateDecision gate = b2bCompanyId != null
-                    ? approvalGateService.evaluate(b2bCompanyId, intent.lockedTotal(),
-                            intent.pricedCart().items().stream()
-                                    .map(com.builddash.backend.domain.model.PricedCartLineItem::productId)
-                                    .toList(),
-                            b2bSiteId)
-                    : ApprovalGateService.GateDecision.notGated();
+                ApprovalGateService.GateDecision gate = b2bCompanyId != null
+                        ? approvalGateService.evaluate(b2bCompanyId, intent.lockedTotal(),
+                                intent.pricedCart().items().stream()
+                                        .map(com.builddash.backend.domain.model.PricedCartLineItem::productId)
+                                        .toList(),
+                                b2bSiteId)
+                        : ApprovalGateService.GateDecision.notGated();
 
-            // Gated orders are born PENDING_APPROVAL — never PAYMENT_PENDING first — and
-            // hold no delivery slot: the gate releases what createIntent just acquired.
-            Order newOrder = new Order(
-                    UUID.randomUUID(),
-                    userId,
-                    addressId,
-                    slotId,
-                    slotDate,
-                    intent.lockedTotal(),
-                    gate.gated() ? OrderStatus.PENDING_APPROVAL : OrderStatus.PAYMENT_PENDING,
-                    gate.gated() ? null : intent.deliverySlotLockId(),
-                    java.time.Instant.now(),
-                    null,
-                    null,
-                    lineItems,
-                    intent.pricedCart().companyId(),
-                    b2bSiteId,
-                    null
-            );
+                // Gated orders are born PENDING_APPROVAL — never PAYMENT_PENDING first — and
+                // hold no delivery slot: the gate releases what createIntent just acquired.
+                Order newOrder = new Order(
+                        UUID.randomUUID(),
+                        userId,
+                        addressId,
+                        slotId,
+                        slotDate,
+                        intent.lockedTotal(),
+                        gate.gated() ? OrderStatus.PENDING_APPROVAL : OrderStatus.PAYMENT_PENDING,
+                        gate.gated() ? null : intent.deliverySlotLockId(),
+                        java.time.Instant.now(),
+                        null,
+                        null,
+                        lineItems,
+                        intent.pricedCart().companyId(),
+                        b2bSiteId,
+                        null
+                );
 
-            Order saved = orderRepository.save(newOrder);
-            try {
+                Order saved = orderRepository.save(newOrder);
                 idempotencyKeyRepository.save(idempotencyKey, saved.id());
-            } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                // Concurrent double-submit: this thread lost the PK race — the winner's
-                // order already exists under this key, return it instead of surfacing 500
-                return existingOrderForKey(idempotencyKey, userId);
-            }
-            recordCouponRedemptions(userId, intent.pricedCart(), saved.id());
-            if (gate.gated()) {
-                approvalGateService.openApproval(saved, gate, intent.deliverySlotLockId());
-            } else {
-                // H1.2/H1.3: a durable PENDING(no transactionId) claim commits in the SAME
-                // transaction as the order, before the gateway is ever called. A crash
-                // after this point leaves evidence of the attempt (this row) instead of an
-                // order with no payment trace at all.
-                pendingClaim[0] = new Payment(
-                        UUID.randomUUID(), saved.id(), null, saved.totalAmount(),
-                        com.builddash.backend.domain.enums.PaymentStatus.PENDING, null);
-                paymentRepository.save(pendingClaim[0]);
-            }
+                recordCouponRedemptions(userId, intent.pricedCart(), saved.id());
+                if (gate.gated()) {
+                    approvalGateService.openApproval(saved, gate, intent.deliverySlotLockId());
+                } else {
+                    // H1.2/H1.3: a durable PENDING(no transactionId) claim commits in the SAME
+                    // transaction as the order, before the gateway is ever called. A crash
+                    // after this point leaves evidence of the attempt (this row) instead of an
+                    // order with no payment trace at all.
+                    pendingClaim[0] = new Payment(
+                            UUID.randomUUID(), saved.id(), null, saved.totalAmount(),
+                            com.builddash.backend.domain.enums.PaymentStatus.PENDING, null);
+                    paymentRepository.save(pendingClaim[0]);
+                }
 
-            return saved;
-        });
+                return saved;
+            });
+        } catch (org.springframework.dao.DataIntegrityViolationException | org.springframework.transaction.TransactionException e) {
+            // Concurrent double-submit: this thread lost the PK race on idempotency_keys.
+            // The entire losing transaction rolled back in Postgres (no orphan order, no orphan slot lock).
+            // Fetch the winning order created by the winning thread in a fresh transaction.
+            savedOrder = existingOrderForKey(idempotencyKey, userId);
+            pendingClaim[0] = null;
+        }
 
         if (savedOrder.status() == OrderStatus.PENDING_APPROVAL) {
             // No gateway, no Payment row, paymentUrl null — approval resumes payment.
@@ -235,10 +238,34 @@ public class OrderServiceImpl implements OrderService {
         // can never miss it — same cutoff discipline as the primary read for consistency.
         Instant idempotencyCutoff = Instant.now()
                 .minus(Duration.ofHours(idempotencyProperties.getIdempotencyWindowHours()));
-        UUID orderId = idempotencyKeyRepository.findOrderId(idempotencyKey, idempotencyCutoff)
-                .orElseThrow(() -> new IllegalStateException("Order not found for idempotency key"));
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalStateException("Order not found for idempotency key"));
+        UUID orderId = null;
+        for (int attempt = 0; attempt < 20; attempt++) {
+            Optional<UUID> orderIdOpt = idempotencyKeyRepository.findOrderId(idempotencyKey, idempotencyCutoff);
+            if (orderIdOpt.isPresent()) {
+                orderId = orderIdOpt.get();
+                Optional<Order> orderOpt = orderRepository.findById(orderId);
+                if (orderOpt.isPresent()) {
+                    Order order = orderOpt.get();
+                    if (!order.userId().equals(userId)) {
+                        throw new com.builddash.backend.domain.exception.ForbiddenException("FORBIDDEN", "User does not own this order");
+                    }
+                    return order;
+                }
+            }
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        if (orderId == null) {
+            orderId = idempotencyKeyRepository.findOrderId(idempotencyKey, idempotencyCutoff)
+                    .orElseThrow(() -> new IllegalStateException("Order not found for idempotency key: " + idempotencyKey));
+        }
+        final UUID resolvedOrderId = orderId;
+        Order order = orderRepository.findById(resolvedOrderId)
+                .orElseThrow(() -> new IllegalStateException("Order not found for idempotency key: " + resolvedOrderId));
         if (!order.userId().equals(userId)) {
             throw new com.builddash.backend.domain.exception.ForbiddenException("FORBIDDEN", "User does not own this order");
         }
