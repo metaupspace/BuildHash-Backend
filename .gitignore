@@ -24,4 +24,4 @@ graphify-out
 app.log
 app.pid
 patch_order_service.py
-test_output.log
+test_output.logscanner

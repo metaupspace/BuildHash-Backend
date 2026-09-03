@@ -1,10 +1,12 @@
 package com.builddash.backend.infra.seed;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import com.builddash.backend.domain.enums.CompanyRole;
 import com.builddash.backend.domain.model.Company;
 import com.builddash.backend.domain.model.CompanyContractPrice;
 import com.builddash.backend.domain.model.CompanyMember;
 import com.builddash.backend.domain.model.CompanySite;
+import com.builddash.backend.domain.model.User;
 import com.builddash.backend.domain.port.CompanyContractPriceRepository;
 import com.builddash.backend.domain.port.CompanyMemberRepository;
 import com.builddash.backend.domain.port.CompanyRepository;
@@ -12,6 +14,7 @@ import com.builddash.backend.domain.port.CompanyRolePermissionRepository;
 import com.builddash.backend.domain.port.CompanySiteAssignmentRepository;
 import com.builddash.backend.domain.port.CompanySiteRepository;
 import com.builddash.backend.domain.port.ProductRepository;
+import com.builddash.backend.domain.port.UserRepository;
 import com.builddash.backend.domain.service.CompanyPermissionDefaults;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,12 +54,22 @@ public class CompanySeeder implements ApplicationRunner {
     private final CompanyRolePermissionRepository companyRolePermissionRepository;
     private final CompanyContractPriceRepository companyContractPriceRepository;
     private final ProductRepository productRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
         if (companyRepository.findById(SEEDED_COMPANY_ID).isPresent()) {
             return;
+        }
+
+        for (int i = 1; i <= 5; i++) {
+            UUID uid = devUserId(i);
+            // Insert dummy users natively so JPA @UuidGenerator doesn't overwrite our deterministic IDs during merge()
+            jdbcTemplate.update(
+                "INSERT INTO users (id, name, created_at, updated_at, is_guest) VALUES (?, ?, now(), now(), false) ON CONFLICT (id) DO NOTHING",
+                uid, "Dev User " + i
+            );
         }
 
         Company company = companyRepository.save(new Company(SEEDED_COMPANY_ID,

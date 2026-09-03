@@ -42,7 +42,8 @@ public class CatalogProductChangedListener {
 
     private void publishIndexedConfirmation(Message original) {
         Object outboxEventId = original.getMessageProperties().getHeaders().get(CatalogQueueConfig.OUTBOX_EVENT_ID_HEADER);
-        Message confirmation = MessageBuilder.withBody(new byte[0])
+        Message confirmation = MessageBuilder.withBody("{}".getBytes(StandardCharsets.UTF_8))
+                .setContentType("application/json")
                 .setHeader(CatalogQueueConfig.OUTBOX_EVENT_ID_HEADER, outboxEventId)
                 .build();
         rabbitTemplate.send(CatalogQueueConfig.INDEXED_QUEUE_NAME, confirmation);

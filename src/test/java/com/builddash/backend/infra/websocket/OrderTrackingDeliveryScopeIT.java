@@ -25,6 +25,7 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
+import java.net.URI;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -147,7 +148,7 @@ class OrderTrackingDeliveryScopeIT extends AbstractIntegrationTest {
         StompHeaders connectHeaders = new StompHeaders();
         connectHeaders.add("Authorization", "Bearer " + accessToken);
         return stompClient
-                .connect("ws://localhost:" + port + "/ws", new org.springframework.web.socket.WebSocketHttpHeaders(), connectHeaders, new StompSessionHandlerAdapter() {})
+                .connectAsync(URI.create("ws://localhost:" + port + "/ws"), new org.springframework.web.socket.WebSocketHttpHeaders(), connectHeaders, new StompSessionHandlerAdapter() {})
                 .get(10, TimeUnit.SECONDS);
     }
 

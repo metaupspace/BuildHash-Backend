@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Index/alias lifecycle for the blue-green reindex (PLAN_PHASE1.md Section 3). createIndex()
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
  * attributes is flattened (schema-free, mirrors the Postgres JSONB shape without an ES
  * mapping change per category).
  */
+@Slf4j
 @RequiredArgsConstructor
 @Component
 public class ElasticsearchSearchIndexAdminAdapter implements SearchIndexAdmin {
@@ -100,6 +102,12 @@ public class ElasticsearchSearchIndexAdminAdapter implements SearchIndexAdmin {
     @Override
     public void swapAlias(String alias, String newIndexName) {
         String currentIndex = resolveAlias(alias);
+
+        // A concrete index named after the alias blocks alias creation — delete it.
+        if (currentIndex == null) {
+            deleteConcreteIndexIfExists(alias);
+        }
+
         try {
             client.indices().updateAliases(u -> {
                 if (currentIndex != null) {
@@ -118,6 +126,18 @@ public class ElasticsearchSearchIndexAdminAdapter implements SearchIndexAdmin {
             client.indices().delete(d -> d.index(indexName));
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to delete index " + indexName, e);
+        }
+    }
+
+    private void deleteConcreteIndexIfExists(String name) {
+        try {
+            boolean exists = client.indices().exists(e -> e.index(name)).value();
+            if (exists) {
+                client.indices().delete(d -> d.index(name));
+                log.info("Deleted concrete index '{}' blocking alias creation", name);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to check/delete concrete index '{}': {}", name, e.getMessage());
         }
     }
 
