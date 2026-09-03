@@ -4,6 +4,7 @@ import com.builddash.backend.domain.enums.DeleteRequestStatus;
 
 import java.time.Instant;
 import java.util.UUID;
+import com.builddash.backend.domain.exception.InvalidDeleteRequestStateException;
 
 /**
  * DPDP account-deletion request (PLAN_PHASE8 decision 9): one pending request per user
@@ -29,6 +30,8 @@ public record DeleteRequest(
     }
 
     public DeleteRequest markProcessed(Instant now) {
+        if (status == DeleteRequestStatus.PROCESSED) return this;
+        if (status != DeleteRequestStatus.PENDING) throw new InvalidDeleteRequestStateException(status.name(), DeleteRequestStatus.PROCESSED.name());
         return new DeleteRequest(id, userId, requestedAt, deletionScheduledAt, now, DeleteRequestStatus.PROCESSED);
     }
 }

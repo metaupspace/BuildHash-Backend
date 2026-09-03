@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import com.builddash.backend.domain.exception.InvalidStatementStateException;
 
 /**
  * One monthly statement generation for a company period (9-E). Lifecycle mirrors
@@ -50,6 +51,7 @@ public record Statement(
     }
 
     public Statement claim() {
+        if (status != StatementStatus.PENDING && status != StatementStatus.DLQ_RETRY && status != StatementStatus.GENERATING) throw new InvalidStatementStateException(status.name(), StatementStatus.GENERATING.name());
         return with(StatementStatus.GENERATING, attemptCount + 1, null);
     }
 
@@ -63,10 +65,14 @@ public record Statement(
     }
 
     public Statement markDlqRetry() {
+        if (status == StatementStatus.DLQ_RETRY) return this;
+        if (status != StatementStatus.GENERATING) throw new InvalidStatementStateException(status.name(), StatementStatus.DLQ_RETRY.name());
         return with(StatementStatus.DLQ_RETRY, attemptCount, null);
     }
 
     public Statement markPending() {
+        if (status == StatementStatus.PENDING) return this;
+        if (status != StatementStatus.GENERATING) throw new InvalidStatementStateException(status.name(), StatementStatus.PENDING.name());
         return with(StatementStatus.PENDING, attemptCount, null);
     }
 

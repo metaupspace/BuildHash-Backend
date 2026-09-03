@@ -67,8 +67,7 @@ class RefundWebhookServiceImplTest {
     @BeforeEach
     void setUp() {
         webhookService = new RefundWebhookServiceImpl(
-                returnRepository,
-                refundRepository,
+                returnRepository, org.mockito.Mockito.mock(com.builddash.backend.application.service.ApplicationMetrics.class), refundRepository,
                 gstNoteRepository,
                 gstSequenceService,
                 webhookConfig,

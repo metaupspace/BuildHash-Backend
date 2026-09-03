@@ -170,7 +170,16 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: ${MANAGEMENT_ENDPOINTS_INCLUDE:health,prometheus}
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 springdoc:
   swagger-ui:

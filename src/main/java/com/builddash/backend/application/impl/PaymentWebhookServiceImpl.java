@@ -17,6 +17,7 @@ import com.builddash.backend.domain.exception.UnauthorizedException;
 import com.builddash.backend.domain.port.PaymentReconciliationRepository;
 import com.builddash.backend.domain.port.PaymentRepository;
 import com.builddash.backend.domain.port.PaymentWebhookConfig;
+import com.builddash.backend.application.service.ApplicationMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -45,11 +46,17 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
     private final ApplicationEventPublisher eventPublisher;
     private final InvoiceRepository invoiceRepository;
     private final PaymentReconciliationRepository paymentReconciliationRepository;
+    private final ApplicationMetrics metrics;
 
     @Override
     @Transactional
     public void handleWebhook(UUID orderId, String status, String signature) {
-        verifySignature(orderId, status, signature);
+        try {
+            verifySignature(orderId, status, signature);
+        } catch (UnauthorizedException e) {
+            metrics.recordPaymentWebhook("INVALID_SIGNATURE");
+            throw e;
+        }
 
         // Same lock choke point as StaleOrderSweepServiceImpl.sweepOrder (H1.5): whichever
         // of the two commits first wins deterministically, the loser re-reads the
@@ -116,8 +123,10 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
                         + "manual capacity reconciliation required", orderId, confirmed.deliverySlotLockId());
             }
             log.info("Order {} confirmed successfully", orderId);
+            metrics.recordPaymentWebhook("SUCCESS");
         } else if ("FAILED".equalsIgnoreCase(status)) {
             updatePaymentStatus(orderId, PaymentStatus.FAILED);
+            metrics.recordPaymentWebhook("FAILED");
             log.info("Payment failed for order {}", orderId);
         } else {
             log.warn("Unknown payment status {} for order {}", status, orderId);

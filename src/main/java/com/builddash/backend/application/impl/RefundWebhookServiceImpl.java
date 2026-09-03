@@ -15,6 +15,7 @@ import com.builddash.backend.domain.model.Refund;
 import com.builddash.backend.domain.model.Return;
 import com.builddash.backend.domain.port.GstNoteRepository;
 import com.builddash.backend.domain.port.PaymentWebhookConfig;
+import com.builddash.backend.application.service.ApplicationMetrics;
 import com.builddash.backend.domain.port.RefundRepository;
 import com.builddash.backend.domain.port.ReturnRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ import java.util.UUID;
 public class RefundWebhookServiceImpl implements RefundWebhookService {
 
     private final ReturnRepository returnRepository;
+    private final ApplicationMetrics metrics;
     private final RefundRepository refundRepository;
     private final GstNoteRepository gstNoteRepository;
     private final GstSequenceService gstSequenceService;
@@ -113,11 +115,13 @@ public class RefundWebhookServiceImpl implements RefundWebhookService {
                 }
             }
             log.info("Refund {} marked SUCCESS", refund.id());
+            metrics.recordRefundOutcome("SUCCESS");
             eventPublisher.publishEvent(new RefundCompletedEvent(successRefund.returnId(), successRefund.id()));
         } else if ("FAILED".equalsIgnoreCase(status)) {
             Refund failedRefund = refund.markFailed(gatewayRefundId);
             refundRepository.save(failedRefund);
             log.info("Refund {} marked FAILED", refund.id());
+            metrics.recordRefundOutcome("FAILED");
         } else {
             log.warn("Unknown refund status {} for gatewayRefundId {}", status, gatewayRefundId);
         }

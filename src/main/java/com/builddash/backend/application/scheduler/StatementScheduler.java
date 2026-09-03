@@ -1,4 +1,5 @@
 package com.builddash.backend.application.scheduler;
+import com.builddash.backend.application.service.ApplicationMetrics;
 
 import com.builddash.backend.application.service.StatementEmailService;
 import com.builddash.backend.application.service.StatementGenerationService;
@@ -21,6 +22,7 @@ public class StatementScheduler {
 
     private final StatementGenerationService generationService;
     private final StatementEmailService emailService;
+    private final ApplicationMetrics metrics;
 
     @Scheduled(fixedDelayString = "${statement.scheduler.delay-ms:300000}")
     public void sweep() {

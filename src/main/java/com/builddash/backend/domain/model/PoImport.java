@@ -4,6 +4,7 @@ import com.builddash.backend.domain.enums.PoImportStatus;
 
 import java.time.Instant;
 import java.util.UUID;
+import com.builddash.backend.domain.exception.InvalidPoImportStateException;
 
 /**
  * One bulk XLSX upload. (companyId, idempotencyKey) is unique — a replay or a
@@ -30,11 +31,15 @@ public record PoImport(
     }
 
     public PoImport withStatus(PoImportStatus newStatus) {
+        if (status == newStatus) return this;
+        if (status == PoImportStatus.CONVERTED || status == PoImportStatus.FAILED_STRUCTURE) throw new InvalidPoImportStateException(status.name(), newStatus.name());
         return new PoImport(id, companyId, idempotencyKey, uploadedBy, newStatus,
                 totalRows, validRows, invalidRows, draftCartId, createdAt, updatedAt);
     }
 
     public PoImport converted(UUID cartId) {
+        if (status == PoImportStatus.CONVERTED) return this;
+        if (status != PoImportStatus.REVIEW) throw new InvalidPoImportStateException(status.name(), PoImportStatus.CONVERTED.name());
         return new PoImport(id, companyId, idempotencyKey, uploadedBy, PoImportStatus.CONVERTED,
                 totalRows, validRows, invalidRows, cartId, createdAt, updatedAt);
     }

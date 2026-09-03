@@ -5,6 +5,7 @@ import com.builddash.backend.domain.enums.RfqStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import com.builddash.backend.domain.exception.InvalidRfqStateException;
 
 /**
  * A company's request for quotation. Items are immutable after creation and
@@ -34,6 +35,8 @@ public record Rfq(
     }
 
     public Rfq withStatus(RfqStatus newStatus) {
+        if (status == newStatus) return this;
+        if (status != RfqStatus.OPEN) throw InvalidRfqStateException.invalidTransition(status.name(), newStatus.name());
         return new Rfq(id, companyId, createdByUserId, newStatus, expiresAt, notes,
                 items, routedVendorIds, createdAt, updatedAt);
     }

@@ -1,6 +1,14 @@
 package com.builddash.backend.api;
 
 import com.builddash.backend.api.dto.ApiError;
+
+import com.builddash.backend.domain.exception.InvalidPaymentStateException;
+import com.builddash.backend.domain.exception.InvalidRefundStateException;
+import com.builddash.backend.domain.exception.InvalidInvoiceStateException;
+import com.builddash.backend.domain.exception.InvalidStatementStateException;
+import com.builddash.backend.domain.exception.InvalidPoImportStateException;
+import com.builddash.backend.domain.exception.InvalidDeleteRequestStateException;
+
 import com.builddash.backend.domain.exception.BadRequestException;
 import com.builddash.backend.domain.exception.CheckoutValidationException;
 import com.builddash.backend.domain.exception.ContractPriceOverlapException;
@@ -54,10 +62,15 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import com.builddash.backend.application.service.ApplicationMetrics;
+import lombok.RequiredArgsConstructor;
 
 @RestControllerAdvice
 @Slf4j
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final ApplicationMetrics metrics;
 
     private static final Map<Class<? extends DomainException>, HttpStatus> STATUS_BY_EXCEPTION = Map.ofEntries(
             Map.entry(BadRequestException.class, HttpStatus.BAD_REQUEST),
@@ -72,6 +85,14 @@ public class GlobalExceptionHandler {
             Map.entry(ProductNotPricedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             Map.entry(GstRateUnresolvedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             Map.entry(InvalidOrderStateException.class, HttpStatus.CONFLICT),
+
+            Map.entry(InvalidPaymentStateException.class, HttpStatus.CONFLICT),
+            Map.entry(InvalidRefundStateException.class, HttpStatus.CONFLICT),
+            Map.entry(InvalidInvoiceStateException.class, HttpStatus.CONFLICT),
+            Map.entry(InvalidStatementStateException.class, HttpStatus.CONFLICT),
+            Map.entry(InvalidPoImportStateException.class, HttpStatus.CONFLICT),
+            Map.entry(InvalidDeleteRequestStateException.class, HttpStatus.CONFLICT),
+
             Map.entry(InvalidReturnStateException.class, HttpStatus.CONFLICT),
             Map.entry(ReturnAlreadyExistsException.class, HttpStatus.CONFLICT),
             Map.entry(DeleteRequestPendingException.class, HttpStatus.CONFLICT),
@@ -106,6 +127,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DomainException.class)
     public ResponseEntity<ApiError> handleDomainException(DomainException ex, HttpServletRequest request) {
         HttpStatus status = resolveStatus(ex.getClass());
+        if (ex instanceof UnauthorizedException) metrics.recordAuthFailure("unauthorized");
+        if (ex instanceof ForbiddenException) metrics.recordAuthFailure("forbidden");
         String message = ex instanceof com.builddash.backend.domain.exception.PaymentGatewayException
                 ? "Payment gateway communication failed. Please retry payment initiation."
                 : ex.getMessage();

@@ -73,7 +73,7 @@ class CatalogOutboxRelayJpaIT extends AbstractIntegrationTest {
         UUID failingEventId = seedPendingEvent(productId);
 
         FakeCatalogEventPublisher flakyPublisher = new FakeCatalogEventPublisher(Set.of(failingEventId));
-        CatalogOutboxRelay relay = new CatalogOutboxRelay(catalogOutboxEventRepository, flakyPublisher);
+        CatalogOutboxRelay relay = new CatalogOutboxRelay(catalogOutboxEventRepository, flakyPublisher, org.mockito.Mockito.mock(com.builddash.backend.application.service.ApplicationMetrics.class));
 
         relay.relay();
 
@@ -82,7 +82,7 @@ class CatalogOutboxRelayJpaIT extends AbstractIntegrationTest {
 
         // "Restart" — the transient failure is gone, a later poll recovers the still-PENDING row.
         FakeCatalogEventPublisher recoveredPublisher = new FakeCatalogEventPublisher(Set.of());
-        CatalogOutboxRelay recoveredRelay = new CatalogOutboxRelay(catalogOutboxEventRepository, recoveredPublisher);
+        CatalogOutboxRelay recoveredRelay = new CatalogOutboxRelay(catalogOutboxEventRepository, recoveredPublisher, org.mockito.Mockito.mock(com.builddash.backend.application.service.ApplicationMetrics.class));
         recoveredRelay.relay();
 
         assertThat(statusOf(failingEventId)).isEqualTo(OutboxStatus.PUBLISHED);
@@ -96,7 +96,7 @@ class CatalogOutboxRelayJpaIT extends AbstractIntegrationTest {
         UUID eventId = seedPendingEvent(productId);
 
         CatalogOutboxRelay firstEverRelayRun = new CatalogOutboxRelay(catalogOutboxEventRepository,
-                new FakeCatalogEventPublisher(Set.of()));
+                new FakeCatalogEventPublisher(Set.of()), org.mockito.Mockito.mock(com.builddash.backend.application.service.ApplicationMetrics.class));
 
         firstEverRelayRun.relay();
 

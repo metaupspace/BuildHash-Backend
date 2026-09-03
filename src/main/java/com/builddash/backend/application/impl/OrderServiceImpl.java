@@ -5,6 +5,7 @@ import com.builddash.backend.application.service.B2bAuthorizer;
 import com.builddash.backend.application.service.CartService;
 import com.builddash.backend.application.service.CheckoutIntentService;
 import com.builddash.backend.application.service.OrderService;
+import com.builddash.backend.application.service.ApplicationMetrics;
 import com.builddash.backend.application.service.OrderResult;
 import com.builddash.backend.application.service.ReorderResult;
 import com.builddash.backend.domain.enums.CompanyPermission;
@@ -59,6 +60,7 @@ public class OrderServiceImpl implements OrderService {
     private final B2bAuthorizer b2bAuthorizer;
     private final ApprovalGateService approvalGateService;
     private final CompanySiteRepository companySiteRepository;
+    private final ApplicationMetrics metrics;
 
     @Override
     public OrderResult create(UUID userId, UUID addressId, UUID slotId, LocalDate slotDate, BigDecimal expectedTotal,

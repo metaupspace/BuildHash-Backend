@@ -6,6 +6,7 @@ import com.builddash.backend.domain.exception.PaymentGatewayException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import com.builddash.backend.application.service.ApplicationMetrics;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -26,7 +27,7 @@ class GlobalExceptionHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new GlobalExceptionHandler();
+        handler = new GlobalExceptionHandler(org.mockito.Mockito.mock(com.builddash.backend.application.service.ApplicationMetrics.class));
         request = new MockHttpServletRequest("POST", "/orders");
     }
 

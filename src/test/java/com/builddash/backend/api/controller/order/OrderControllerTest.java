@@ -58,7 +58,7 @@ class OrderControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(orderController)
-                .setControllerAdvice(new com.builddash.backend.api.GlobalExceptionHandler())
+                .setControllerAdvice(new com.builddash.backend.api.GlobalExceptionHandler(org.mockito.Mockito.mock(com.builddash.backend.application.service.ApplicationMetrics.class)))
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {

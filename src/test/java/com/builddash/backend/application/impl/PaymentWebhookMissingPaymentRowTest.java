@@ -52,7 +52,7 @@ class PaymentWebhookMissingPaymentRowTest {
         paymentReconciliationRepository = mock(com.builddash.backend.domain.port.PaymentReconciliationRepository.class);
         eventPublisher = mock(org.springframework.context.ApplicationEventPublisher.class);
         webhookService = new PaymentWebhookServiceImpl(
-                orderRepository, paymentRepository, deliverySlotService, () -> SECRET, eventPublisher, invoiceRepository, paymentReconciliationRepository);
+                orderRepository, paymentRepository, deliverySlotService, () -> SECRET, eventPublisher, invoiceRepository, paymentReconciliationRepository, org.mockito.Mockito.mock(com.builddash.backend.application.service.ApplicationMetrics.class));
     }
 
     private static String sign(UUID orderId, String status) {
