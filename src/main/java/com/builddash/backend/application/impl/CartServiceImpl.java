@@ -1,5 +1,6 @@
 package com.builddash.backend.application.impl;
 
+import com.builddash.backend.application.service.CartCheckoutService;
 import com.builddash.backend.application.service.CartService;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.model.Cart;
@@ -20,7 +21,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class CartServiceImpl implements CartService {
+public class CartServiceImpl implements CartService, CartCheckoutService {
 
     private final CartRepository cartRepository;
     private final CartLineItemRepository cartLineItemRepository;

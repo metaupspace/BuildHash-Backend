@@ -8,6 +8,7 @@ import com.builddash.backend.infra.persistence.repository.CompanyJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,6 +37,11 @@ class CompanyRepositoryAdapter implements CompanyRepository {
     @Override
     public Optional<Company> findById(UUID id) {
         return jpaRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
+    public List<Company> findAll() {
+        return jpaRepository.findAll().stream().map(this::toDomain).toList();
     }
 
     @Override

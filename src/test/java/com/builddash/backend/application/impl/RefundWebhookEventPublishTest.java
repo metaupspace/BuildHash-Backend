@@ -2,7 +2,7 @@ package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.event.RefundCompletedEvent;
 import com.builddash.backend.application.event.ReturnStatusChangedEvent;
-import com.builddash.backend.application.service.GstSequenceService;
+import com.builddash.backend.domain.port.GstSequenceRepository;
 import com.builddash.backend.domain.enums.GstSequenceType;
 import com.builddash.backend.domain.enums.RefundStatus;
 import com.builddash.backend.domain.enums.ReturnReason;
@@ -62,7 +62,7 @@ class RefundWebhookEventPublishTest {
     private GstNoteRepository gstNoteRepository;
 
     @Mock
-    private GstSequenceService gstSequenceService;
+    private GstSequenceRepository gstSequenceService;
 
     @Mock
     private PaymentWebhookConfig webhookConfig;

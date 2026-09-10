@@ -1,5 +1,6 @@
 package com.builddash.backend.infra.persistence.adapter;
 
+import com.builddash.backend.domain.model.StatementLine;
 import com.builddash.backend.domain.model.StatementOrderRow;
 import com.builddash.backend.domain.port.StatementAccountingRepository;
 import lombok.RequiredArgsConstructor;

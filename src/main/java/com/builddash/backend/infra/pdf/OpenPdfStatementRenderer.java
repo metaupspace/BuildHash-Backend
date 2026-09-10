@@ -1,6 +1,7 @@
 package com.builddash.backend.infra.pdf;
 
 import com.builddash.backend.domain.model.Statement;
+import com.builddash.backend.domain.model.StatementCompanyInfo;
 import com.builddash.backend.domain.model.StatementOrderRow;
 import com.builddash.backend.domain.port.StatementRenderer;
 import com.lowagie.text.Document;
@@ -30,7 +31,7 @@ public class OpenPdfStatementRenderer implements StatementRenderer {
     private static final Font SMALL = FontFactory.getFont(FontFactory.HELVETICA, 8);
 
     @Override
-    public byte[] render(Statement statement, CompanyInfo company, java.util.List<StatementOrderRow> orderRows) {
+    public byte[] render(Statement statement, StatementCompanyInfo company, java.util.List<StatementOrderRow> orderRows) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Document document = new Document(PageSize.A4, 36, 36, 36, 36);
             PdfWriter.getInstance(document, out);

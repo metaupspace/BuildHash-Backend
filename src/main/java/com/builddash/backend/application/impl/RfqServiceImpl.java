@@ -1,7 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.B2bAuthorizer;
-import com.builddash.backend.application.service.CartService;
+import com.builddash.backend.application.service.CartCheckoutService;
 import com.builddash.backend.application.service.RfqService;
 import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.RfqStatus;
@@ -46,7 +46,7 @@ import java.util.UUID;
 public class RfqServiceImpl implements RfqService {
 
     private final B2bAuthorizer b2bAuthorizer;
-    private final CartService cartService;
+    private final CartCheckoutService cartService;
     private final RfqRepository rfqRepository;
     private final RfqItemRepository rfqItemRepository;
     private final RfqQuoteRepository rfqQuoteRepository;

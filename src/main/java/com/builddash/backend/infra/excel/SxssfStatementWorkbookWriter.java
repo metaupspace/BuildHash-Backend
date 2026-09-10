@@ -2,8 +2,8 @@ package com.builddash.backend.infra.excel;
 
 import com.builddash.backend.domain.model.Statement;
 import com.builddash.backend.domain.model.StatementOrderRow;
-import com.builddash.backend.domain.port.StatementRenderer.CompanyInfo;
-import com.builddash.backend.domain.port.StatementAccountingRepository.StatementLine;
+import com.builddash.backend.domain.model.StatementCompanyInfo;
+import com.builddash.backend.domain.model.StatementLine;
 import com.builddash.backend.domain.port.StatementWorkbookWriter;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -29,7 +29,7 @@ import java.util.UUID;
 public class SxssfStatementWorkbookWriter implements StatementWorkbookWriter {
 
     @Override
-    public byte[] write(Statement statement, CompanyInfo company, List<StatementOrderRow> orderRows,
+    public byte[] write(Statement statement, StatementCompanyInfo company, List<StatementOrderRow> orderRows,
                         StatementLineSource lineSource) {
         try (SXSSFWorkbook workbook = new SXSSFWorkbook()) {
             workbook.setCompressTempFiles(true);
@@ -51,7 +51,7 @@ public class SxssfStatementWorkbookWriter implements StatementWorkbookWriter {
         }
     }
 
-    private void writeSummary(SXSSFWorkbook workbook, CellStyle header, Statement s, CompanyInfo company) {
+    private void writeSummary(SXSSFWorkbook workbook, CellStyle header, Statement s, StatementCompanyInfo company) {
         SXSSFSheet sheet = workbook.createSheet("Summary");
         sheet.createFreezePane(0, 1);
         row(sheet, header, "Field", "Value");

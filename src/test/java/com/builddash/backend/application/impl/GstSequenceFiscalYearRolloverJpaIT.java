@@ -1,6 +1,6 @@
 package com.builddash.backend.application.impl;
 
-import com.builddash.backend.application.service.GstSequenceService;
+import com.builddash.backend.domain.port.GstSequenceRepository;
 import com.builddash.backend.domain.enums.GstSequenceType;
 import com.builddash.backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GstSequenceFiscalYearRolloverJpaIT extends AbstractIntegrationTest {
 
     @Autowired
-    private GstSequenceService sequenceService;
+    private GstSequenceRepository sequenceService;
 
     @Test
     void concurrentAllocationInSameFiscalYear_allocatesUniqueNumbers() throws Exception {

@@ -1,7 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.B2bAuthorizer;
-import com.builddash.backend.application.service.CartService;
+import com.builddash.backend.application.service.CartCheckoutService;
 import com.builddash.backend.application.service.PoImportService;
 import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.PoImportStatus;
@@ -50,7 +50,7 @@ class PoImportServiceImplTest {
     private static final byte[] XLSX = {0x50, 0x4B, 0x03, 0x04, 1, 2, 3};
 
     private B2bAuthorizer b2bAuthorizer;
-    private CartService cartService;
+    private CartCheckoutService cartService;
     private PoImportRepository poImportRepository;
     private PoImportRowRepository poImportRowRepository;
     private PoWorkbookParser parser;
@@ -65,7 +65,7 @@ class PoImportServiceImplTest {
     @BeforeEach
     void setUp() {
         b2bAuthorizer = mock(B2bAuthorizer.class);
-        cartService = mock(CartService.class);
+        cartService = mock(CartCheckoutService.class);
         poImportRepository = mock(PoImportRepository.class);
         poImportRowRepository = mock(PoImportRowRepository.class);
         parser = mock(PoWorkbookParser.class);

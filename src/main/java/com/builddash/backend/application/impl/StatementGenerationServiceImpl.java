@@ -1,25 +1,25 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.StatementGenerationService;
-import com.builddash.backend.application.service.StatementSequenceService;
 import com.builddash.backend.domain.enums.StatementDiscrepancyType;
 import com.builddash.backend.domain.enums.StatementEmailStatus;
 import com.builddash.backend.domain.enums.StatementStatus;
+import com.builddash.backend.domain.model.Company;
 import com.builddash.backend.domain.model.Statement;
 import com.builddash.backend.domain.model.StatementDiscrepancy;
+import com.builddash.backend.domain.model.StatementCompanyInfo;
 import com.builddash.backend.domain.model.StatementOrderRow;
 import com.builddash.backend.domain.port.CompanyRepository;
 import com.builddash.backend.domain.port.ObjectStorage;
 import com.builddash.backend.domain.port.StatementAccountingRepository;
 import com.builddash.backend.domain.port.StatementAccountingRepository.AccountingTotals;
 import com.builddash.backend.domain.port.StatementRepository;
+import com.builddash.backend.domain.port.StatementSequenceRepository;
 import com.builddash.backend.domain.port.StatementRenderer;
 import com.builddash.backend.domain.port.StatementWorkbookWriter;
 import com.builddash.backend.domain.service.StatementPeriodCalculator;
 import com.builddash.backend.domain.service.StatementPeriodCalculator.Period;
 import com.builddash.backend.infra.config.StatementProperties;
-import com.builddash.backend.infra.persistence.entity.CompanyEntity;
-import com.builddash.backend.infra.persistence.repository.CompanyJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -46,8 +46,8 @@ import java.util.UUID;
  * per-company sequence row. No database transaction is ever held across aggregation
  * reads, PDF/XLSX rendering, or storage.
  *
- * Company discovery reuses the JPA repository directly (GstSequenceService precedent)
- * so the CompanyRepository PORT stays untouched — 9-E owns no company changes.
+ * Company discovery reads the CompanyRepository port (findAll) — 9-E owns no company
+ * changes, read-only discovery.
  */
 @Service
 @RequiredArgsConstructor
@@ -63,9 +63,8 @@ public class StatementGenerationServiceImpl implements StatementGenerationServic
     private final StatementAccountingRepository accountingRepository;
     private final StatementRenderer statementRenderer;
     private final StatementWorkbookWriter workbookWriter;
-    private final StatementSequenceService sequenceService;
+    private final StatementSequenceRepository sequenceRepository;
     private final CompanyRepository companyRepository;
-    private final CompanyJpaRepository companyJpaRepository;
     private final ObjectStorage objectStorage;
     private final StatementProperties properties;
     private final TransactionTemplate transactionTemplate;
@@ -74,21 +73,21 @@ public class StatementGenerationServiceImpl implements StatementGenerationServic
     public int generateDue() {
         int budget = properties.getGeneration().getSweepBatchLimit();
         int started = 0;
-        for (CompanyEntity company : companyJpaRepository.findAll()) {
+        for (Company company : companyRepository.findAll()) {
             if (budget <= 0) {
                 break;
             }
-            if (company.getStatus() != com.builddash.backend.domain.enums.CompanyStatus.ACTIVE) {
+            if (company.status() != com.builddash.backend.domain.enums.CompanyStatus.ACTIVE) {
                 continue; // suspended companies generate nothing
             }
-            ZoneId zone = ZoneId.of(company.getBusinessTimezone());
+            ZoneId zone = ZoneId.of(company.businessTimezone());
             for (YearMonth month : StatementPeriodCalculator.closedMonths(zone, Instant.now())) {
                 if (budget <= 0) {
                     break;
                 }
                 Period period = StatementPeriodCalculator.period(month, zone);
                 Optional<Statement> latest = statementRepository.findLatestByCompanyAndPeriod(
-                        company.getId(), period.start());
+                        company.id(), period.start());
                 if (latest.isPresent() && (latest.get().status() == StatementStatus.READY
                         || isFreshGenerating(latest.get()))) {
                     continue; // done, or another instance owns the active generation
@@ -141,16 +140,16 @@ public class StatementGenerationServiceImpl implements StatementGenerationServic
      * reclaim a claimable existing row. Null = another instance owns it / month empty /
      * already READY. The UNIQUE constraint is the final backstop, handled post-tx.
      */
-    private UUID startGeneration(CompanyEntity company, Period period) {
-        AccountingTotals totals = accountingRepository.aggregateTotals(company.getId(), period.start(), period.end());
+    private UUID startGeneration(Company company, Period period) {
+        AccountingTotals totals = accountingRepository.aggregateTotals(company.id(), period.start(), period.end());
         if (totals.orderCount() == 0 && totals.creditNoteCount() == 0) {
             return null; // empty month: no row, no number, no email (locked decision 2)
         }
         try {
             return transactionTemplate.execute(status -> {
-                companyRepository.findByIdForUpdate(company.getId()); // COMPANY lock first
+                companyRepository.findByIdForUpdate(company.id()); // COMPANY lock first
                 List<Statement> generations = statementRepository
-                        .findByCompanyIdOrderByPeriodStartDescVersionDesc(company.getId()).stream()
+                        .findByCompanyIdOrderByPeriodStartDescVersionDesc(company.id()).stream()
                         .filter(s -> s.periodStart().equals(period.start()))
                         .toList();
                 if (generations.stream().anyMatch(s -> s.status() == StatementStatus.READY)) {
@@ -161,7 +160,7 @@ public class StatementGenerationServiceImpl implements StatementGenerationServic
                     return null;
                 }
                 Statement claim = latest == null
-                        ? new Statement(UUID.randomUUID(), company.getId(), period.start(), period.end(),
+                        ? new Statement(UUID.randomUUID(), company.id(), period.start(), period.end(),
                                 period.periodKey(), StatementStatus.GENERATING, 1, null, null, null,
                                 null, null, null, 1, StatementEmailStatus.NONE,
                                 null, 0, null, null, null, null, null, null, List.of(), null, null)
@@ -209,7 +208,7 @@ public class StatementGenerationServiceImpl implements StatementGenerationServic
 
     /** All heavy work — no transaction held anywhere in this method. */
     private void generateArtifactsAndFinalize(Statement claimed) {
-        CompanyEntity company = companyJpaRepository.findById(claimed.companyId())
+        Company company = companyRepository.findById(claimed.companyId())
                 .orElseThrow(() -> new IllegalStateException("Company vanished: " + claimed.companyId()));
 
         AccountingTotals totals = accountingRepository.aggregateTotals(
@@ -248,8 +247,8 @@ public class StatementGenerationServiceImpl implements StatementGenerationServic
                                 "invoice status: " + row.invoiceStatus()))
                 .toList();
 
-        var companyInfo = new StatementRenderer.CompanyInfo(
-                company.getName(), company.getGstNumber(), company.getStatementEmail());
+        var companyInfo = new StatementCompanyInfo(
+                company.name(), company.gstNumber(), company.statementEmail());
         byte[] pdf = statementRenderer.render(claimed, companyInfo, orderRows);
         byte[] xlsx = workbookWriter.write(claimed, companyInfo, orderRows,
                 (afterOrderId, afterLineId) -> accountingRepository.findLinePage(
@@ -269,7 +268,7 @@ public class StatementGenerationServiceImpl implements StatementGenerationServic
             if (locked == null || locked.status() == StatementStatus.READY) {
                 return; // lost a finalize race — the winner stored this version
             }
-            String number = sequenceService.nextNumber(locked.companyId(), locked.periodKey());
+            String number = sequenceRepository.nextNumber(locked.companyId(), locked.periodKey());
             statementRepository.save(locked.markReady(number, pdfKey, xlsxKey, pdf.length, xlsx.length,
                     totals.orderCount(), totals.grossTotal(), totals.taxTotal(), net,
                     totals.creditTotal(), due, discrepancies));

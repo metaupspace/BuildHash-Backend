@@ -1,6 +1,7 @@
 package com.builddash.backend.application.service;
 
 import com.builddash.backend.domain.enums.GstSequenceType;
+import com.builddash.backend.domain.port.GstSequenceRepository;
 import com.builddash.backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class GstSequenceRollbackJpaIT extends AbstractIntegrationTest {
 
     @Autowired
-    private GstSequenceService sequenceService;
+    private GstSequenceRepository sequenceService;
 
     @Autowired
     private TransactionTemplate transactionTemplate;

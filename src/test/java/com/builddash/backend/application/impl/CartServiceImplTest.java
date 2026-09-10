@@ -32,7 +32,7 @@ class CartServiceImplTest {
     private CartLineItemRepository cartLineItemRepository;
     private CartPricingCalculator cartPricingCalculator;
     private ProductRepository productRepository;
-    private CartService cartService;
+    private CartServiceImpl cartService;
 
     @BeforeEach
     void setUp() {

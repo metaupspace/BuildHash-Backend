@@ -1,7 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.B2bAuthorizer;
-import com.builddash.backend.application.service.CartService;
+import com.builddash.backend.application.service.CartCheckoutService;
 import com.builddash.backend.application.service.PoConversionService;
 import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.PoImportStatus;
@@ -34,7 +34,7 @@ import java.util.UUID;
 public class PoConversionServiceImpl implements PoConversionService {
 
     private final B2bAuthorizer b2bAuthorizer;
-    private final CartService cartService;
+    private final CartCheckoutService cartService;
     private final PoImportRepository poImportRepository;
     private final PoImportRowRepository poImportRowRepository;
     private final ProductRepository productRepository;

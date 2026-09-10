@@ -1,7 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.B2bAuthorizer;
-import com.builddash.backend.application.service.CartService;
+import com.builddash.backend.application.service.CartCheckoutService;
 import com.builddash.backend.application.service.RfqService;
 import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.RfqStatus;
@@ -47,7 +47,7 @@ import static org.mockito.Mockito.when;
 class RfqServiceImplTest {
 
     private B2bAuthorizer b2bAuthorizer;
-    private CartService cartService;
+    private CartCheckoutService cartService;
     private RfqRepository rfqRepository;
     private RfqItemRepository rfqItemRepository;
     private RfqQuoteRepository rfqQuoteRepository;
@@ -66,7 +66,7 @@ class RfqServiceImplTest {
     @BeforeEach
     void setUp() {
         b2bAuthorizer = mock(B2bAuthorizer.class);
-        cartService = mock(CartService.class);
+        cartService = mock(CartCheckoutService.class);
         rfqRepository = mock(RfqRepository.class);
         rfqItemRepository = mock(RfqItemRepository.class);
         rfqQuoteRepository = mock(RfqQuoteRepository.class);

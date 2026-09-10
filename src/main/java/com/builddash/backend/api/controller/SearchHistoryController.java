@@ -2,7 +2,7 @@ package com.builddash.backend.api.controller;
 
 import com.builddash.backend.api.dto.response.SearchHistoryEntryResponse;
 import com.builddash.backend.api.mapper.SearchMapper;
-import com.builddash.backend.application.impl.SearchServiceImpl;
+import com.builddash.backend.application.service.SearchService;
 import com.builddash.backend.common.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -25,7 +25,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SearchHistoryController {
 
-    private final SearchServiceImpl searchService;
+    private final SearchService searchService;
     private final SearchMapper searchMapper;
 
 

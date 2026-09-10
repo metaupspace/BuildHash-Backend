@@ -2,7 +2,6 @@ package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.event.RefundCompletedEvent;
 import com.builddash.backend.application.event.ReturnStatusChangedEvent;
-import com.builddash.backend.application.service.GstSequenceService;
 import com.builddash.backend.application.service.RefundWebhookService;
 import com.builddash.backend.domain.enums.GstNoteType;
 import com.builddash.backend.domain.enums.GstSequenceType;
@@ -14,6 +13,7 @@ import com.builddash.backend.domain.model.GstNote;
 import com.builddash.backend.domain.model.Refund;
 import com.builddash.backend.domain.model.Return;
 import com.builddash.backend.domain.port.GstNoteRepository;
+import com.builddash.backend.domain.port.GstSequenceRepository;
 import com.builddash.backend.domain.port.PaymentWebhookConfig;
 import com.builddash.backend.application.service.ApplicationMetrics;
 import com.builddash.backend.domain.port.RefundRepository;
@@ -43,7 +43,7 @@ public class RefundWebhookServiceImpl implements RefundWebhookService {
     private final ApplicationMetrics metrics;
     private final RefundRepository refundRepository;
     private final GstNoteRepository gstNoteRepository;
-    private final GstSequenceService gstSequenceService;
+    private final GstSequenceRepository gstSequenceRepository;
     private final PaymentWebhookConfig webhookConfig;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -98,7 +98,7 @@ public class RefundWebhookServiceImpl implements RefundWebhookService {
                 // at most once per return. uq_gst_notes_return_type (V31) is a pure
                 // backstop, not the concurrency mechanism.
                 if (gstNoteRepository.findByReturnId(actualReturnId).isEmpty()) {
-                    String noteNumber = gstSequenceService.nextNumber(GstSequenceType.CREDIT_NOTE);
+                    String noteNumber = gstSequenceRepository.nextNumber(GstSequenceType.CREDIT_NOTE);
                     GstNote creditNote = new GstNote(
                             UUID.randomUUID(),
                             actualReturnId,

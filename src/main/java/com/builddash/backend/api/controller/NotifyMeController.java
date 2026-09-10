@@ -3,7 +3,7 @@ package com.builddash.backend.api.controller;
 import com.builddash.backend.api.dto.ApiError;
 import com.builddash.backend.api.dto.response.NotifyMeSubscriptionResponse;
 import com.builddash.backend.api.mapper.NotifyMeMapper;
-import com.builddash.backend.application.impl.NotifyMeSubscriptionService;
+import com.builddash.backend.application.service.NotifyMeSubscriptionService;
 import com.builddash.backend.common.AuthenticatedUser;
 import com.builddash.backend.domain.exception.NotFoundException;
 import io.swagger.v3.oas.annotations.Operation;

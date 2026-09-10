@@ -1,7 +1,7 @@
 package com.builddash.backend.api;
 
 import com.builddash.backend.application.service.AddressService;
-import com.builddash.backend.application.service.CartService;
+import com.builddash.backend.application.service.CartCheckoutService;
 import com.builddash.backend.application.service.OrderService;
 import com.builddash.backend.domain.exception.BadRequestException;
 import com.builddash.backend.domain.exception.DomainException;
@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class B2bDraftCartConcurrentCheckoutRaceJpaIT extends AbstractIntegrationTest {
 
     @Autowired
-    private CartService cartService;
+    private CartCheckoutService cartService;
     @Autowired
     private OrderService orderService;
     @Autowired

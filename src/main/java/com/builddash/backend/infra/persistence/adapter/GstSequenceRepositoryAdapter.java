@@ -1,11 +1,12 @@
-package com.builddash.backend.application.service;
+package com.builddash.backend.infra.persistence.adapter;
 
 import com.builddash.backend.domain.enums.GstSequenceType;
+import com.builddash.backend.domain.port.GstSequenceRepository;
 import com.builddash.backend.infra.persistence.entity.GstSequenceEntity;
 import com.builddash.backend.infra.persistence.repository.GstSequenceJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -13,20 +14,22 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 
-@Service
+@Repository
 @RequiredArgsConstructor
-public class GstSequenceService {
+class GstSequenceRepositoryAdapter implements GstSequenceRepository {
 
     private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final GstSequenceJpaRepository sequenceJpaRepository;
     private final JdbcTemplate jdbcTemplate;
 
+    @Override
     @Transactional
     public String nextNumber(GstSequenceType sequenceType) {
         return nextNumber(sequenceType, Instant.now());
     }
 
+    @Override
     @Transactional
     public String nextNumber(GstSequenceType sequenceType, Instant asOf) {
         ZonedDateTime zdt = (asOf != null ? asOf : Instant.now()).atZone(IST_ZONE);

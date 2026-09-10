@@ -58,6 +58,8 @@ class OrderServiceImplTest {
     @Mock
     private com.builddash.backend.application.service.CartService cartService;
     @Mock
+    private com.builddash.backend.application.service.CartCheckoutService cartCheckoutService;
+    @Mock
     private com.builddash.backend.domain.port.CartPricingCalculator cartPricingCalculator;
     @Mock
     private com.builddash.backend.domain.port.CouponRedemptionRepository couponRedemptionRepository;
@@ -518,7 +520,7 @@ class OrderServiceImplTest {
 
         PricedCart newCart = mock(PricedCart.class);
         // Assert cartPricingCalculator is called with a brand new transient cart, bypassing existing cart lookup
-        when(cartService.createReorderCart(eq(userId), anyList())).thenReturn(newCart);
+        when(cartCheckoutService.createReorderCart(eq(userId), anyList())).thenReturn(newCart);
         when(newCart.id()).thenReturn(UUID.randomUUID());
 
         // Setup a mock for PricedCart to demonstrate re-pricing would reflect correctly if we returned it,
@@ -561,7 +563,7 @@ class OrderServiceImplTest {
         when(draft.companyId()).thenReturn(companyId);
         when(draft.projectId()).thenReturn(sourceId);
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
-        when(cartService.claimForCheckout(cartId)).thenReturn(true);
+        when(cartCheckoutService.claimForCheckout(cartId)).thenReturn(true);
         when(companySiteRepository.findById(siteId)).thenReturn(Optional.of(
                 new com.builddash.backend.domain.model.CompanySite(siteId, companyId, "Main", null, true, null, null)));
 
@@ -608,7 +610,7 @@ class OrderServiceImplTest {
         when(draft.companyId()).thenReturn(companyId);
         when(draft.projectId()).thenReturn(UUID.randomUUID());
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
-        when(cartService.claimForCheckout(cartId)).thenReturn(true);
+        when(cartCheckoutService.claimForCheckout(cartId)).thenReturn(true);
         when(companySiteRepository.findById(siteId)).thenReturn(Optional.of(
                 new com.builddash.backend.domain.model.CompanySite(siteId, companyId, "Main", null, true, null, null)));
 
@@ -646,7 +648,7 @@ class OrderServiceImplTest {
         PricedCart draft = mock(PricedCart.class);
         when(draft.companyId()).thenReturn(companyId);
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
-        when(cartService.claimForCheckout(cartId)).thenReturn(true);
+        when(cartCheckoutService.claimForCheckout(cartId)).thenReturn(true);
 
         assertThatThrownBy(() -> orderService.create(userId, addressId, slotId, slotDate, expectedTotal, cartId, null, idempotencyKey))
                 .isInstanceOf(com.builddash.backend.domain.exception.BadRequestException.class)
@@ -665,7 +667,7 @@ class OrderServiceImplTest {
         PricedCart draft = mock(PricedCart.class);
         when(draft.companyId()).thenReturn(companyId);
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
-        when(cartService.claimForCheckout(cartId)).thenReturn(true);
+        when(cartCheckoutService.claimForCheckout(cartId)).thenReturn(true);
         when(companySiteRepository.findById(foreignSiteId)).thenReturn(Optional.of(
                 new com.builddash.backend.domain.model.CompanySite(foreignSiteId, UUID.randomUUID(),
                         "Foreign", null, true, null, null)));
@@ -686,7 +688,7 @@ class OrderServiceImplTest {
         PricedCart draft = mock(PricedCart.class);
         when(draft.companyId()).thenReturn(companyId);
         when(cartService.getCartById(userId, cartId)).thenReturn(draft);
-        when(cartService.claimForCheckout(cartId)).thenReturn(true);
+        when(cartCheckoutService.claimForCheckout(cartId)).thenReturn(true);
         when(companySiteRepository.findById(siteId)).thenReturn(Optional.of(
                 new com.builddash.backend.domain.model.CompanySite(siteId, companyId,
                         "Main", null, false, null, null)));

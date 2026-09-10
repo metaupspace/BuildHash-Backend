@@ -1,5 +1,6 @@
 package com.builddash.backend.application.impl;
 
+import com.builddash.backend.application.service.NotifyMeSubscriptionService;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.model.NotifyMeSubscription;
 import com.builddash.backend.domain.port.NotifyMeSubscriptionRepository;
@@ -11,19 +12,19 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 
 /**
- * No separate interface — single orchestration workflow, single caller (NotifyMeController),
- * same judgment call as OtpSendService. The "fire notifications on restock" job is out of
- * scope for Wave 2 — no inventory-update event exists yet (Product.stock is a static stub,
- * see PLAN_PHASE1.md Open Question #1). This service only records the subscription.
+ * The "fire notifications on restock" job is out of scope for Wave 2 — no
+ * inventory-update event exists yet (Product.stock is a static stub, see
+ * PLAN_PHASE1.md Open Question #1). This service only records the subscription.
  */
 @RequiredArgsConstructor
 @Service
-public class NotifyMeSubscriptionService {
+public class NotifyMeSubscriptionServiceImpl implements NotifyMeSubscriptionService {
 
     private final NotifyMeSubscriptionRepository notifyMeSubscriptionRepository;
     private final ProductRepository productRepository;
 
 
+    @Override
     @Transactional
     public NotifyMeSubscription subscribe(UUID productId, UUID userId) {
         return notifyMeSubscriptionRepository.findByProductIdAndUserId(productId, userId)

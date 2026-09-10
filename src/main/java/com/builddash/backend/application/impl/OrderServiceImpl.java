@@ -2,6 +2,7 @@ package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.ApprovalGateService;
 import com.builddash.backend.application.service.B2bAuthorizer;
+import com.builddash.backend.application.service.CartCheckoutService;
 import com.builddash.backend.application.service.CartService;
 import com.builddash.backend.application.service.CheckoutIntentService;
 import com.builddash.backend.application.service.OrderService;
@@ -35,7 +36,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import com.builddash.backend.application.service.CartService;
 import com.builddash.backend.domain.model.CartLineItem;
 import java.util.stream.Collectors;
 
@@ -55,6 +55,7 @@ public class OrderServiceImpl implements OrderService {
     private final PaymentGateway paymentGateway;
     private final TransactionTemplate transactionTemplate;
     private final CartService cartService;
+    private final CartCheckoutService cartCheckoutService;
     private final com.builddash.backend.domain.port.CouponRepository couponRepository;
     private final com.builddash.backend.domain.port.CouponRedemptionRepository couponRedemptionRepository;
     private final B2bAuthorizer b2bAuthorizer;
@@ -101,7 +102,7 @@ public class OrderServiceImpl implements OrderService {
                     // any site/approval/gateway work, and a checkout that fails later in
                     // this same transaction rolls the claim back with everything else.
                     isB2bDraftCheckout[0] = true;
-                    if (!cartService.claimForCheckout(cartId)) {
+                    if (!cartCheckoutService.claimForCheckout(cartId)) {
                         throw new BadRequestException("CART_ALREADY_CONSUMED",
                                 "This draft cart has already been checked out: " + cartId);
                     }
@@ -427,7 +428,7 @@ public class OrderServiceImpl implements OrderService {
                 ))
                 .toList();
 
-        com.builddash.backend.domain.model.PricedCart pricedCart = cartService.createReorderCart(userId, cartItems);
+        com.builddash.backend.domain.model.PricedCart pricedCart = cartCheckoutService.createReorderCart(userId, cartItems);
 
         return new ReorderResult(pricedCart.id(), "Items added to cart");
     }

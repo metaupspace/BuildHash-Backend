@@ -6,7 +6,7 @@ import com.builddash.backend.domain.enums.StatementStatus;
 import com.builddash.backend.domain.model.Statement;
 import com.builddash.backend.domain.model.StatementDiscrepancy;
 import com.builddash.backend.domain.model.StatementOrderRow;
-import com.builddash.backend.domain.port.StatementRenderer.CompanyInfo;
+import com.builddash.backend.domain.model.StatementCompanyInfo;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -35,7 +35,7 @@ class OpenPdfStatementRendererTest {
                 new BigDecimal("100.00"), new BigDecimal("18.00"), new BigDecimal("118.00"), "PENDING"));
 
         byte[] pdf = new OpenPdfStatementRenderer().render(statement,
-                new CompanyInfo("Acme Constructions", "27AAAPZ1234C1ZV", "accounts@acme.example"),
+                new StatementCompanyInfo("Acme Constructions", "27AAAPZ1234C1ZV", "accounts@acme.example"),
                 orderRows);
 
         assertThat(pdf).isNotEmpty();
@@ -56,7 +56,7 @@ class OpenPdfStatementRendererTest {
                 .toList();
 
         byte[] pdf = new OpenPdfStatementRenderer().render(statement,
-                new CompanyInfo("BigCo", null, null), many);
+                new StatementCompanyInfo("BigCo", null, null), many);
 
         assertThat(pdf).isNotEmpty(); // one row per order completes; lines are XLSX's job
     }

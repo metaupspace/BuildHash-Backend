@@ -1,5 +1,6 @@
 package com.builddash.backend.domain.port;
 
+import com.builddash.backend.domain.model.StatementLine;
 import com.builddash.backend.domain.model.StatementOrderRow;
 
 import java.math.BigDecimal;
@@ -17,11 +18,6 @@ public interface StatementAccountingRepository {
 
     record AccountingTotals(int orderCount, BigDecimal grossTotal, BigDecimal taxTotal,
                             int creditNoteCount, BigDecimal creditTotal) {
-    }
-
-    record StatementLine(UUID orderId, UUID siteId, UUID productId, String productName,
-                         int quantity, BigDecimal unitPrice, BigDecimal taxAmount, BigDecimal lineTotal,
-                         UUID lineId) {
     }
 
     /** SQL SUM aggregation over included orders + the period's CREDIT notes (one query each). */

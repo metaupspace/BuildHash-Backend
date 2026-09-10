@@ -1,6 +1,6 @@
 package com.builddash.backend.application.impl;
 
-import com.builddash.backend.application.service.StatementSequenceService;
+import com.builddash.backend.domain.port.StatementSequenceRepository;
 import com.builddash.backend.domain.enums.StatementEmailStatus;
 import com.builddash.backend.domain.enums.StatementStatus;
 import com.builddash.backend.domain.model.Company;
@@ -14,7 +14,6 @@ import com.builddash.backend.domain.port.StatementRepository;
 import com.builddash.backend.domain.port.StatementRenderer;
 import com.builddash.backend.domain.port.StatementWorkbookWriter;
 import com.builddash.backend.infra.config.StatementProperties;
-import com.builddash.backend.infra.persistence.repository.CompanyJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,11 +54,9 @@ class StatementGenerationServiceImplTest {
     @Mock
     private StatementWorkbookWriter workbookWriter;
     @Mock
-    private StatementSequenceService sequenceService;
+    private StatementSequenceRepository sequenceService;
     @Mock
     private CompanyRepository companyRepository;
-    @Mock
-    private CompanyJpaRepository companyJpaRepository;
     @Mock
     private ObjectStorage objectStorage;
     @Mock
@@ -97,19 +94,13 @@ class StatementGenerationServiceImplTest {
         });
         lenient().when(statementRepository.findByIdForUpdate(statementId))
                 .thenAnswer(inv -> Optional.ofNullable(stored.get()));
-        lenient().when(companyJpaRepository.findById(companyId))
-                .thenReturn(Optional.of(companyEntity()));
+        lenient().when(companyRepository.findById(companyId))
+                .thenReturn(Optional.of(company()));
     }
 
-    private com.builddash.backend.infra.persistence.entity.CompanyEntity companyEntity() {
-        var entity = new com.builddash.backend.infra.persistence.entity.CompanyEntity();
-        entity.setId(companyId);
-        entity.setName("Acme");
-        entity.setGstNumber("27AAAPZ1234C1ZV");
-        entity.setStatementEmail("a@b.c");
-        entity.setBusinessTimezone("Asia/Kolkata");
-        entity.setStatus(com.builddash.backend.domain.enums.CompanyStatus.ACTIVE);
-        return entity;
+    private Company company() {
+        return new Company(companyId, "Acme", "27AAAPZ1234C1ZV", "a@b.c", "Asia/Kolkata",
+                com.builddash.backend.domain.enums.CompanyStatus.ACTIVE, Instant.now(), Instant.now());
     }
 
     private Statement generating(int attempts) {

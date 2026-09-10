@@ -1,7 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.event.InvoiceReadyEvent;
-import com.builddash.backend.application.service.GstSequenceService;
+import com.builddash.backend.domain.port.GstSequenceRepository;
 import com.builddash.backend.domain.enums.GstSequenceType;
 import com.builddash.backend.domain.enums.InvoiceStatus;
 import com.builddash.backend.domain.model.Invoice;
@@ -36,7 +36,7 @@ class InvoiceCommitEventPublishTest {
     private InvoiceRepository invoiceRepository;
 
     @Mock
-    private GstSequenceService gstSequenceService;
+    private GstSequenceRepository gstSequenceService;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;

@@ -1,7 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.B2bAuthorizer;
-import com.builddash.backend.application.service.CartService;
+import com.builddash.backend.application.service.CartCheckoutService;
 import com.builddash.backend.application.service.PoImportService;
 import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.PoImportStatus;
@@ -52,14 +52,14 @@ public class PoImportServiceImpl implements PoImportService {
     static final int MAX_QUANTITY = 10000;
 
     private final B2bAuthorizer b2bAuthorizer;
-    private final CartService cartService;
+    private final CartCheckoutService cartService;
     private final PoImportRepository poImportRepository;
     private final PoImportRowRepository poImportRowRepository;
     private final PoWorkbookParser parser;
     private final ProductRepository productRepository;
     private final TransactionTemplate transactionTemplate;
 
-    public PoImportServiceImpl(B2bAuthorizer b2bAuthorizer, CartService cartService,
+    public PoImportServiceImpl(B2bAuthorizer b2bAuthorizer, CartCheckoutService cartService,
                                PoImportRepository poImportRepository,
                                PoImportRowRepository poImportRowRepository,
                                PoWorkbookParser parser, ProductRepository productRepository,

@@ -1,6 +1,6 @@
 package com.builddash.backend.infra.persistence.adapter;
 
-import com.builddash.backend.application.service.GstSequenceService;
+import com.builddash.backend.domain.port.GstSequenceRepository;
 import com.builddash.backend.domain.enums.GstSequenceType;
 import com.builddash.backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class GstSequenceJpaIT extends AbstractIntegrationTest {
 
     @Autowired
-    private GstSequenceService sequenceService;
+    private GstSequenceRepository sequenceService;
 
     @Autowired
     private PlatformTransactionManager transactionManager;

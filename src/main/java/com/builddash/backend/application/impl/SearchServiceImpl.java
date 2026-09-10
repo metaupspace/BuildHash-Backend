@@ -1,5 +1,6 @@
 package com.builddash.backend.application.impl;
 
+import com.builddash.backend.application.service.SearchService;
 import com.builddash.backend.domain.model.ProductSearchHit;
 import com.builddash.backend.domain.model.SearchQueryLogEntry;
 import com.builddash.backend.domain.model.TrendingQueryCount;
@@ -20,14 +21,13 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 
 /**
- * No separate interface — single controller caller, one cohesive workflow, same judgment as
- * OtpSendService/CatalogOutboxRelay. Redis caching for suggest/trending is folded in here
- * rather than behind a new port: there's no swappable-backend reason to abstract it, same
- * treatment as the *Properties config beans.
+ * Redis caching for suggest/trending is folded in here rather than behind a new port:
+ * there's no swappable-backend reason to abstract it, same treatment as the
+ * *Properties config beans.
  */
 @RequiredArgsConstructor
 @Service
-public class SearchServiceImpl {
+public class SearchServiceImpl implements SearchService {
 
     private static final int SUGGEST_LIMIT = 10;
     private static final int TRENDING_LIMIT = 10;

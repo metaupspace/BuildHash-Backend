@@ -20,21 +20,5 @@ public interface CartService {
 
     PricedCart getCartById(UUID userId, UUID cartId);
 
-    PricedCart createReorderCart(UUID userId, java.util.List<com.builddash.backend.domain.model.CartLineItem> items);
-
-    /**
-     * 9-B/9-C conversion target: a B2B_DRAFT cart owned by the converting user,
-     * scoped to the company, projectId = sourceId (the RFQ or PO id). Enters the
-     * existing checkout flow later — no order, payment or approval here.
-     */
-    PricedCart createB2bDraftCart(UUID companyId, UUID userId, UUID sourceId,
-                                  java.util.List<com.builddash.backend.domain.model.CartLineItem> items);
     void mergeGuestCart(UUID guestUserId, UUID realUserId);
-
-    /**
-     * H2.1: atomic one-time consumption claim for a B2B draft cart's checkout. True iff
-     * this call claimed it (not already consumed) — the concurrency guard that makes two
-     * concurrent checkouts against the same draft produce exactly one winner.
-     */
-    boolean claimForCheckout(UUID cartId);
 }

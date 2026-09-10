@@ -1,28 +1,23 @@
-package com.builddash.backend.application.service;
+package com.builddash.backend.infra.persistence.adapter;
 
+import com.builddash.backend.domain.port.StatementSequenceRepository;
 import com.builddash.backend.infra.persistence.entity.StatementSequenceEntity;
 import com.builddash.backend.infra.persistence.repository.StatementSequenceJpaRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
 
-/**
- * Statement number allocation (9-E): ST-YYYYMM-#### per company per period, separate
- * from gst_sequences. Row-level locked increment (GstSequenceService precedent);
- * callers allocate only inside the finalize transaction after both artifacts are
- * stored, so failed generations never consume a number. Not gapless by design.
- */
-@Service
+@Repository
 @RequiredArgsConstructor
-public class StatementSequenceService {
+class StatementSequenceRepositoryAdapter implements StatementSequenceRepository {
 
     private final StatementSequenceJpaRepository sequenceJpaRepository;
 
-    /** Must join an existing transaction (the statement finalize Tx2). */
+    @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public String nextNumber(UUID companyId, String periodKey) {
         StatementSequenceEntity sequence = sequenceJpaRepository.findForUpdate(companyId, periodKey)

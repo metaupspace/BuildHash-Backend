@@ -5,7 +5,7 @@ import com.builddash.backend.api.dto.response.SearchResultResponse;
 import com.builddash.backend.api.dto.response.SuggestResponse;
 import com.builddash.backend.api.dto.response.TrendingResponse;
 import com.builddash.backend.api.mapper.SearchMapper;
-import com.builddash.backend.application.impl.SearchServiceImpl;
+import com.builddash.backend.application.service.SearchService;
 import com.builddash.backend.common.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SearchController {
 
-    private final SearchServiceImpl searchService;
+    private final SearchService searchService;
     private final SearchMapper searchMapper;
 
 

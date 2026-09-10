@@ -1,6 +1,6 @@
 package com.builddash.backend.application.impl;
 
-import com.builddash.backend.application.service.GstSequenceService;
+import com.builddash.backend.domain.port.GstSequenceRepository;
 import com.builddash.backend.application.service.InvoiceClaimService;
 import com.builddash.backend.application.service.InvoiceCommitService;
 import com.builddash.backend.application.service.InvoiceSnapshotBuilder;
@@ -49,7 +49,7 @@ class InvoiceThreePhaseGenerationTest {
     private ObjectStorage objectStorage;
 
     @Mock
-    private GstSequenceService gstSequenceService;
+    private GstSequenceRepository gstSequenceService;
 
     @Mock
     private org.springframework.context.ApplicationEventPublisher eventPublisher;

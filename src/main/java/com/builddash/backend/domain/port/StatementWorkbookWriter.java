@@ -1,8 +1,9 @@
 package com.builddash.backend.domain.port;
 
 import com.builddash.backend.domain.model.Statement;
+import com.builddash.backend.domain.model.StatementCompanyInfo;
+import com.builddash.backend.domain.model.StatementLine;
 import com.builddash.backend.domain.model.StatementOrderRow;
-import com.builddash.backend.domain.port.StatementAccountingRepository.StatementLine;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,7 +14,7 @@ import java.util.UUID;
  */
 public interface StatementWorkbookWriter {
 
-    byte[] write(Statement statement, StatementRenderer.CompanyInfo company,
+    byte[] write(Statement statement, StatementCompanyInfo company,
                  List<StatementOrderRow> orderRows, StatementLineSource lineSource);
 
     /** Supplies line pages in (order_id, line id) order; the writer drains it page by page. */

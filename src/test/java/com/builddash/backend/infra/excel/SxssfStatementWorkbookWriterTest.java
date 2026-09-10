@@ -4,8 +4,8 @@ import com.builddash.backend.domain.enums.StatementEmailStatus;
 import com.builddash.backend.domain.enums.StatementStatus;
 import com.builddash.backend.domain.model.Statement;
 import com.builddash.backend.domain.model.StatementOrderRow;
-import com.builddash.backend.domain.port.StatementAccountingRepository.StatementLine;
-import com.builddash.backend.domain.port.StatementRenderer.CompanyInfo;
+import com.builddash.backend.domain.model.StatementLine;
+import com.builddash.backend.domain.model.StatementCompanyInfo;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +31,7 @@ class SxssfStatementWorkbookWriterTest {
                 new BigDecimal("118.00"), UUID.randomUUID()));
 
         byte[] xlsx = new SxssfStatementWorkbookWriter().write(statement,
-                new CompanyInfo("Acme", "27AAAPZ1234C1ZV", "a@b.c"), orderRows,
+                new StatementCompanyInfo("Acme", "27AAAPZ1234C1ZV", "a@b.c"), orderRows,
                 (afterOrder, afterLine) -> afterOrder == null ? lines : List.of());
 
         try (XSSFWorkbook read = new XSSFWorkbook(new ByteArrayInputStream(xlsx))) {
@@ -59,7 +59,7 @@ class SxssfStatementWorkbookWriterTest {
                 new BigDecimal("6.00"), new BigDecimal("1.08"), new BigDecimal("7.08"), "READY"));
 
         byte[] xlsx = new SxssfStatementWorkbookWriter().write(statement,
-                new CompanyInfo("Acme", null, null), orderRows,
+                new StatementCompanyInfo("Acme", null, null), orderRows,
                 new com.builddash.backend.domain.port.StatementWorkbookWriter.StatementLineSource() {
                     private int calls;
                     @Override

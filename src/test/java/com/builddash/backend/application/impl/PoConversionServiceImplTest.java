@@ -1,7 +1,7 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.service.B2bAuthorizer;
-import com.builddash.backend.application.service.CartService;
+import com.builddash.backend.application.service.CartCheckoutService;
 import com.builddash.backend.domain.enums.CompanyPermission;
 import com.builddash.backend.domain.enums.PoImportStatus;
 import com.builddash.backend.domain.enums.PoRowStatus;
@@ -39,7 +39,7 @@ import static org.mockito.Mockito.when;
 class PoConversionServiceImplTest {
 
     private B2bAuthorizer b2bAuthorizer;
-    private CartService cartService;
+    private CartCheckoutService cartService;
     private PoImportRepository poImportRepository;
     private PoImportRowRepository poImportRowRepository;
     private ProductRepository productRepository;
@@ -53,7 +53,7 @@ class PoConversionServiceImplTest {
     @BeforeEach
     void setUp() {
         b2bAuthorizer = mock(B2bAuthorizer.class);
-        cartService = mock(CartService.class);
+        cartService = mock(CartCheckoutService.class);
         poImportRepository = mock(PoImportRepository.class);
         poImportRowRepository = mock(PoImportRowRepository.class);
         productRepository = mock(ProductRepository.class);

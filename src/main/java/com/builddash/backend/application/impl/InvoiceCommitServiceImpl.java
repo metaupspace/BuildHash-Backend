@@ -1,12 +1,12 @@
 package com.builddash.backend.application.impl;
 
 import com.builddash.backend.application.event.InvoiceReadyEvent;
-import com.builddash.backend.application.service.GstSequenceService;
 import com.builddash.backend.application.service.InvoiceCommitService;
 import com.builddash.backend.domain.enums.GstSequenceType;
 import com.builddash.backend.domain.enums.InvoiceStatus;
 import com.builddash.backend.domain.exception.NotFoundException;
 import com.builddash.backend.domain.model.Invoice;
+import com.builddash.backend.domain.port.GstSequenceRepository;
 import com.builddash.backend.domain.port.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +22,7 @@ import java.util.UUID;
 public class InvoiceCommitServiceImpl implements InvoiceCommitService {
 
     private final InvoiceRepository invoiceRepository;
-    private final GstSequenceService gstSequenceService;
+    private final GstSequenceRepository gstSequenceRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -36,7 +36,7 @@ public class InvoiceCommitServiceImpl implements InvoiceCommitService {
             return invoice;
         }
 
-        String invoiceNumber = gstSequenceService.nextNumber(GstSequenceType.INVOICE);
+        String invoiceNumber = gstSequenceRepository.nextNumber(GstSequenceType.INVOICE);
         Invoice ready = invoice.markReady(invoiceNumber, storageKey);
         Invoice saved = invoiceRepository.save(ready);
         eventPublisher.publishEvent(new InvoiceReadyEvent(invoice.orderId()));

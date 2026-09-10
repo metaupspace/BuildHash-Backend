@@ -1,4 +1,4 @@
-package com.builddash.backend.application.service;
+package com.builddash.backend.infra.persistence.adapter;
 
 import com.builddash.backend.infra.persistence.entity.StatementSequenceEntity;
 import com.builddash.backend.infra.persistence.repository.StatementSequenceJpaRepository;
@@ -19,13 +19,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class StatementSequenceServiceTest {
+class StatementSequenceRepositoryAdapterTest {
 
     @Mock
     private StatementSequenceJpaRepository sequenceJpaRepository;
 
     @InjectMocks
-    private StatementSequenceService sequenceService;
+    private StatementSequenceRepositoryAdapter sequenceService;
 
     private final UUID companyId = UUID.randomUUID();
 

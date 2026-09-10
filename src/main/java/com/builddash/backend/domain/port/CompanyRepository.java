@@ -2,6 +2,7 @@ package com.builddash.backend.domain.port;
 
 import com.builddash.backend.domain.model.Company;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -10,6 +11,9 @@ public interface CompanyRepository {
     Company save(Company company);
 
     Optional<Company> findById(UUID id);
+
+    /** All companies regardless of status — callers filter (e.g. statement generation skips suspended). */
+    List<Company> findAll();
 
     /**
      * Pessimistic-lock entry point of the last-admin protocol: every membership

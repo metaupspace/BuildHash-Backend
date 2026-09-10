@@ -1,4 +1,4 @@
-package com.builddash.backend.application.impl;
+package com.builddash.backend.application.service;
 
 import com.builddash.backend.domain.model.BulkPricingTier;
 import com.builddash.backend.domain.model.Category;

@@ -120,12 +120,6 @@ public class AuthController {
         return authMapper.toResponse(authenticationFacade.refresh(request.refreshToken()));
     }
 
-    private String clientIp(HttpServletRequest request) {
-        // Extracted to ClientIpResolver (Checkpoint B) so login_events capture and
-        // RateLimitFilter keying share one implementation and cannot drift apart.
-        return ClientIpResolver.resolve(request);
-    }
-
     private String extractGuestToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
